@@ -1,0 +1,6 @@
+- **Look at:** Status counts load with less work (The reader got stuck here: What is a status count?)
+- **Moved under the hood:** Caches playwright browsers in CI (No change to the product itself: moved under the hood.)
+- **Dropped:** This is amazing! (Too long, or has an exclamation mark or emoji.)
+- **Dropped:** Invented (Names no change from this sprint.)
+- **Dropped:** Theme A theme without points (No points left.)
+- **Dropped:** Bumped Vite to the latest version (No change to the product itself.)

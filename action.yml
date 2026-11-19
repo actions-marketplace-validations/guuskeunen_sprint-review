@@ -1,0 +1,147 @@
+name: Sprint Review Deck
+description: Turn a sprint's git history into a sprint review deck anyone can follow. AI writes the words, code checks every claim.
+author: Guus Keunen
+branding:
+  icon: monitor
+  color: orange
+
+inputs:
+  anthropic-api-key:
+    description: Your Anthropic API key. Store it as a repository secret. Required unless you use openai-api-key with model.provider openai.
+    required: false
+    default: ''
+  openai-api-key:
+    description: Your OpenAI API key, for model.provider openai in the config.
+    required: false
+    default: ''
+  github-token:
+    description: Token to read pull request titles and descriptions as context. Empty string turns it off.
+    required: false
+    default: ${{ github.token }}
+  config:
+    description: Path to the config file. Default sprint-review.config.yml (or .yaml/.json), or built-in defaults when there is none.
+    required: false
+    default: ''
+  since:
+    description: First day of the sprint (YYYY-MM-DD). Default the sprint ending today, from sprint.days in the config.
+    required: false
+    default: ''
+  until:
+    description: Last day of the sprint (YYYY-MM-DD). Default today.
+    required: false
+    default: ''
+  from:
+    description: Start at a tag or commit instead of a date, such as the previous release tag.
+    required: false
+    default: ''
+  to:
+    description: End at a tag or commit. Default HEAD.
+    required: false
+    default: ''
+  out:
+    description: Folder to write to. Default sprint-reviews/<date>.
+    required: false
+    default: ''
+  pptx:
+    description: Also write deck.pptx, an editable PowerPoint.
+    required: false
+    default: 'false'
+  slack:
+    description: Post the summary to Slack. Set SLACK_WEBHOOK_URL in the step's env from a secret.
+    required: false
+    default: 'false'
+  deck-url:
+    description: Link to the published deck, for the button in the Slack message.
+    required: false
+    default: ''
+  summary:
+    description: Add the review and its checks to the job summary.
+    required: false
+    default: 'true'
+  version:
+    description: The version of @guuskeunen/sprint-review to run.
+    required: false
+    default: '0'
+
+outputs:
+  deck:
+    description: Path of the deck (deck.html).
+    value: ${{ steps.run.outputs.deck }}
+  review:
+    description: Path of the editable content (review.json).
+    value: ${{ steps.run.outputs.review }}
+  markdown:
+    description: Path of the Markdown summary (review.md).
+    value: ${{ steps.run.outputs.markdown }}
+  checks:
+    description: Path of the check log (checks.md).
+    value: ${{ steps.run.outputs.checks }}
+  pptx:
+    description: Path of deck.pptx, when pptx is true.
+    value: ${{ steps.run.outputs.pptx }}
+  dir:
+    description: The folder everything was written to.
+    value: ${{ steps.run.outputs.dir }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+
+    - name: Check the history depth
+      shell: bash
+      run: |
+        if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+          echo "::error title=Shallow checkout::sprint-review needs the full git history. Use actions/checkout with fetch-depth: 0."
+          exit 1
+        fi
+
+    - name: Generate the sprint review
+      id: run
+      shell: bash
+      env:
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        OPENAI_API_KEY: ${{ inputs.openai-api-key }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        SR_PPTX: ${{ inputs.pptx }}
+        SR_SLACK: ${{ inputs.slack }}
+        SR_DECK_URL: ${{ inputs.deck-url }}
+        SR_CONFIG: ${{ inputs.config }}
+        SR_SINCE: ${{ inputs.since }}
+        SR_UNTIL: ${{ inputs.until }}
+        SR_FROM: ${{ inputs.from }}
+        SR_TO: ${{ inputs.to }}
+        SR_OUT: ${{ inputs.out }}
+        SR_VERSION: ${{ inputs.version }}
+      run: |
+        args=(generate --json)
+        [ -n "$SR_CONFIG" ] && args+=(--config "$SR_CONFIG")
+        [ -n "$SR_SINCE" ] && args+=(--since "$SR_SINCE")
+        [ -n "$SR_UNTIL" ] && args+=(--until "$SR_UNTIL")
+        [ -n "$SR_FROM" ] && args+=(--from "$SR_FROM")
+        [ -n "$SR_TO" ] && args+=(--to "$SR_TO")
+        [ -n "$SR_OUT" ] && args+=(--out "$SR_OUT")
+        [ "$SR_PPTX" = "true" ] && args+=(--pptx)
+        [ "$SR_SLACK" = "true" ] && args+=(--slack)
+        [ -n "$SR_DECK_URL" ] && args+=(--deck-url "$SR_DECK_URL")
+        result="$(npx --yes "@guuskeunen/sprint-review@${SR_VERSION}" "${args[@]}")"
+        echo "$result"
+        node -e '
+          const r = JSON.parse(process.argv[1]);
+          const path = require("node:path");
+          const lines = ["deck", "review", "markdown", "checks", "pptx"].filter((k) => r[k]).map((k) => `${k}=${r[k]}`);
+          lines.push(`dir=${r.dir || path.dirname(r.deck)}`);
+          require("node:fs").appendFileSync(process.env.GITHUB_OUTPUT, lines.join("\n") + "\n");
+        ' "$result"
+
+    - name: Write the job summary
+      if: ${{ inputs.summary == 'true' }}
+      shell: bash
+      env:
+        SR_MD: ${{ steps.run.outputs.markdown }}
+        SR_CHECKS: ${{ steps.run.outputs.checks }}
+      run: |
+        { [ -f "$SR_MD" ] && cat "$SR_MD"; echo; echo "## Checks"; echo; cat "$SR_CHECKS"; } >> "$GITHUB_STEP_SUMMARY"

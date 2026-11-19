@@ -1,0 +1,89 @@
+{
+  "name": "@guuskeunen/sprint-review",
+  "publishConfig": {
+    "access": "public"
+  },
+  "version": "0.1.0",
+  "description": "Turn a sprint's git history into a sprint review deck anyone can follow. AI writes the words, code checks every line against the real commits. CLI, GitHub Action and MCP server.",
+  "license": "MIT",
+  "author": "Guus Keunen",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/guuskeunen/sprint-review.git"
+  },
+  "type": "module",
+  "bin": {
+    "sprint-review": "dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "assets",
+    "action.yml",
+    "README.md",
+    "LICENSE",
+    "skills",
+    "examples"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.check.json",
+    "test": "node --test test/*.test.ts",
+    "prepublishOnly": "npm run build",
+    "docs": "node scripts/build-demo.ts && node scripts/build-llms.ts",
+    "bench": "node scripts/bench.ts"
+  },
+  "dependencies": {
+    "sharp": "^0.34.0",
+    "yaml": "^2.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  },
+  "keywords": [
+    "agile",
+    "ai",
+    "changelog",
+    "claude",
+    "deck",
+    "git",
+    "github-action",
+    "llm",
+    "mcp",
+    "mcp-server",
+    "openai",
+    "pptx",
+    "presentation",
+    "release-notes",
+    "scrum",
+    "slides",
+    "sprint demo",
+    "sprint review",
+    "sprint-review",
+    "stakeholder-update"
+  ],
+  "homepage": "https://guuskeunen.github.io/sprint-review/",
+  "optionalDependencies": {
+    "pptxgenjs": "^4.0.1"
+  },
+  "peerDependencies": {
+    "playwright": ">=1.40"
+  },
+  "peerDependenciesMeta": {
+    "playwright": {
+      "optional": true
+    }
+  },
+  "mcpName": "io.github.guuskeunen/sprint-review"
+}

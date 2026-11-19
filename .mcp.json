@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "sprint-review": {
+      "command": "npx",
+      "args": ["-y", "@guuskeunen/sprint-review@0", "mcp"]
+    }
+  }
+}

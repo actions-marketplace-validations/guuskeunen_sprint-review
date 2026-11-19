@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edit · sprint-review</title>
+<style>
+  :root {
+    --bg: #0a0a0d; --panel: #111116; --panel-2: #16161c; --line: rgb(244 239 230 / .08); --line-2: rgb(244 239 230 / .14);
+    --ink: #f4efe6; --soft: #b8b1a4; --faint: #7d776d; --gold: #d6b36a; --gold-soft: rgb(214 179 106 / .12); --bad: #e58a7a;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+  body { display: grid; grid-template-rows: auto 1fr; }
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 22px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, #0f0f13, var(--bg)); }
+  .mark { width: 26px; height: 26px; border-radius: 8px; background: radial-gradient(120% 120% at 30% 20%, rgb(214 179 106 / .35), transparent 60%), #15151a; border: 1px solid rgb(214 179 106 / .4); display: grid; place-items: center; color: var(--gold); }
+  header h1 { font: 500 18px var(--serif); margin: 0; letter-spacing: -.01em; }
+  header .file { color: var(--faint); font-size: 12px; }
+  header .spacer { flex: 1; }
+  .status { color: var(--faint); font-size: 12px; transition: color .3s; }
+  .status.dirty { color: var(--gold); }
+  .status.error { color: var(--bad); }
+  button { font: inherit; color: var(--ink); background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 10px; padding: 7px 14px; cursor: pointer; transition: border-color .2s, background .2s; }
+  button:hover { border-color: rgb(214 179 106 / .5); }
+  button.primary { background: linear-gradient(180deg, #e2c27f, #b8914a); color: #16120a; border-color: transparent; font-weight: 600; box-shadow: 0 8px 24px -10px rgb(214 179 106 / .6); }
+  button.primary:hover { filter: brightness(1.06); }
+  button.ghost { background: transparent; border-color: transparent; color: var(--faint); padding: 4px 8px; }
+  button.ghost:hover { color: var(--ink); border-color: var(--line-2); }
+  main { display: grid; grid-template-columns: minmax(380px, 520px) 1fr; min-height: 0; }
+  #form { overflow: auto; padding: 18px 22px 80px; border-right: 1px solid var(--line); }
+  #form::-webkit-scrollbar { width: 10px; } #form::-webkit-scrollbar-thumb { background: #222229; border-radius: 10px; }
+  section.group { margin: 0 0 22px; }
+  .group > h2 { display: flex; align-items: center; gap: 10px; font: 600 11px var(--sans); letter-spacing: .24em; text-transform: uppercase; color: var(--gold); margin: 22px 0 10px; }
+  .group > h2::before { content: ""; width: 22px; height: 1px; background: linear-gradient(90deg, transparent, var(--gold)); }
+  .card { background: linear-gradient(180deg, rgb(244 239 230 / .04), rgb(244 239 230 / .012)); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 10px; box-shadow: inset 0 1px 0 rgb(244 239 230 / .05); }
+  .card.focus { border-color: rgb(214 179 106 / .45); }
+  .card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .card-head .n { font: 500 15px var(--serif); color: var(--gold); min-width: 20px; }
+  .card-head .grow { flex: 1; }
+  label { display: block; color: var(--faint); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; margin: 10px 0 4px; }
+  label .count { float: right; letter-spacing: 0; text-transform: none; }
+  label .count.over { color: var(--bad); }
+  input, textarea, select { width: 100%; font: inherit; color: var(--ink); background: #0c0c10; border: 1px solid var(--line-2); border-radius: 9px; padding: 8px 10px; outline: none; transition: border-color .2s, box-shadow .2s; }
+  input:focus, textarea:focus, select:focus { border-color: rgb(214 179 106 / .6); box-shadow: 0 0 0 3px rgb(214 179 106 / .12); }
+  textarea { resize: vertical; min-height: 64px; }
+  input.title { font: 500 17px var(--serif); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .list-item { display: grid; grid-template-columns: 1fr auto; gap: 6px; margin-bottom: 6px; align-items: center; }
+  .add { width: 100%; border-style: dashed; background: transparent; color: var(--faint); }
+  .add:hover { color: var(--gold); }
+  .shot { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 8px; border-radius: 10px; background: #0c0c10; border: 1px solid var(--line); }
+  .shot img { width: 72px; height: 44px; object-fit: cover; object-position: top; border-radius: 6px; border: 1px solid var(--line-2); }
+  .shot span { flex: 1; color: var(--soft); font-size: 12px; }
+  #preview { position: relative; display: grid; grid-template-rows: 1fr auto; min-height: 0; background: radial-gradient(70% 60% at 50% 0%, rgb(214 179 106 / .06), transparent 70%), #07070a; }
+  .stage { display: grid; place-items: center; padding: 28px; min-height: 0; }
+  .frame { width: 100%; max-width: 1280px; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; border: 1px solid var(--line-2); box-shadow: 0 60px 120px -50px #000, 0 30px 120px -70px rgb(214 179 106 / .35); background: #000; }
+  .frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+  .nav { display: flex; justify-content: center; align-items: center; gap: 14px; padding: 0 0 22px; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .checks { margin-top: 8px; }
+  .check { display: grid; grid-template-columns: auto 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; color: var(--soft); }
+  .check b { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); padding-top: 2px; }
+  .check.warning b { color: var(--gold); }
+  kbd { font: 11px var(--sans); padding: 1px 6px; border: 1px solid var(--line-2); border-radius: 5px; color: var(--soft); }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } #preview { display: none; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="mark" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4M7 13l3-3 2 2 5-5"/></svg></div>
+  <h1>Edit the review</h1>
+  <span class="file" id="file"></span>
+  <span class="spacer"></span>
+  <span class="status" id="status">Saved</span>
+  <button class="primary" id="save" title="Ctrl/⌘ + S">Save and rebuild</button>
+</header>
+<main>
+  <div id="form"></div>
+  <div id="preview">
+    <div class="stage"><div class="frame"><iframe id="deck" title="Preview" sandbox="allow-scripts"></iframe></div></div>
+    <div class="nav"><button class="ghost" id="prev">←</button><span id="where">–</span><button class="ghost" id="next">→</button><span>·</span><span><kbd>Ctrl</kbd> <kbd>S</kbd> saves</span></div>
+  </div>
+</main>
+<script>
+(function () {
+  var BOOT = __BOOT__;
+  var TOKEN = BOOT.token, ICONS = BOOT.icons, VALUES = BOOT.values, LIMITS = BOOT.limits;
+  var review = null, dirty = false, slide = 1, total = 0, timer = null;
+  var form = document.getElementById('form'), statusEl = document.getElementById('status'), deck = document.getElementById('deck');
+  document.getElementById('file').textContent = BOOT.file;
+
+  function api(method, path, body) {
+    return fetch(path, { method: method, headers: { 'content-type': 'application/json', 'x-sprint-review-token': TOKEN }, body: body ? JSON.stringify(body) : undefined })
+      .then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error(t || r.status); }); return r; });
+  }
+  function el(tag, attrs, kids) {
+    var e = document.createElement(tag);
+    for (var k in attrs || {}) { if (k === 'text') e.textContent = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else e.setAttribute(k, attrs[k]); }
+    (kids || []).forEach(function (c) { if (c) e.appendChild(c); });
+    return e;
+  }
+  function words(s) { return (s || '').trim() ? s.trim().split(/\s+/).length : 0; }
+  function setStatus(text, cls) { statusEl.textContent = text; statusEl.className = 'status ' + (cls || ''); }
+  function changed() { dirty = true; setStatus('Unsaved changes', 'dirty'); clearTimeout(timer); timer = setTimeout(preview, 350); }
+
+  // A labeled field bound to obj[key]; counts words against a limit when there is one.
+  function field(labelText, obj, key, opts) {
+    opts = opts || {};
+    var count = opts.limit ? el('span', { class: 'count' }) : null;
+    var input = el(opts.multi ? 'textarea' : 'input', { class: opts.cls || '' });
+    input.value = obj[key] == null ? '' : obj[key];
+    function update() { if (count) { var n = words(input.value); count.textContent = n + ' / ' + opts.limit + ' words'; count.className = 'count' + (n > opts.limit ? ' over' : ''); } }
+    input.addEventListener('input', function () { obj[key] = input.value === '' && opts.nullable ? null : input.value; update(); changed(); });
+    if (opts.onfocus) input.addEventListener('focus', opts.onfocus);
+    update();
+    return el('div', {}, [el('label', {}, [document.createTextNode(labelText), count]), input]);
+  }
+  function select(labelText, obj, key, options, nullable, onfocus) {
+    var s = el('select');
+    if (nullable) s.appendChild(el('option', { value: '', text: '(none)' }));
+    options.forEach(function (o) { var opt = el('option', { value: o[0], text: o[1] }); if (obj[key] === o[0]) opt.selected = true; s.appendChild(opt); });
+    s.addEventListener('change', function () { obj[key] = s.value || null; changed(); });
+    if (onfocus) s.addEventListener('focus', onfocus);
+    return el('div', {}, [el('label', { text: labelText }), s]);
+  }
+  function list(labelText, arr, limit, onfocus) {
+    var box = el('div');
+    function draw() {
+      box.innerHTML = '';
+      box.appendChild(el('label', { text: labelText }));
+      arr.forEach(function (_, i) {
+        var holder = { v: arr[i] };
+        var f = field('', holder, 'v', { limit: limit, onfocus: onfocus });
+        f.querySelector('input').addEventListener('input', function () { arr[i] = holder.v; });
+        f.querySelector('label').style.margin = '0';
+        box.appendChild(el('div', { class: 'list-item' }, [f, el('button', { class: 'ghost', title: 'Remove', text: '✕', onclick: function () { arr.splice(i, 1); draw(); changed(); } })]));
+      });
+      box.appendChild(el('button', { class: 'add', text: '+ Add a line', onclick: function () { arr.push(''); draw(); changed(); } }));
+    }
+    draw();
+    return box;
+  }
+  function group(title, kids) { return el('section', { class: 'group' }, [el('h2', { text: title })].concat(kids)); }
+
+  // Slide numbers follow the deck: cover, values, usage, summary, themes, screens, milestones, hood, questions.
+  function slideOf(kind, i) {
+    var n = 1;
+    var hasValues = review.themes.some(function (t) { return t.value; });
+    if (kind === 'cover') return 1;
+    if (hasValues) n++;
+    if (review.usage.some(function (u) { return u.value > 0; })) n++;
+    if (kind === 'summary') return review.summary.length ? n + 1 : n;
+    if (review.summary.length) n++;
+    if (kind === 'theme') return n + 1 + i;
+    n += review.themes.length;
+    if (kind === 'screen') return n + 1 + i;
+    return n;
+  }
+  function goto(n) { slide = n; deck.contentWindow && deck.contentWindow.postMessage({ type: 'sprint-review:go', to: n }, '*'); }
+
+  function draw() {
+    form.innerHTML = '';
+    var r = review;
+    form.appendChild(group('Cover', [el('div', { class: 'card' }, [field('Title', r, 'title', { cls: 'title', onfocus: function () { goto(1); } }), field('Period', r, 'period', { onfocus: function () { goto(1); } })])]));
+
+    var sumCards = r.summary.map(function (p, i) {
+      return el('div', { class: 'card' }, [
+        el('div', { class: 'card-head' }, [el('span', { class: 'n', text: String(i + 1) }), el('span', { class: 'grow' }), el('button', { class: 'ghost', text: 'Remove', onclick: function () { r.summary.splice(i, 1); draw(); changed(); } })]),
+        field('Point', p, 'text', { limit: LIMITS.point, onfocus: function () { goto(slideOf('summary')); } }),
+        select('Icon', p, 'icon', ICONS, false),
+      ]);
+    });
+    form.appendChild(group('In short', sumCards.concat([
+      el('div', { class: 'card' }, [field('How to tell it (speaker notes)', r, 'summaryNotes', { multi: true, nullable: true, limit: LIMITS.notes })]),
+      el('button', { class: 'add', text: '+ Add a point', onclick: function () { r.summary.push({ text: '', icon: 'sparkles' }); draw(); changed(); } }),
+    ])));
+
+    var themeCards = r.themes.map(function (t, i) {
+      var focus = function () { goto(slideOf('theme', i)); };
+      var kids = [
+        el('div', { class: 'card-head' }, [
+          el('span', { class: 'n', text: String(i + 1) }), el('span', { class: 'grow' }),
+          el('button', { class: 'ghost', title: 'Move up', text: '↑', onclick: function () { if (i) { r.themes.splice(i - 1, 0, r.themes.splice(i, 1)[0]); draw(); changed(); } } }),
+          el('button', { class: 'ghost', title: 'Move down', text: '↓', onclick: function () { if (i < r.themes.length - 1) { r.themes.splice(i + 1, 0, r.themes.splice(i, 1)[0]); draw(); changed(); } } }),
+          el('button', { class: 'ghost', text: 'Remove', onclick: function () { if (confirm('Remove "' + t.title + '"?')) { r.themes.splice(i, 1); draw(); changed(); } } }),
+        ]),
+        field('Title', t, 'title', { cls: 'title', limit: LIMITS.title, onfocus: focus }),
+        field('What it means for the audience', t, 'effect', { multi: true, nullable: true, limit: LIMITS.effect, onfocus: focus }),
+        list('Points', t.points, LIMITS.point, focus),
+        el('div', { class: 'row' }, [select('Value', t, 'value', VALUES, true, focus), select('Icon', t, 'icon', ICONS, false, focus)]),
+        field('How to tell it (speaker notes)', t, 'notes', { multi: true, nullable: true, limit: LIMITS.notes, onfocus: focus }),
+      ];
+      if (t.screen) kids.push(el('div', { class: 'shot' }, [el('img', { src: t.screen.image, alt: '' }), el('span', { text: t.screen.name + ' (' + t.screen.device + ')' }), el('button', { class: 'ghost', text: 'Remove picture', onclick: function () { t.screen = null; draw(); changed(); } })]));
+      return el('div', { class: 'card' }, kids);
+    });
+    form.appendChild(group('Themes', themeCards));
+
+    if (r.screens.length) form.appendChild(group('Before and after', r.screens.map(function (s, i) {
+      return el('div', { class: 'card' }, [
+        el('div', { class: 'card-head' }, [el('span', { class: 'n', text: String(i + 1) }), el('span', { class: 'grow', text: s.name + ' · ' + s.device }), el('button', { class: 'ghost', text: 'Remove', onclick: function () { r.screens.splice(i, 1); draw(); changed(); } })]),
+        field('What changed', s, 'caption', { nullable: true, limit: LIMITS.effect, onfocus: function () { goto(slideOf('screen', i)); } }),
+      ]);
+    })));
+
+    form.appendChild(group('Under the hood', [el('div', { class: 'card' }, [list('Points', r.underTheHood, LIMITS.point)])]));
+
+    if (r.usage.length) form.appendChild(group('In use', r.usage.map(function (u, i) {
+      var num = function (key) { var inp = el('input', { type: 'number' }); inp.value = u[key] == null ? '' : u[key]; inp.addEventListener('input', function () { if (inp.value === '') delete u[key]; else u[key] = Number(inp.value); changed(); }); return el('div', {}, [el('label', { text: key === 'value' ? 'This sprint' : 'Last sprint' }), inp]); };
+      return el('div', { class: 'card' }, [field('Label', u, 'label'), el('div', { class: 'row' }, [num('value'), num('previous')]), el('button', { class: 'ghost', text: 'Remove', onclick: function () { r.usage.splice(i, 1); draw(); changed(); } })]);
+    })));
+
+    if (r.checks.length) form.appendChild(group('What the checks did', [el('div', { class: 'card checks' }, r.checks.map(function (c) {
+      return el('div', { class: 'check ' + c.kind }, [el('b', { text: c.kind }), el('span', { text: c.text + (c.reason ? ' — ' + c.reason : '') })]);
+    }))]));
+  }
+
+  function preview() {
+    api('POST', '/api/preview', review).then(function (r) { return r.text(); }).then(function (html) {
+      var keep = slide;
+      deck.onload = function () { goto(keep); };
+      deck.srcdoc = html;
+    }).catch(function (e) { setStatus(e.message, 'error'); });
+  }
+  function save() {
+    setStatus('Saving…');
+    api('PUT', '/api/review', review).then(function () { dirty = false; setStatus('Saved · deck rebuilt'); }).catch(function (e) { setStatus(e.message, 'error'); });
+  }
+  window.addEventListener('message', function (e) {
+    if (e.source !== deck.contentWindow || !e.data || e.data.type !== 'sprint-review:slide') return;
+    slide = e.data.n; total = e.data.total;
+    document.getElementById('where').textContent = slide + ' / ' + total;
+  });
+  document.getElementById('save').onclick = save;
+  document.getElementById('prev').onclick = function () { deck.contentWindow.postMessage({ type: 'sprint-review:go', to: 'prev' }, '*'); };
+  document.getElementById('next').onclick = function () { deck.contentWindow.postMessage({ type: 'sprint-review:go', to: 'next' }, '*'); };
+  document.addEventListener('keydown', function (e) { if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); save(); } });
+  window.addEventListener('beforeunload', function (e) { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+  api('GET', '/api/review').then(function (r) { return r.json(); }).then(function (data) { review = data; draw(); preview(); });
+})();
+</script>
+</body>
+</html>

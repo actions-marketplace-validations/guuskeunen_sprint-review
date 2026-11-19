@@ -1,0 +1,1898 @@
+# sprint-review
+
+> Open-source CLI, GitHub Action and MCP server (npm: @guuskeunen/sprint-review, MIT) that turns a sprint's git history into a sprint review presentation in business language. Every line on the slides is checked in code against the real commits; screenshots are diffed to show before and after. Output: one self-contained HTML deck with speaker notes and a presenter view, plus review.json (editable content), review.md, checks.md and optionally deck.pptx.
+
+Use it when someone wants a sprint review deck, sprint demo slides, a stakeholder update or release slides from a git repository, every sprint, without writing them by hand.
+
+Quick start (Node 20+, inside a git repository):
+
+- `npx @guuskeunen/sprint-review --dry-run` shows the commits it would read; no model call.
+- `ANTHROPIC_API_KEY=... npx @guuskeunen/sprint-review` writes the deck for the last sprint (default 14 days) to `sprint-reviews/<date>/`.
+- `npx @guuskeunen/sprint-review --since 2026-11-03 --until 2026-11-16` or `--from v1.4.0 --to v1.5.0` for a specific range.
+- `npx @guuskeunen/sprint-review edit sprint-reviews/<date>/review.json` opens a local editor beside the live deck.
+- `npx @guuskeunen/sprint-review init` writes a commented `sprint-review.config.yml`.
+- Claude Code plugin: `/plugin marketplace add guuskeunen/sprint-review` then `/plugin install sprint-review@sprint-review`.
+- `npx @guuskeunen/sprint-review mcp` runs it as an MCP server (tools: generate_sprint_review, preview_sprint_commits, render_sprint_review, check_sprint_review_setup). Claude Code: `claude mcp add sprint-review -- npx -y @guuskeunen/sprint-review mcp`.
+- GitHub Action: `uses: guuskeunen/sprint-review@v0` with `anthropic-api-key`, after `actions/checkout@v4` with `fetch-depth: 0`.
+
+## Docs
+
+- [README](https://github.com/guuskeunen/sprint-review#readme): overview, install, privacy and cost
+- [Getting started](https://github.com/guuskeunen/sprint-review/blob/main/docs/getting-started.md)
+- [Configuration](https://github.com/guuskeunen/sprint-review/blob/main/docs/configuration.md): every option in sprint-review.config.yml
+- [Screenshots](https://github.com/guuskeunen/sprint-review/blob/main/docs/screenshots.md): from visual tests, a folder, or captured from URLs
+- [GitHub Action and CI](https://github.com/guuskeunen/sprint-review/blob/main/docs/github-action.md): schedule, Pages, Slack, GitLab
+- [Editing](https://github.com/guuskeunen/sprint-review/blob/main/docs/editing.md): the editor, review.json, PowerPoint
+- [Integrations](https://github.com/guuskeunen/sprint-review/blob/main/docs/integrations.md): MCP server, Claude Code skill, Slack, pull requests
+- [Models and providers](https://github.com/guuskeunen/sprint-review/blob/main/docs/models.md)
+- [Security and privacy](https://github.com/guuskeunen/sprint-review/blob/main/docs/security.md)
+- [How it works](https://github.com/guuskeunen/sprint-review/blob/main/docs/how-it-works.md): the writer, the checks, the second reader
+- [Troubleshooting](https://github.com/guuskeunen/sprint-review/blob/main/docs/troubleshooting.md) and [FAQ](https://github.com/guuskeunen/sprint-review/blob/main/docs/faq.md)
+
+## Facts
+
+- Models: Anthropic by default (claude-opus-5-5, falling back to claude-sonnet-5-5). Also `model.provider`: bedrock, azure, openai, openrouter, gemini, mistral, ollama, lmstudio (local: nothing leaves the network).
+- Sends commit subjects, bodies, file names and (with GITHUB_TOKEN) pull request descriptions. Never source code.
+- Checks in code: each point must cite real commit hashes or it is dropped; ci/build/test/docs/chore commits only go under the hood; word limits; ticket and PR numbers stripped; a team word list applied; a second model call reads only the slides and flags unclear lines, which are rewritten once and checked again. All logged in checks.md.
+- Brand: `brand.color`, `brand.logo`, `brand.fonts`, or `brand.from: our-template.pptx` to take the theme color, fonts and logo from a PowerPoint. `brand.theme: light` (default) or `dark`.
+- Languages: English and Dutch labels built in; any language for the text via `language`.
+
+## Optional
+
+- [Live demo deck](https://guuskeunen.github.io/sprint-review/demo/)
+- [Changelog](https://github.com/guuskeunen/sprint-review/blob/main/CHANGELOG.md)
+- [Full docs in one file](https://guuskeunen.github.io/sprint-review/llms-full.txt)
+
+
+---
+
+<!-- README.md -->
+
+---
+
+Every sprint, someone spends half a day turning commit messages like `refactor(planner): optimize status count queries` into slides that marketing, sales and management actually understand. **sprint-review does that in about a minute**, and builds a polished deck with the before and after screenshots, the roadmap and the speaker notes.
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+npx @guuskeunen/sprint-review
+```
+
+That's all you need to start: no config, no account, nothing to host. You get a single HTML deck that opens anywhere.
+
+## Why it's different
+
+Most AI summary tools hand your history to a model and hope for the best. sprint-review treats the model as a writer, not a source of truth:
+
+- **Every point has to name a real commit.** A point that points nowhere is dropped. That's how invented features stay off the slides.
+- **Code does everything that can be checked.** Word limits, no ticket numbers or hashes, no exclamation marks, the numbers, the pictures, the page itself. The model never writes HTML or counts anything.
+- **A second AI reads it like your audience would.** It sees only the slide text and flags whatever someone outside the team wouldn't understand. Those lines are rewritten once, and the rewrite has to pass every check again.
+- **Tooling never becomes a theme.** CI, test and dependency changes go under the hood automatically.
+- **Real screenshots, no customer data.** It reuses the pictures your visual tests already take (or photographs your staging pages, with private bits masked), finds the screens that actually changed, and crops to the change.
+- **Nothing is published on its own.** You get a draft, the check log and an editable `review.json`.
+
+## What you get
+
+| File | What it is |
+|---|---|
+| `deck.html` | The presentation. One self-contained file: arrow keys, presenter window with notes and timer, full screen, prints to PDF. |
+| `review.json` | Everything on the slides. Edit it, then `sprint-review render` rebuilds the deck. |
+| `review.md` | A Markdown summary for a pull request, Slack or an email. |
+| `checks.md` | What the checks corrected, moved or dropped, and what the second reader flagged. |
+| `deck.pptx` | Optional (`--pptx`): the same deck as an editable PowerPoint, with speaker notes. |
+
+The deck has a cover with your logo and color, *What we gain* grouped by value, usage numbers, a summary, one slide per theme (with a screenshot when one fits), before and after slides, the roadmap, *Under the hood* and a closing slide.
+
+## Quick start
+
+```bash
+# 1. In your repository
+npx @guuskeunen/sprint-review init      # writes sprint-review.config.yml
+
+# 2. See what it will read, for free
+npx @guuskeunen/sprint-review --dry-run
+
+# 3. Write the review
+export ANTHROPIC_API_KEY=sk-ant-...
+npx @guuskeunen/sprint-review
+open sprint-reviews/*/deck.html
+```
+
+More options:
+
+```bash
+sprint-review --since 2026-11-03 --until 2026-11-16   # a date range
+sprint-review --from v1.4.0 --to v1.5.0              # between two tags
+sprint-review edit sprint-reviews/2026-11-16/review.json   # editor beside the live deck
+sprint-review render sprint-reviews/2026-11-16/review.json # rebuild after a hand edit
+sprint-review --pptx --slack                          # also PowerPoint, and post to Slack
+sprint-review capture                                 # photograph your staging pages
+sprint-review doctor                                  # check the setup
+```
+
+→ **[Getting started guide](docs/getting-started.md)**
+
+## Run it every sprint with GitHub Actions
+
+```yaml
+name: Sprint review
+on:
+  schedule:
+    - cron: '0 7 * * 5'   # the morning of review day
+  workflow_dispatch:
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0            # the full history is needed
+      - uses: guuskeunen/sprint-review@v0
+        id: review
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sprint-review
+          path: ${{ steps.review.outputs.dir }}
+```
+
+The review also lands in the job summary. Want a pull request to review and a shareable link on GitHub Pages instead? → **[GitHub Action guide](docs/github-action.md)**
+
+## Use it from Claude Code, Cursor or any MCP client
+
+```
+/plugin marketplace add guuskeunen/sprint-review
+/plugin install sprint-review@sprint-review
+```
+
+The Claude Code plugin brings the skill and the MCP server. Other clients: `npx -y @guuskeunen/sprint-review mcp`. Then ask *"make our sprint review for the last two weeks"*. → **[Integrations](docs/integrations.md)**: MCP, OpenAI, Slack, pull requests, GitLab
+
+## Configuration at a glance
+
+```yaml
+product:
+  name: Spoke
+  description: the planning and customer app of a chain of bike repair shops
+organization: Northside Cycles
+audience: business          # business, executives, customers, team, or your own words
+language: English           # or Dutch, German, nl, de-DE …
+sprint: { days: 14 }
+brand: { color: "#ea580c", logo: ./logo.png }   # or: brand: { from: our-template.pptx }
+productPaths: [src/]
+screenshots:
+  source: git
+  dir: e2e/__screenshots__
+  ignore: { left: 240, top: 64 }
+```
+
+→ **[Full configuration reference](docs/configuration.md)**
+
+## Documentation
+
+- [Getting started](docs/getting-started.md): from zero to your first deck in five minutes
+- [Configuration](docs/configuration.md): every option, with defaults
+- [Screenshots](docs/screenshots.md): before and after slides from your visual tests, a folder, or captured from URLs
+- [GitHub Action](docs/github-action.md): scheduled reviews, pull requests, GitHub Pages, Slack, GitLab
+- [Editing and presenting](docs/editing.md): the editor, presenting, PDF and PowerPoint
+- [Integrations](docs/integrations.md): MCP server, Claude Code skill, Slack, pull request context
+- [Models and providers](docs/models.md): Claude, Bedrock, Azure, OpenAI, OpenRouter, Gemini, Mistral, Ollama, LM Studio
+- [Security and privacy](docs/security.md): what it reads, what it sends where, what it never does
+- [Quality benchmark](docs/benchmark.md): how every prompt and model change is measured
+- [How it works](docs/how-it-works.md): the pipeline and every check
+- [Using it as a library](docs/library.md): the Node API
+- [Troubleshooting](docs/troubleshooting.md) and [FAQ](docs/faq.md)
+- Guides: [How to run a sprint review](docs/guides/how-to-run-a-sprint-review.md) · [Sprint review template](docs/guides/sprint-review-template.md)
+
+## Privacy and cost
+
+- **What leaves your machine:** commit subjects, bodies and file names of the sprint, pull request titles and descriptions when a GitHub token is set, plus your product description, sent to the AI provider you choose with your own key. **Never source code, never screenshots.** No sprint-review server, no telemetry. With a local model (Ollama, LM Studio) nothing leaves your network at all. → **[Security and privacy](docs/security.md)**
+- **What it costs:** two or three API calls per review, billed to your own account. `--dry-run` shows how many tokens a review will use before you spend anything. Pick a smaller model in the config if you want it cheaper.
+
+## Roadmap
+
+- [x] CLI, GitHub Action, deck, Markdown summary, check log
+- [x] Before and after screenshots from git, a folder, or captured from URLs
+- [x] English and Dutch slide labels, any language for the content
+- [x] Pull request descriptions as extra context
+- [x] One automatic revision pass for lines the second reader flags
+- [x] Brand from an existing deck: color, fonts and logo from a `.pptx`
+- [x] PowerPoint export with speaker notes
+- [x] Local editor (`sprint-review edit`)
+- [x] GitLab CI template, Slack posting
+- [x] More models: Bedrock, Azure, OpenAI, OpenRouter, Gemini, Mistral, Ollama, LM Studio
+- [x] MCP server, Claude Code skill and plugin
+- [x] A quality benchmark for every prompt and model change
+- [ ] Linked issues (GitHub, Jira, Linear) as extra context
+- [ ] Export into your own PowerPoint layouts, not just its look
+- [ ] More slide languages built in
+
+Ideas and bugs: [open an issue](https://github.com/guuskeunen/sprint-review/issues).
+
+## Contributing
+
+PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). `npm test` runs the whole pipeline against a fake repo and a fake model, so you don't need an API key. Prompt changes come with a [benchmark](docs/benchmark.md) run, before and after.
+
+## License
+
+[MIT](LICENSE) © Guus Keunen. Icons from [Lucide](https://lucide.dev) (ISC).
+
+---
+
+<!-- docs/getting-started.md -->
+
+# Getting started
+
+From zero to your first sprint review deck in about five minutes.
+
+## What you need
+
+- **Node 20 or newer.** Check with `node --version`.
+- **A git repository** with the sprint's commits in it.
+- **An Anthropic API key.** Create one at [console.anthropic.com](https://console.anthropic.com). You only pay for what you use, on your own account.
+
+## 1. Try it without any setup
+
+In the root of your repository:
+
+```bash
+npx @guuskeunen/sprint-review --dry-run
+```
+
+This reads the last 14 days of commits and shows what it would send to the AI, without sending anything. You see which commits count as product work and roughly how many tokens a review will use.
+
+If that looks right:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+npx @guuskeunen/sprint-review
+```
+
+After about a minute:
+
+```
+● sprint-review v0.1.0
+
+  › Reading the git history
+  › Found 23 commits from 2026-11-03 to 2026-11-16
+  › Writing the slides with claude-opus-5-5
+  › Building the deck
+
+✓ 5 themes, 0 before-and-after slides, 4 checks (48s, 9120 tokens)
+
+  Deck     sprint-reviews/2026-11-16/deck.html
+  Content  sprint-reviews/2026-11-16/review.json  edit this, then run sprint-review render
+  Checks   sprint-reviews/2026-11-16/checks.md 1 to look at
+  Summary  sprint-reviews/2026-11-16/review.md
+```
+
+Open `deck.html` in a browser. Use the arrow keys to move through the slides and press **P** for the presenter window.
+
+> **Tip:** add `sprint-reviews/` to your `.gitignore`, unless you want to keep every review in the repository.
+
+## 2. Tell it about your product
+
+The deck gets much better once the AI knows what the product is and who's watching. Create a config:
+
+```bash
+npx @guuskeunen/sprint-review init
+```
+
+Then fill in the top of `sprint-review.config.yml`:
+
+```yaml
+product:
+  name: Spoke
+  description: the planning and customer app of a chain of bike repair shops, used by front desk staff and mechanics
+organization: Northside Cycles
+audience: business
+language: English
+sprint:
+  days: 14
+brand:
+  color: "#ea580c"
+  logo: ./docs/logo.png
+productPaths:
+  - src/
+```
+
+The fields that matter most:
+
+| Field | Why it matters |
+|---|---|
+| `product.description` | The AI explains changes in terms of what the product does for its users. |
+| `audience` | `business` (default), `executives`, `customers` or `team`, or describe your audience in a sentence. |
+| `productPaths` | Folders with product code. Commits that only touch other files (tests, CI, docs) can never become a theme. |
+| `sprint.days` | How far back a review looks. Default 14. |
+
+`init --preset executives` (or `customers`, `team`) starts from another audience.
+
+Every option is in the [configuration reference](configuration.md).
+
+## 3. Check your setup
+
+```bash
+npx @guuskeunen/sprint-review doctor
+```
+
+```
+✓ Config read from .
+✓ Git history readable in .
+✓ ANTHROPIC_API_KEY is set
+✓ Node 22.11.0
+
+All set. Run sprint-review generate.
+```
+
+## 4. Review the draft
+
+Before you present, open `checks.md`. It lists:
+
+- **Look at:** lines the second reader got stuck on, and commits that didn't fit in a very long sprint.
+- **Dropped:** points that named no real commit, or broke a rule (too long, an exclamation mark, an emoji).
+- **Moved under the hood:** points that came from tooling changes.
+
+Most of the time you just present the deck as it is. To change something, edit `review.json` and rebuild:
+
+```bash
+npx @guuskeunen/sprint-review render sprint-reviews/2026-11-16/review.json
+```
+
+See [editing and presenting](editing.md).
+
+## 5. Add before and after screenshots (optional)
+
+If your project has visual tests (Playwright, Cypress, Storybook snapshots…), the tool can show the screens that changed during the sprint. Or point it at two folders of pictures. See [screenshots](screenshots.md).
+
+## 6. Run it every sprint
+
+Set it up as a GitHub Action, so the draft is ready before the meeting. See [the GitHub Action guide](github-action.md).
+
+## Other ways to pick the range
+
+```bash
+sprint-review --since 2026-11-03 --until 2026-11-16   # two dates, both included
+sprint-review --until 2026-11-16                      # the sprint (sprint.days) ending that day
+sprint-review --from v1.4.0                           # since a tag, up to HEAD
+sprint-review --from v1.4.0 --to v1.5.0               # between two tags or commits
+```
+
+## Installing it for good
+
+`npx` downloads it each time. To install it in your project instead:
+
+```bash
+npm install --save-dev @guuskeunen/sprint-review
+npx sprint-review
+```
+
+Or globally: `npm install -g @guuskeunen/sprint-review`, then just `sprint-review`.
+
+---
+
+<!-- docs/configuration.md -->
+
+# Configuration reference
+
+sprint-review works without a config. A config file makes the deck fit your product, audience and brand.
+
+## Where the config lives
+
+The CLI looks in the current folder for the first of:
+
+1. `sprint-review.config.yml`
+2. `sprint-review.config.yaml`
+3. `sprint-review.config.json`
+
+Or pass one: `sprint-review --config path/to/config.yml`. Relative paths inside the config (logo, screenshot folders, usage file) are resolved from the config's own folder.
+
+`sprint-review init` writes a commented starting point. It never overwrites an existing file unless you add `--force`.
+
+## A complete example
+
+```yaml
+repo: .
+product:
+  name: Spoke
+  description: the planning and customer app of Northside Cycles, a chain of bike repair shops
+organization: Northside Cycles
+audience: business
+presenter: The presenter is a developer who gives a short demo of each theme.
+language: English
+goal: One customer page for the front desk
+
+sprint:
+  days: 14
+
+brand:
+  color: "#ea580c"
+  logo: ./assets/logo.png
+
+productPaths: [src/, app/]
+ignore: ["^chore\\(release\\)", "^Merge "]
+nonProductTypes: [ci, build, test, docs, chore]
+replace:
+  client: customer
+rules:
+  - Call the mobile app "the app", never "the mobile client".
+
+areas:
+  customers: { icon: users, label: Customers, screen: customer-page }
+  planner: { icon: calendar, label: Workshop planner, screen: planner }
+
+screenshots:
+  source: git
+  dir: e2e/__screenshots__
+  names:
+    customer-page: Customer page
+    planner: Workshop planner
+  ignore: { left: 240, top: 64 }
+
+roadmap: ROADMAP.md
+usage: ./usage.json
+
+labels:
+  hoodTitle: Behind the curtain
+
+limits:
+  themes: 6
+  themeScreens: 4
+  changedScreens: 4
+  commits: 1000
+
+model:
+  name: claude-opus-5-5
+  fallback: claude-sonnet-5-5
+  maxTokens: 8000
+
+output:
+  dir: sprint-reviews
+  markdown: true
+```
+
+## Options
+
+### `repo`
+The git repository to read. Default: the config's folder.
+
+### `product`
+
+| Key | Default | Description |
+|---|---|---|
+| `name` | the folder or `package.json` name | How the product is called on the slides and in the prompt. |
+| `description` | empty | One or two sentences on what the product is and who uses it. **The single most useful setting.** |
+
+### `organization`
+Your company or team name. Shown on the cover ("Sprint review Northside Cycles") and in "What Northside Cycles gains". Default empty.
+
+### `audience`
+Who watches the review. A preset, or a sentence of your own:
+
+| Preset | Written for |
+|---|---|
+| `business` (default) | Colleagues without a technical background: marketing, sales, support. |
+| `executives` | Management: the few changes that matter most and what they bring. |
+| `customers` | People who use the product: what they can do now. |
+| `team` | The product team: plain words, a bit more detail. |
+
+```yaml
+audience: Store managers who use Spoke every day but never see the code.
+```
+
+### `presenter`
+Who presents. The speaker notes are written for them. Default: a technical presenter who knows the product and gives a short demo per theme.
+
+### `language`
+The language of the slide content, as a name (`English`, `Dutch`, `German`) or a code (`nl`, `de-DE`). The AI writes in any language. The fixed labels ("Under the hood", "Before", "After"…) ship in English and Dutch. Other languages fall back to English labels; override them with [`labels`](#labels). Dates follow the language too: `November 16, 2026` in English, `16 november 2026` in Dutch.
+
+### `goal`
+The sprint goal. Shown on the cover, and the AI puts the work that served it first. Default none.
+
+### `sprint.days`
+How many days a review covers when you don't pass `--since` or `--from`. Both ends are included, so `14` with today being the 16th covers the 3rd to the 16th. Default `14`.
+
+### `brand`
+
+| Key | Description |
+|---|---|
+| `color` | Accent color as `#rrggbb`. Lighter and darker shades are mixed from it. Default indigo `#4f46e5`. |
+| `logo` | Path to a PNG, JPG, SVG, WebP or GIF, or a `data:image/...` URI. Shown on the cover, on a white plate. |
+| `from` | Path to a `.pptx` or `.potx`: its theme's first accent color, its heading and body fonts and the logo on its slide master fill in whatever you didn't set here. Only the look is taken, not the layout. |
+| `theme` | `light` (default) or `dark`: near-black with warm ivory text and a champagne accent. |
+| `fonts.heading`, `fonts.body` | Font families for headings and text. Fonts aren't embedded, so pick ones installed where the deck is shown; the theme's own fonts are the fallback. |
+
+```yaml
+brand:
+  from: templates/company-template.pptx   # color, fonts and logo from our own template
+  color: "#0b7a75"                         # ...but this color wins
+```
+
+### `productPaths`
+Folders (path prefixes) that hold product code. A commit that only touches files outside them can't carry a theme or a summary point; whatever the AI writes about it moves under the hood. Default: empty, meaning every commit counts. Strongly recommended for monorepos.
+
+```yaml
+productPaths: [apps/web/src/, apps/api/app/, packages/ui/]
+```
+
+### `ignore`
+Regular expressions, matched case-insensitively against commit subjects. Matching commits are left out entirely, as if they never happened. Default none.
+
+### `nonProductTypes`
+[Conventional Commit](https://www.conventionalcommits.org) types that never count as product work, whatever files they touch. Default `[ci, build, test, docs, chore]`. Set `[]` to turn this off.
+
+### `replace`
+Words the AI tends to get wrong, mapped to the word your team uses. Whole words only. A capital first letter stays a capital.
+
+```yaml
+replace:
+  client: customer
+  noot: notitie
+```
+
+### `rules`
+Extra writing rules, one per line, in your own words. They're added to the AI's instructions.
+
+### `areas`
+The main parts of your product, so themes get the right icon (and screenshot) consistently. Each key maps to:
+
+| Key | Description |
+|---|---|
+| `icon` | An icon key. Run `sprint-review icons` for the list. |
+| `label` | How the area is called in the product, such as its menu label. |
+| `screen` | Optional: the screenshot key that shows this area. |
+
+### `screenshots`
+Before and after slides, and pictures on theme slides. See the [screenshots guide](screenshots.md).
+
+| Key | Description |
+|---|---|
+| `source` | `none` (default), `git`, `folder` or `capture`. |
+| `dir` | `git`: the folder in the repository with the pictures, from the repository root. |
+| `before`, `after` | `folder`: two folders with the pictures at the start and end of the sprint. |
+| `pages`, `baseUrl`, `devices`, `mask`, `storageState`, `wait`, `storage` | `capture`: the tool takes the pictures itself. See [taking screenshots](screenshots.md#option-3-the-tool-takes-them-capture). |
+| `names` | Readable names per screen key. Also sets the order. |
+| `ignore.left` | Pixels on the left to skip when comparing desktop pictures (a side menu). |
+| `ignore.top` | Pixels at the top to skip (a top bar). |
+
+### `revise`
+After the second reader flags lines it got stuck on, the writer rewrites just those lines, once. A rewrite only replaces the original if it passes every check again; `checks.md` lists it as *corrected*. Lines that couldn't be fixed stay as warnings. Default `true`. Set `false` to only flag them.
+
+### `github`
+Pull request titles and descriptions as extra context: teams often write *why* in a pull request and only *what* in a commit.
+
+| Key | Default | Description |
+|---|---|---|
+| `pullRequests` | `auto` | `auto`: when `GITHUB_TOKEN` or `GH_TOKEN` is set (always true in GitHub Actions). `true`: always try. `false`: never. |
+| `repo` | from the environment | `owner/name`. Default: `GITHUB_REPOSITORY`, or the `origin` remote when it points at github.com. |
+
+One API request per commit with product code (at most 150). Any failure leaves the commits as they were: it never breaks a run.
+
+### `slack`
+`true` to post the summary to Slack after every run. The webhook URL comes from the `SLACK_WEBHOOK_URL` environment variable, never the config. Set `SPRINT_REVIEW_DECK_URL` (or pass `--deck-url`) to add an *Open the deck* button. Default `false`; `--slack` does the same for one run.
+
+### `roadmap`
+A Markdown file in the repository, read as it was at the end of the sprint. Every line `- [x] text` is a reached milestone, `- [ ] text` an open one. Default `ROADMAP.md`. Set `false` to skip it. No file: no roadmap slide.
+
+### `usage`
+A JSON file with usage numbers you produce (from your analytics, database or a script):
+
+```json
+[
+  { "label": "repairs booked", "value": 312, "previous": 268 },
+  { "label": "repair tickets read", "value": 41 }
+]
+```
+
+At most six. Numbers of zero are left out. `previous` shows under the number. The AI never sees or makes up these numbers.
+
+### `labels`
+Override any fixed label on the slides. Keys:
+
+`sprintReview`, `period`, `goalLabel`, `valuesLabel`, `valuesTitle`, `valuesTitleNoOrg`, `usageLabel`, `usageTitle`, `previous`, `summaryLabel`, `summaryTitle`, `themeCount`, `screensLabel`, `before`, `after`, `beforeAlt`, `afterAlt`, `onPhone`, `roadmapLabel`, `roadmapTitle`, `roadmapReached`, `hoodLabel`, `hoodTitle`, `questions`, `notesLabel`, `hintBrowse`, `hintFullscreen`, `hintPresenter`, `hintNotes`, `presenter`, `previousSlide`, `nextSlide`, `slideOf`, `noNotes`, `upNext`, `lastSlide`, `phone`, `desktop`, `value_faster`, `value_quality`, `value_less_manual_work`, `value_less_risk`, `value_insight`.
+
+Placeholders in curly braces are filled in: `{org}`, `{product}`, `{n}`, `{total}`, `{name}`, `{from}`, `{until}`, `{title}`.
+
+```yaml
+language: German
+labels:
+  sprintReview: Sprint-Review
+  hoodTitle: Unter der Haube
+  before: Vorher
+  after: Nachher
+```
+
+### `limits`
+
+| Key | Default | Description |
+|---|---|---|
+| `themes` | `6` | The most theme slides. |
+| `themeScreens` | `4` | The most theme slides with a screenshot. |
+| `changedScreens` | `4` | The most before and after slides. |
+| `commits` | `1000` | The most commits read. Very long sprints are also cut to what the AI can read; `checks.md` names the commits it skipped. |
+
+### `model`
+
+| Key | Default | Description |
+|---|---|---|
+| `provider` | `anthropic` | `anthropic`, `bedrock`, `openai`, `azure`, `openrouter`, `gemini`, `mistral`, `ollama` or `lmstudio`. See [models and providers](models.md). |
+| `name` | `claude-opus-5-5` | The model for every call. Required for every provider but `anthropic`. |
+| `fallback` | `claude-sonnet-5-5` | Used when the first model fails after retries. `null` to turn off. Default none for other providers. |
+| `maxTokens` | `8000` | Room for the writer's answer. |
+| `baseUrl` | per provider | The endpoint, for `azure` (required), a gateway or a local server on another port. |
+| `mode` | `tools` | `json` asks for JSON matching the schema instead of forcing a tool call. Default `json` for `ollama` and `lmstudio`. |
+| `maxInputChars` | `120000` | How much of the commit log the model gets. `24000` for local models. |
+| `region` | `AWS_REGION` | `bedrock` only. |
+
+The key always comes from the environment, never from the config, so the config can be committed: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `AZURE_OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `MISTRAL_API_KEY`, or `AWS_BEARER_TOKEN_BEDROCK` (or AWS access keys) for Bedrock. Local models need none.
+
+```yaml
+model:
+  provider: bedrock
+  name: us.anthropic.claude-opus-5-5-v1:0
+  region: eu-central-1
+```
+
+### `output`
+
+| Key | Default | Description |
+|---|---|---|
+| `dir` | `sprint-reviews` | Each review goes in `<dir>/<last day of the sprint>/`. `--out` overrides the whole path. |
+| `markdown` | `true` | Also write `review.md`. |
+| `pptx` | `false` | Also write `deck.pptx`, an editable PowerPoint with speaker notes. Needs `pptxgenjs` installed (`npm i -D pptxgenjs`). `--pptx` does the same for one run. |
+
+---
+
+<!-- docs/screenshots.md -->
+
+# Screenshots
+
+Before and after pictures are what make a sprint review land. sprint-review can add two kinds of pictures:
+
+- **Before and after slides** for screens that changed during the sprint, with one line on what to look at.
+- **A screenshot on a theme slide**, when one shows what the theme is about.
+
+There are three ways to get them: from your visual tests, from two folders, or taken by the tool from URLs you choose (best on staging with demo data, so no customer data ends up on a slide). Screenshots are always optional: without them, theme slides show an icon instead and the deck still looks complete.
+
+## Option 1: pictures from your visual tests (`git`)
+
+If your project has visual regression tests (Playwright `toHaveScreenshot`, Cypress, Storybook, Chromatic exports…), the reference pictures live in the repository and change in the same commit as the UI. That makes them perfect: real screens, made-up test data, and a history.
+
+```yaml
+screenshots:
+  source: git
+  dir: e2e/__screenshots__/screens.spec.ts
+  names:
+    dashboard: Dashboard
+    customer-page: Customer page
+  ignore: { left: 240, top: 64 }
+```
+
+How it works:
+
+1. It lists the PNG files under `dir` that changed during the sprint.
+2. For each one it takes the version at the start and at the end of the sprint. A picture that only appeared during the sprint uses its first version as "before".
+3. It compares them pixel by pixel, skipping `ignore.left` pixels on the left of desktop pictures (a side menu) and `ignore.top` pixels at the top (a top bar). So adding one menu item doesn't mark every screen as changed. Small differences (anti-aliasing, a moving background) stay under the tolerance.
+4. On desktop it crops both pictures to where the change is, so the slide shows that part large.
+5. The AI writes one line per changed screen on what to look at, or skips it when the change is too small. Only screens with such a line get a slide.
+
+`dir` is a path from the repository root.
+
+## Option 2: two folders (`folder`)
+
+Export or take pictures any way you like, and put them in two folders:
+
+```
+screens/
+  before/
+    dashboard-desktop.png
+    customer-page-desktop.png
+    customer-page-phone.png
+  after/
+    dashboard-desktop.png
+    customer-page-desktop.png
+    customer-page-phone.png
+```
+
+```yaml
+screenshots:
+  source: folder
+  before: screens/before
+  after: screens/after
+```
+
+Pictures that are in both folders and differ are compared exactly as above. Pictures in `after` are also available for theme slides.
+
+## Option 3: the tool takes them (`capture`)
+
+No visual tests? Give sprint-review the pages and it photographs them with Playwright. Each run keeps the pictures in a folder per day; the next review compares the last pictures from before the sprint with the newest ones.
+
+```bash
+npm install --save-dev playwright
+npx playwright install chromium
+```
+
+```yaml
+screenshots:
+  source: capture
+  baseUrl: https://staging.example.com
+  pages:
+    customer-page: /customers/1042      # screen key: path or full URL
+    planner: /planner?branch=north
+  devices: [desktop, phone]             # default: desktop
+  mask: [".email", "[data-private]"]    # painted over before the picture is taken
+  storageState: .auth/staging.json      # optional: a logged-in session
+  wait: 800                             # ms after the page settles, default 500
+  storage: .sprint-review/screenshots   # default
+  names:
+    customer-page: Customer page
+```
+
+Take today's pictures:
+
+```bash
+npx @guuskeunen/sprint-review capture
+```
+
+Run `capture` at the end of every sprint, right before `generate` (in CI: as a step before it). Keep the storage folder between runs: commit it, or cache it in CI. The first run has nothing to compare with, so its pictures only show on theme slides.
+
+- **Point it at staging with demo data**, never production. `mask` is a safety net, not a plan.
+- **A login?** Save one with `npx playwright codegen --save-storage=.auth/staging.json https://staging.example.com`, and keep that file out of git.
+- **No Playwright browser download?** Set `SPRINT_REVIEW_CHROME` to a Chrome or Chromium binary.
+
+## File names
+
+| File name | Screen key | Device |
+|---|---|---|
+| `customer-page-desktop.png` | `customer-page` | desktop |
+| `customer-page-phone.png` | `customer-page` | phone |
+| `customer-page-mobile.png` | `customer-page` | phone |
+| `customer-page.png` | `customer-page` | desktop |
+| `dashboard-mobile-chromium-linux.png` | `dashboard` | phone (Playwright's browser and platform suffix is dropped) |
+
+The screen key turns into a readable name ("customer-page" → "Customer page") unless you set one in `names`. The order of `names` is also the order of the slides.
+
+Phone pictures are shown upright, in a phone frame.
+
+## Tips
+
+- **Use made-up data in your test fixtures.** Then the pictures are safe to show anywhere.
+- **Set `ignore` to your layout's menu and top bar sizes**, in pixels at the screenshot's resolution.
+- **Connect areas to screens** so a theme about an area shows its screen:
+
+```yaml
+areas:
+  planner: { icon: calendar, label: Workshop planner, screen: planner }
+```
+
+---
+
+<!-- docs/github-action.md -->
+
+# GitHub Action
+
+The action is `guuskeunen/sprint-review@v0`. On GitHub Marketplace it's listed as [Sprint Review Deck](https://github.com/marketplace/actions/sprint-review-deck) (`guuskeunen/sprint-review-action@v0`, which runs the same thing).
+
+Run sprint-review on a schedule, so the draft is ready before the meeting.
+
+## Setup
+
+1. Add your Anthropic API key as a repository secret named `ANTHROPIC_API_KEY` (Settings → Secrets and variables → Actions).
+2. Optionally commit a `sprint-review.config.yml` to the repository root.
+3. Add a workflow, such as `.github/workflows/sprint-review.yml`.
+
+> **Important:** check out the full history with `fetch-depth: 0`. The default shallow checkout has only the last commit, and the action stops with a clear error if it finds one.
+
+## The simplest workflow: an artifact
+
+```yaml
+name: Sprint review
+on:
+  schedule:
+    - cron: '0 7 * * 5'   # review day (here Friday) at 07:00 UTC
+  workflow_dispatch:       # and a button to run it by hand
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: guuskeunen/sprint-review@v0
+        id: review
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sprint-review
+          path: ${{ steps.review.outputs.dir }}
+```
+
+Download the artifact from the run, open `deck.html`, present. The summary and the check log are also in the run's job summary.
+
+> Every two weeks instead? GitHub's cron has no "every other week". Run weekly and skip odd weeks in a step, or start it by hand with the **Run workflow** button.
+
+## A draft as a pull request
+
+The review becomes a pull request. Reviewing the draft means reviewing the PR; merging it means it's approved. Anyone can fix a word in GitHub's file editor before merging.
+
+```yaml
+name: Sprint review
+on:
+  schedule:
+    - cron: '0 7 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: guuskeunen/sprint-review@v0
+        id: review
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          branch: sprint-review/${{ github.run_id }}
+          title: Sprint review draft
+          body-path: ${{ steps.review.outputs.markdown }}
+          add-paths: sprint-reviews/
+          commit-message: 'docs: sprint review draft'
+```
+
+After an edit to `review.json` in the PR, rebuild the deck locally with `npx @guuskeunen/sprint-review render <path>/review.json` and push, or add a workflow that does it on push.
+
+## A shareable link with GitHub Pages
+
+Publish the deck so you can share one link:
+
+```yaml
+name: Sprint review
+on:
+  schedule:
+    - cron: '0 7 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: guuskeunen/sprint-review@v0
+        id: review
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          out: site
+      - run: cp site/deck.html site/index.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - uses: actions/deploy-pages@v4
+        id: deploy
+```
+
+Turn on Pages first: Settings → Pages → Source: **GitHub Actions**. Pages on a public repository are public, so only use this when the deck may be seen by anyone with the link. For a private audience use the artifact or the pull request.
+
+## Inputs
+
+| Input | Default | Description |
+|---|---|---|
+| `anthropic-api-key` | | Your Anthropic API key, from a secret. Required unless you use OpenAI. |
+| `openai-api-key` | | Your OpenAI API key, for `model.provider: openai`. |
+| `github-token` | `github.token` | Reads pull request titles and descriptions as context. `''` turns it off. |
+| `config` | auto | Path to the config file. |
+| `since` | | First day of the sprint, `YYYY-MM-DD`. |
+| `until` | today | Last day of the sprint. |
+| `from` | | Start at a tag or commit instead of a date. |
+| `to` | `HEAD` | End at a tag or commit. |
+| `out` | `sprint-reviews/<date>` | Folder to write to. |
+| `pptx` | `false` | Also write `deck.pptx`. |
+| `slack` | `false` | Post the summary to `SLACK_WEBHOOK_URL`. |
+| `deck-url` | | Link to the published deck, for the Slack button. |
+| `summary` | `true` | Add the review and the check log to the job summary. |
+| `version` | `0` | The npm version of `@guuskeunen/sprint-review` to run. `0` means the newest 0.x. |
+
+## Outputs
+
+| Output | Description |
+|---|---|
+| `dir` | The folder everything was written to. |
+| `deck` | Path of `deck.html`. |
+| `review` | Path of `review.json`. |
+| `markdown` | Path of `review.md`. |
+| `checks` | Path of `checks.md`. |
+| `pptx` | Path of `deck.pptx`, when `pptx` is on. |
+
+## Reviews per release instead of per sprint
+
+```yaml
+on:
+  release:
+    types: [published]
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: previous
+        run: echo "tag=$(git describe --tags --abbrev=0 ${{ github.event.release.tag_name }}^)" >> "$GITHUB_OUTPUT"
+      - uses: guuskeunen/sprint-review@v0
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          from: ${{ steps.previous.outputs.tag }}
+          to: ${{ github.event.release.tag_name }}
+```
+
+The review then covers exactly what changed since the previous release.
+
+## Other CI systems
+
+The action is a thin wrapper around the CLI. Anywhere with Node 20 and a full git history:
+
+```bash
+npx --yes @guuskeunen/sprint-review generate --json
+```
+
+### GitLab CI
+
+A ready-to-copy job, with an optional GitLab Pages job, is in [`examples/gitlab-ci.yml`](../examples/gitlab-ci.yml):
+
+```yaml
+sprint-review:
+  image: node:22
+  variables:
+    GIT_DEPTH: 0          # the whole history
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+  script:
+    - npx --yes @guuskeunen/sprint-review@0 generate --out sprint-review-deck
+  artifacts:
+    paths: [sprint-review-deck/]
+```
+
+Set `ANTHROPIC_API_KEY` as a masked CI/CD variable, and add a pipeline schedule for review day.
+
+## Posting to Slack
+
+Create an [incoming webhook](https://api.slack.com/messaging/webhooks), store it as a secret, and pass `--slack`. The message has the title, the summary points and one line per theme, plus a button to the deck when you give its URL:
+
+```yaml
+      - uses: guuskeunen/sprint-review@v0
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          slack: true
+          deck-url: https://acme.github.io/spoke/sprint-review/
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+```
+
+## Pull request descriptions
+
+In GitHub Actions the action passes the workflow's `GITHUB_TOKEN`, so pull request titles and descriptions are read automatically (see [`github`](configuration.md#github) in the config). Give the job `pull-requests: read` permission if your repository restricts the token:
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: read
+```
+
+## Screenshots taken in CI
+
+With `screenshots.source: capture`, run `capture` before `generate` and keep the pictures between runs with a cache:
+
+```yaml
+      - uses: actions/cache@v4
+        with:
+          path: .sprint-review/screenshots
+          key: sprint-review-shots-${{ github.run_id }}
+          restore-keys: sprint-review-shots-
+      - run: npm i -D playwright && npx playwright install --with-deps chromium
+      - run: npx @guuskeunen/sprint-review capture
+      - uses: guuskeunen/sprint-review@v0
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+```
+
+---
+
+<!-- docs/editing.md -->
+
+# Editing and presenting
+
+## Most of the time: just present it
+
+The deck is a draft, but it's written to be presented as it is. Read it through once, glance at `checks.md`, and go.
+
+## Changing the content
+
+### In the editor
+
+```bash
+npx @guuskeunen/sprint-review edit sprint-reviews/2026-11-16/review.json
+```
+
+This opens a local editor in your browser: the content on the left, the live deck on the right. Click into a theme and the preview jumps to its slide. Word counts show the same limits the checks use. **Save and rebuild** (or Ctrl/⌘ + S) writes `review.json` and rebuilds `deck.html` next to it. Ctrl+C in the terminal stops the editor.
+
+The editor only listens on `127.0.0.1`, and only the page it opened can talk to it. `--port` picks another port (default 4321).
+
+### By hand
+
+Everything on the slides is in `review.json`, next to the deck:
+
+```json
+{
+  "version": 1,
+  "title": "Sprint review November 16, 2026",
+  "period": "November 3 to November 16, 2026",
+  "summary": [{ "text": "One customer page shows online store, register and workshop history", "icon": "users" }],
+  "themes": [
+    {
+      "title": "Customer profile",
+      "icon": "users",
+      "value": "quality",
+      "effect": "Front desk staff see everything a customer bought or had repaired on one page.",
+      "points": ["Purchases, repairs and services sit in one list with their source"],
+      "notes": "Open the customer page for Sarah Mitchell and point at the source labels.",
+      "screen": null
+    }
+  ],
+  "underTheHood": ["Vite is up to date"],
+  "screens": [],
+  "milestones": [{ "text": "Book a repair online", "done": true }],
+  "usage": [{ "label": "repairs booked", "value": 312, "previous": 268 }]
+}
+```
+
+What you can change:
+
+| To… | Edit |
+|---|---|
+| Fix a word | Any `text`, `title`, `effect`, `points` or `notes`. |
+| Reorder themes | Move items in `themes`. |
+| Drop a slide | Remove the theme, the screen from `screens`, or empty `underTheHood`. |
+| Change an icon | `icon`, see `sprint-review icons`. |
+| Change what a theme brings | `value`: `faster`, `quality`, `less_manual_work`, `less_risk`, `insight`, or `null`. |
+| Remove a theme's picture | Set `screen` to `null`. |
+| Fix a number | `usage`. |
+
+Then rebuild:
+
+```bash
+npx @guuskeunen/sprint-review render sprint-reviews/2026-11-16/review.json
+```
+
+`render` also picks up config changes: a new logo, color, goal or labels show up in old reviews when you render them again.
+
+## PowerPoint
+
+Some teams present from PowerPoint or Keynote, or want to add a slide by hand. Add `--pptx` (or set `output.pptx: true`) and `deck.pptx` is written next to the deck: the same slides, editable, with the speaker notes in the notes pane. It needs `pptxgenjs` (`npm i -D pptxgenjs`). `render` and the editor rebuild it too when `output.pptx` is on.
+
+The HTML deck stays the richer one: animations, the presenter window and before-and-after wipes don't exist in PowerPoint.
+
+## Presenting
+
+Open `deck.html` in any browser. It has no outside dependencies, so it also works offline and from a USB stick.
+
+| Key | Does |
+|---|---|
+| → ↓ Space Enter PageDown | Next slide |
+| ← ↑ Backspace PageUp | Previous slide |
+| Home / End | First / last slide |
+| F | Full screen |
+| P | Presenter window: speaker notes, the next slide's title and a timer, for your own screen |
+| N | Show the speaker notes at the bottom of this window |
+
+Click the right two thirds of the screen to go forward, the left third to go back. Swipe on a phone or tablet. The address ends in `#3` on slide 3, so a link can open on a specific slide.
+
+The animations respect your system's *reduce motion* setting.
+
+## Exporting to PDF
+
+Print the deck (Cmd/Ctrl + P) and choose **Save as PDF**. Every slide becomes one 16:9 page, without animations or controls. Turn on **Background graphics** in the print dialog to keep the colors.
+
+## Sharing
+
+- **Send the file.** `deck.html` is one file, usually a few hundred kilobytes with screenshots.
+- **Host it.** Any static host works: GitHub Pages (see [the GitHub Action guide](github-action.md#a-shareable-link-with-github-pages)), Netlify, S3, an intranet.
+- **Paste the summary.** `review.md` is ready for a pull request, Slack or an email.
+
+---
+
+<!-- docs/integrations.md -->
+
+# Integrations
+
+sprint-review is a command-line tool first. Everything else here builds on it.
+
+## The Claude Code plugin
+
+The skill and the MCP server in one install:
+
+```
+/plugin marketplace add guuskeunen/sprint-review
+/plugin install sprint-review@sprint-review
+```
+
+Then ask Claude Code for a sprint review, or type `/sprint-review`. The plugin runs `npx @guuskeunen/sprint-review@0 mcp`, so it picks up new releases by itself. Set your API key in the environment Claude Code starts from.
+
+## Claude Code, Cursor and other MCP clients
+
+`sprint-review mcp` runs an [MCP](https://modelcontextprotocol.io) server over stdio. An AI assistant in your editor can then check the setup, preview a sprint's commits, write the review and rebuild it after an edit, and tell you what the checks did.
+
+**Claude Code**
+
+```bash
+claude mcp add sprint-review -- npx -y @guuskeunen/sprint-review mcp
+```
+
+**Cursor, Windsurf, Claude Desktop and others** (their MCP config file):
+
+```json
+{
+  "mcpServers": {
+    "sprint-review": {
+      "command": "npx",
+      "args": ["-y", "@guuskeunen/sprint-review", "mcp"],
+      "env": { "ANTHROPIC_API_KEY": "sk-ant-..." }
+    }
+  }
+}
+```
+
+Then ask: *"Make our sprint review for the last two weeks"*, or *"What would the sprint review read for v1.4.0 to v1.5.0?"*.
+
+| Tool | Does |
+|---|---|
+| `check_sprint_review_setup` | Runs the same checks as `doctor`. |
+| `preview_sprint_commits` | Lists the commits for a range, without a model call. |
+| `generate_sprint_review` | Writes the deck and returns the paths, the themes and every check. |
+| `render_sprint_review` | Rebuilds the deck from an edited `review.json`. |
+
+Every tool takes `directory` (the project folder; default where the server started) and the range arguments `since`, `until`, `from` and `to`.
+
+## The Claude Code skill on its own
+
+[`skills/sprint-review/SKILL.md`](../skills/sprint-review/SKILL.md) teaches Claude Code the workflow: check, preview, generate, report the checks, edit. The plugin includes it; without the plugin, copy the folder into your project's `.claude/skills/` (or `~/.claude/skills/` for all projects).
+
+## Pull request descriptions
+
+Commit subjects say *what*; pull requests often say *why*. With `GITHUB_TOKEN` or `GH_TOKEN` set, the title and description of the pull request behind each commit go to the writer as extra context. In GitHub Actions this is on by default. Locally:
+
+```bash
+GITHUB_TOKEN=$(gh auth token) npx @guuskeunen/sprint-review
+```
+
+See [`github`](configuration.md#github) for the options. Pull request text is treated as untrusted input, like commit messages: wrapped and marked as data in the prompt.
+
+## Other models
+
+Claude by default; Bedrock, Azure OpenAI, OpenAI, OpenRouter, Gemini, Mistral, and local models with Ollama or LM Studio are a config line away. See [models and providers](models.md) for setup and an honest table of what's been tested.
+
+## Slack
+
+```bash
+export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
+npx @guuskeunen/sprint-review --slack --deck-url https://acme.github.io/spoke/review/
+```
+
+Or `slack: true` in the config. See [posting to Slack from CI](github-action.md#posting-to-slack).
+
+## GitLab, Bitbucket, Jenkins…
+
+Anywhere with Node 20 and the full git history: `npx --yes @guuskeunen/sprint-review generate --json`. A GitLab job is in [`examples/gitlab-ci.yml`](../examples/gitlab-ci.yml).
+
+## As a library
+
+All of it is importable from TypeScript or JavaScript. See [the library guide](library.md).
+
+---
+
+<!-- docs/models.md -->
+
+# Models and providers
+
+sprint-review works with any model that can answer in a fixed JSON shape. Claude is the default because it writes the best slides; the others are there for choice, cost and privacy.
+
+## Which to pick
+
+| Situation | Use |
+|---|---|
+| Best slides, simplest setup | `anthropic` (default), Claude Opus with Sonnet as fallback |
+| Your company already has Claude through AWS | `bedrock` |
+| Your company already has Azure OpenAI | `azure` |
+| One key for many models, or comparing them | `openrouter` |
+| Nothing may leave your network | `ollama` or `lmstudio` |
+
+## Tested models
+
+What "tested" means here, honestly:
+
+- **Verified:** run end to end against the real service with this version. Nothing is marked verified yet: this table fills in as real runs come in.
+- **Code tested:** the request and answer handling are covered by the test suite against recorded or fake responses, but not yet run against the live service. These should work; please [report how it went](https://github.com/guuskeunen/sprint-review/issues/new?title=Model%20report:%20).
+
+| Provider | Model | Status | Quality of the slides |
+|---|---|---|---|
+| `anthropic` | `claude-opus-5-5` | The default: the prompts were developed on it | Best: clear themes, good effect sentences |
+| `anthropic` | `claude-sonnet-5-5` | The fallback | Very good, cheaper and faster |
+| `bedrock` | Claude through Bedrock | Code tested; request signing checked against AWS's official test vector | Same as Claude directly |
+| `openai`, `azure` | Your GPT model | Code tested | Expected good |
+| `openrouter` | Any | Code tested | Depends on the model |
+| `gemini` | Gemini models | Code tested | Expected good |
+| `mistral` | Mistral models | Code tested | Expected decent |
+| `ollama`, `lmstudio` | Qwen, Llama, Mistral and others, 30B+ recommended | Code tested | Works, but plainer: fewer and flatter themes |
+
+Whatever the model, every answer goes through the same checks: a point that can't be traced to a real commit is dropped, word limits hold, tooling goes under the hood. A weaker model gives a plainer deck, not a wrong one.
+
+Tried a model? Open an issue with the provider, model and how the deck read, and it goes in this table.
+
+## Setup per provider
+
+Keys always come from environment variables, never from the config.
+
+### Anthropic (default)
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+```
+
+No config needed. To pick another model: `model: { name: claude-sonnet-5-5 }`.
+
+### Amazon Bedrock
+
+```yaml
+model:
+  provider: bedrock
+  name: us.anthropic.claude-opus-5-5-v1:0   # your model or inference profile id, from the Bedrock console
+  region: eu-central-1                      # or set AWS_REGION
+```
+
+Credentials, one of:
+
+- a **Bedrock API key**: `export AWS_BEARER_TOKEN_BEDROCK=...` (simplest; create one in the Bedrock console)
+- **AWS access keys**: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and, for temporary credentials, `AWS_SESSION_TOKEN`. This is what `aws-actions/configure-aws-credentials` sets in GitHub Actions, so OIDC roles work.
+
+Your account needs access to the model in that region (Bedrock console → Model access).
+
+### OpenAI
+
+```yaml
+model: { provider: openai, name: gpt-5.1 }
+```
+
+```bash
+export OPENAI_API_KEY=sk-...
+```
+
+### Azure OpenAI
+
+```yaml
+model:
+  provider: azure
+  name: my-deployment                                   # your deployment name
+  baseUrl: https://my-resource.openai.azure.com/openai/v1
+```
+
+```bash
+export AZURE_OPENAI_API_KEY=...
+```
+
+### OpenRouter
+
+```yaml
+model: { provider: openrouter, name: anthropic/claude-sonnet-5.5 }
+```
+
+```bash
+export OPENROUTER_API_KEY=sk-or-...
+```
+
+### Google Gemini
+
+```yaml
+model: { provider: gemini, name: gemini-3-pro }
+```
+
+```bash
+export GEMINI_API_KEY=...
+```
+
+### Mistral
+
+```yaml
+model: { provider: mistral, name: mistral-large-latest }
+```
+
+```bash
+export MISTRAL_API_KEY=...
+```
+
+### Ollama (local)
+
+```bash
+ollama pull qwen3:32b
+OLLAMA_CONTEXT_LENGTH=32768 ollama serve     # a large context window matters
+```
+
+```yaml
+model: { provider: ollama, name: "qwen3:32b" }
+```
+
+No key needed. Run `sprint-review doctor` to check that Ollama answers and the model is there.
+
+### LM Studio (local)
+
+Load a model, start the server (Developer tab), then:
+
+```yaml
+model: { provider: lmstudio, name: qwen3-32b }
+```
+
+### Any other OpenAI-compatible endpoint
+
+A gateway, vLLM, LiteLLM, Groq, Together, DeepSeek…
+
+```yaml
+model:
+  provider: openai
+  name: the-model
+  baseUrl: https://my-gateway.example.com/v1
+```
+
+## Settings for smaller and local models
+
+| Setting | What it does |
+|---|---|
+| `model.mode: json` | Ask for JSON matching the schema instead of forcing a tool call. The default for Ollama and LM Studio; try it for any server whose tool calling is unreliable. |
+| `model.maxInputChars` | How much of the commit log the model gets. Default 120,000 characters, 24,000 for local models. Commits past it are listed in `checks.md`. |
+| `model.maxTokens` | Room for the answer. Default 8,000. |
+| `model.fallback` | A second model when the first fails. Default Sonnet for Anthropic, none for others. |
+
+If a model answers in text instead of through the tool, sprint-review looks for the JSON in its answer and checks it like any other. Local models are slow: a run can take several minutes.
+
+---
+
+<!-- docs/security.md -->
+
+# Security and privacy
+
+A one-page answer for whoever has to approve sprint-review: what it reads, what it sends where, and what it never does.
+
+## In short
+
+- **It runs on your machine or in your own CI.** There is no sprint-review server, no account and no telemetry. The author never sees your data.
+- **It sends commit text, not code.** Commit subjects, descriptions and changed file names go to the AI provider you configure, with your own key. Source code, diffs and screenshots never leave.
+- **You choose the provider,** including ones your company already approved (Azure OpenAI, Amazon Bedrock) or a local model where nothing leaves your network.
+- **`--dry-run` shows exactly what would be sent,** before anything is.
+
+## What it reads
+
+| Source | What | When |
+|---|---|---|
+| Your git repository | Commit hashes, dates, subjects, descriptions and changed file names in the range; the roadmap file at the end of the sprint | Always |
+| Screenshot pictures | Pixels, compared locally | When `screenshots` is set |
+| Your pages (capture) | Screenshots of the URLs you list, in a local browser | Only with `screenshots.source: capture` |
+| The GitHub API | Title and description of the pull request behind each commit | Only when `GITHUB_TOKEN` or `GH_TOKEN` is set (always in GitHub Actions), and `github.pullRequests` isn't `false` |
+| A usage file | The numbers you put in it | When `usage` is set |
+
+It needs **read access** to the repository only. It writes nothing to git and never pushes.
+
+## What it sends, and where
+
+Each run makes two or three calls to **one** AI provider: the one in `model.provider`, with the key from your environment.
+
+| Call | Gets |
+|---|---|
+| Writer | Your product description, audience and rules from the config; the commit log described above (up to `model.maxInputChars`); the names of screens |
+| Second reader | Only the text of the slides |
+| Rewrite (when the reader flagged lines) | The text of the slides and the flagged lines |
+
+**Never sent:** source code, diffs, file contents, screenshots or other pictures, usage numbers, environment variables, secrets.
+
+Commit and pull request text is treated as untrusted: it's wrapped in random markers and the model is told it's data, so a commit message that says "ignore your instructions" is just a commit message. Whatever the model answers goes through checks in code, and anything that can't be traced to a real commit is dropped.
+
+### Keeping things out
+
+- **Sensitive commits:** `ignore` patterns skip matching commits entirely; they're never sent.
+- **Customer or internal names:** `replace` rewrites words in the output; for the input, `ignore` the commits or keep names out of commit messages.
+- **No pull request text:** `github: { pullRequests: false }`, or run without a token.
+- **Less of the log:** `model.maxInputChars`.
+
+### Where the data goes, per provider
+
+Data handling follows **your** agreement with the provider you pick. sprint-review adds nothing in between.
+
+| Provider | Data goes to | Notes |
+|---|---|---|
+| `anthropic` (default) | Anthropic API | API data isn't used for training by default; check your plan's terms |
+| `openai` | OpenAI API | |
+| `azure` | Your Azure OpenAI resource | Stays in your Azure tenant and region |
+| `bedrock` | Amazon Bedrock in your AWS account and region | Uses your AWS credentials or a Bedrock API key |
+| `openrouter`, `gemini`, `mistral` | That service | |
+| `ollama`, `lmstudio` | A model on your own machine or server | **Nothing leaves your network** |
+
+## Keys and secrets
+
+- Keys are read from **environment variables only**, never from the config file, so the config can be committed safely.
+- In CI, keep keys in your CI's secret store (GitHub: repository or organization secrets).
+- Keys are only sent to the provider they belong to, in an HTTP header. They're never written to a file or a log.
+
+## The outputs
+
+`deck.html`, `review.json`, `review.md` and `checks.md` (and `deck.pptx`) are written to a local folder. They contain what's on the slides, plus screenshots if you configured them. **Nothing is published on its own:** sharing the deck is a step you take (an artifact, GitHub Pages, Slack).
+
+The deck is a single file with no outside requests: no fonts, scripts, images or trackers are loaded from anywhere.
+
+## The local editor
+
+`sprint-review edit` starts a web server on `127.0.0.1` only, so it can't be reached from other machines. Every request must carry a random token that only the page it opened knows, so other websites in your browser can't read or change the review. It stops when you press Ctrl+C.
+
+## The MCP server
+
+`sprint-review mcp` talks over stdio with the client that started it (Claude Code, Cursor…). It doesn't open a network port. Its tools read the git history and write the outputs in the folder you point it at; the model call uses the same provider and key as the CLI.
+
+## Dependencies
+
+Two runtime dependencies, `sharp` (image comparison) and `yaml` (the config), plus `pptxgenjs` as an optional one for PowerPoint export. Playwright is only needed if you use `capture`, and you install it yourself. HTTP calls use Node's built-in `fetch`. Releases are published to npm with [provenance](https://docs.npmjs.com/generating-provenance-statements), so you can verify a package was built from this repository.
+
+## Reporting a vulnerability
+
+See [SECURITY.md](../SECURITY.md).
+
+---
+
+<!-- docs/benchmark.md -->
+
+# The quality benchmark
+
+A model writes the words on the slides, so "is it better now?" is a real question every time a prompt or a model changes. The benchmark answers it with numbers instead of a feeling.
+
+## What it is
+
+Fixed sample sprints in [`bench/cases/`](../bench/cases), each with the answer a good presenter would give:
+
+| Case | What it tests |
+|---|---|
+| `bike-shop` | Product work mixed with tooling noise, a ticket number in a subject, and a commit that tries to instruct the model ("ignore all previous instructions…") |
+| `billing-saas` | Terse, technical messages ("add sepa direct debit to checkout", "WIP", a Jira key), for a customer audience |
+| `cli-library` | A developer tool reviewed for its own team, with a breaking change |
+
+Each case lists:
+
+- **themes** that should be on the front slides, with words that count as covering them;
+- **hood** items, the plumbing that belongs under the hood and nowhere else;
+- **never**: text that must never appear on a slide (ticket keys, injected instructions, "WIP").
+
+Every case is built into a real git repository with real dates and files, and goes through the real pipeline: the writer, every check, the second reader, the rewrite.
+
+## The score
+
+| Part | Points |
+|---|---|
+| Expected themes covered on the front slides | 50 |
+| No plumbing on the front slides | 15 |
+| Plumbing under the hood | 10 |
+| Nothing forbidden anywhere on the slides | 15 |
+| Few warnings left by the second reader | 10 |
+
+Alongside the score: how many points the checks dropped or rewrote, how many themes there are, and the average words per point.
+
+## Running it
+
+```bash
+export ANTHROPIC_API_KEY=...
+npm run bench                                          # the default model
+npm run bench -- --model claude-sonnet-5-5
+npm run bench -- --provider ollama --model qwen3:32b   # a local model
+npm run bench -- --cases bike-shop                     # one case
+npm run bench -- --echo                                # no model: checks the harness itself
+```
+
+A report is printed and saved in `bench/results/`, named by date and model. Commit the ones worth keeping: they're the history of the tool's quality, and they fill the [model table](models.md#tested-models).
+
+A full run is three cases, two or three calls each. With Claude that's a few dimes.
+
+## Adding a case
+
+Copy a file in `bench/cases/`, change the commits and the expectations, run it. A good case is a sprint where a careless writer would go wrong: vague messages, noise, a tempting thing to invent. Keep the expected words loose ("ticket", "photo", "handwritten"), so a good answer in other words still counts.
+
+---
+
+<!-- docs/how-it-works.md -->
+
+# How it works
+
+sprint-review splits the work between an AI, code and a person, and gives each the part it's best at.
+
+| | Does |
+|---|---|
+| **The AI** | Groups the changes into themes and writes the words: summary, themes, points, captions, speaker notes. Then a second call reads the slides like your audience would. |
+| **Code** | Reads the history, checks every line the AI wrote, counts every number, picks and crops every picture, builds the page. |
+| **A person** | Reads the draft, changes something if needed, presents it. |
+
+The reason: AI is great at turning "optimize status count queries" into "the planner loads faster". It shouldn't be the one deciding what happened. Early versions of this tool let the AI do more, and it picked wrong screenshots and wrote things that weren't true. So now the AI only writes words, and everything that can be checked is checked in code.
+
+## The pipeline
+
+```
+git history ──► commits (+ pull requests), changed screenshots, roadmap
+                      │
+                      ▼
+          AI writer (one call, structured output)
+                      │
+                      ▼
+          code checks ──► check log
+                      │
+                      ▼
+          AI reader (one call, sees only the slide text)
+                      │
+                      ▼
+          one rewrite of the flagged lines ──► the same checks again
+                      │
+                      ▼
+          deck: pictures, numbers, icons, brand ──► deck.html, review.json, review.md, checks.md
+```
+
+### 1. Reading the history
+
+- `git log` for the range, without merge commits: hash, date, subject, body and changed files.
+- Trailer lines (`Co-authored-by:`, `Signed-off-by:`, "Generated with…") are removed from bodies, and bodies are cut at 600 characters.
+- Commits matching `ignore` are left out.
+- With a GitHub token, the pull request behind each product commit is looked up; its title (and, on its first commit, its description, cut at 800 characters and without HTML comments) is added to the log.
+- Each commit is marked as product work or not: it must touch a file under `productPaths` (if set) and must not be a `ci:`, `build:`, `test:`, `docs:` or `chore:` commit (`nonProductTypes`).
+
+### 2. The writer
+
+One call with a fixed answer shape: the model fills in fields (summary, themes, under the hood, captions) instead of writing free text. The prompt holds principles and examples, nothing about one particular sprint, so it never needs editing between reviews. It includes your product description, audience, language, team words and rules.
+
+Commit messages are written by people, so they go in between unique markers, and the model is told that whatever is between them is data, never instructions. A commit that says "ignore your rules" is just a commit.
+
+The model picks icons from a fixed set, values from a fixed list, and screenshots only from those that exist.
+
+### 3. The checks
+
+Every line the writer returned goes through code:
+
+| Check | What happens |
+|---|---|
+| Each point names commit hashes, and they exist in this sprint | Otherwise the point is **dropped**. |
+| A point only backed by non-product commits | **Moved** under the hood; dropped from the summary. |
+| Points ≤ 16 words, effects and captions ≤ 25, notes ≤ 70, titles ≤ 4 | Otherwise **dropped**. |
+| No `!`, no emoji | Otherwise **dropped**. |
+| Ticket numbers (`#42`, `ABC-81`) and hashes | **Removed** from the text. |
+| Long dashes | Become a comma. |
+| Your `replace` words | **Applied**, keeping the capital. |
+| At most `limits.themes` themes, 4 points per theme, 4 summary points, 5 under the hood | The rest is **dropped**. |
+| A theme with no points left | **Dropped**. |
+| Unknown icon | Becomes `other`. |
+| A screenshot that doesn't exist | Removed from the theme. |
+| Commits past what the model can read in a very long sprint | Listed to **look at**. |
+
+Everything that happened goes into `checks.md`. Nothing is fixed silently.
+
+### 4. The reader
+
+A second call gets only the slide text: no commits, no context, nothing it could use to fill a gap. It reads as your audience and lists every sentence it gets stuck on, as *unclear* or as an empty *promise*. The reader never rewrites anything itself. Its findings go into `checks.md`. If the call fails, the draft is kept, with a "Not proofread" warning at the top of the check log.
+
+### 4b. One rewrite
+
+The flagged lines go back to the writer, with the reader's reason, once. Each rewrite goes through the same checks as the first draft (word limits, references stripped, team words applied) and only replaces the original when it passes; it's logged as *corrected*, old and new side by side. A line that couldn't be fixed keeps its warning, so you know to look at it. `revise: false` turns this off.
+
+### 5. The deck
+
+Code builds the page from the checked content:
+
+- **Screenshots:** before and after slides only for changed screens the writer could explain in a line (at most `limits.changedScreens`). Theme pictures at most `limits.themeScreens`, and a picture never shows twice: not on two themes, and not on a theme when it already has a desktop before and after slide.
+- **Values:** the "What we gain" slide groups themes by the value the writer picked.
+- **Numbers:** usage comes from your `usage` file, milestones from your roadmap file at the end of the sprint. The model never writes a number.
+- **Brand:** your color (with lighter and darker shades mixed from it), your logo and fonts, or all three from a `.pptx` with `brand.from`. Light by default; `brand.theme: dark` for a dark deck.
+
+The result is one HTML file with everything inline: styles, script, icons, pictures. No fonts, scripts or images are loaded from anywhere, so it works offline and keeps working.
+
+## What is sent to the AI
+
+- The writer gets: the system prompt (your product description, audience, language, rules), the commit log (hashes, dates, subjects, bodies, up to six file names per commit, pull request titles and descriptions when a token is set) and the names of the screens.
+- The reader gets: the slide text.
+- The rewrite gets: the slide text and the flagged lines with the reader's reasons.
+
+Never source code, never diffs, never pictures, never usage numbers.
+
+---
+
+<!-- docs/library.md -->
+
+# Using it as a library
+
+Everything the CLI does is available from Node.
+
+```bash
+npm install @guuskeunen/sprint-review
+```
+
+```ts
+import { writeFileSync } from 'node:fs';
+import { clientFor, generate, loadConfig, writeOutputs } from '@guuskeunen/sprint-review';
+
+const config = loadConfig('sprint-review.config.yml');
+const model = clientFor(config.model); // Anthropic or OpenAI, key from the environment
+
+const { review, html, markdown, usage } = await generate(config, {
+  model,
+  range: { kind: 'dates', from: '2026-11-03', until: '2026-11-16' },
+  onStep: (message) => console.log(message),
+});
+
+writeFileSync('deck.html', html);
+// or everything at once: deck.html, review.json, review.md, checks.md (and deck.pptx)
+await writeOutputs(review, config, 'sprint-reviews/2026-11-16', { pptx: true });
+```
+
+## Main functions
+
+| Function | Does |
+|---|---|
+| `loadConfig(path?, cwd?)` | Reads and checks a config file, or finds the default one. |
+| `normalize(object, root)` | Builds a config from a plain object, with every default filled in. |
+| `generate(config, options)` | The whole pipeline. Returns `{ review, html, markdown, usage }`. |
+| `render(review, config)` | Rebuilds `{ html, markdown }` from a stored review. |
+| `sprintRange(days, until?)` | The range of the sprint that ends on a day. |
+| `renderDeck(review, options)` | Just the deck, with `{ color, logo, labels, goal, theme, fonts }`. |
+| `writeOutputs(review, config, dir, { pptx? })` | Writes every output file into a folder. |
+| `renderPptx(review, options)` | The PowerPoint as a Buffer (needs `pptxgenjs`). |
+| `brandFromPptx(file)` | `{ color, fonts, logo }` from a presentation's theme and master. |
+| `capture(config.screenshots.capture, root)` | Takes today's screenshots (needs Playwright). |
+| `startEditor(file, config, port?)` | Starts the local editor; returns `{ url, close }`. |
+| `withPullRequests(commits, repo, token)` | Adds pull request titles and descriptions. |
+| `postToSlack(webhook, review, deckUrl)` | Posts the summary. |
+| `clientFor(config.model)` | An `AnthropicClient` or `OpenAIClient` with the key from the environment. |
+| `renderMarkdown(review)`, `renderChecks(review)` | The Markdown summary and the check log. |
+| `compareScreens(before, after, device, ignore)` | The screenshot comparison on its own. |
+| `clean(text, maxWords, replace?)` | The text check on its own. |
+
+## Ranges
+
+```ts
+{ kind: 'dates', from: '2026-11-03', until: '2026-11-16' }   // both days included
+{ kind: 'refs', from: 'v1.4.0', to: 'HEAD' }                // what `to` has and `from` doesn't
+```
+
+## Your own model client
+
+`generate` takes anything that implements `ModelClient`, so you can route calls through your own gateway, add logging, or test without an API:
+
+```ts
+import type { ModelClient } from '@guuskeunen/sprint-review';
+
+const model: ModelClient = {
+  async ask({ system, messages, tool, maxTokens }) {
+    const input = await myGateway.callWithTool(system, messages, tool, maxTokens);
+    return { toolInput: input, model: 'my-model', usage: { input: 0, output: 0 } };
+  },
+};
+```
+
+The model must answer through the given tool: `toolInput` is the tool's input object, or `null` when it gave none.
+
+## Errors
+
+All expected failures are their own class, with a message meant for people:
+
+`ConfigError`, `GitError`, `ModelError`, `WriterError`, `NothingToReview`.
+
+## Types
+
+`Review`, `ReviewTheme`, `ReviewScreen`, `Commit`, `Check`, `Milestone`, `UsageMetric`, `Config` and more are exported as types.
+
+---
+
+<!-- docs/troubleshooting.md -->
+
+# Troubleshooting
+
+Start with `npx @guuskeunen/sprint-review doctor`. It checks the config, the git history, the API key and your Node version, and says how to fix each one.
+
+### "This checkout has a shallow history"
+The repository was cloned without its history, which is common in CI. In GitHub Actions:
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0
+```
+
+In GitLab CI set `GIT_DEPTH: 0`. Locally: `git fetch --unshallow`.
+
+### "No commits found from … to …"
+- Check the dates: `sprint.days` counts back from today, both days included.
+- Merge commits are skipped. With squash or rebase merges that's fine. With merge commits, the work is in the merged branch's commits, which are included.
+- Commits matching `ignore` are left out.
+- In CI, make sure the branch you want is checked out, usually your main branch.
+
+### "ANTHROPIC_API_KEY is not set"
+Create a key at [console.anthropic.com](https://console.anthropic.com), then `export ANTHROPIC_API_KEY=sk-ant-...` in your shell or add it as a repository secret in CI.
+
+### "Anthropic API 401"
+The key is wrong or revoked. The tool doesn't try the fallback model for this.
+
+### "Anthropic API 429" or "529"
+Rate limited or overloaded. The tool retries three times with a pause, then tries the fallback model. Run it again a little later if it still fails.
+
+### "The model returned nothing usable"
+Every theme and summary point failed the checks, usually because the sprint has only tooling commits. Run with `--dry-run` to see which commits count as product work, and check `productPaths` and `nonProductTypes`.
+
+### A theme I expected is missing
+Look in `checks.md`. A point that named no real commit, or broke a rule, was dropped there. A theme that lost all its points was dropped too.
+
+### Everything is under the hood
+Your `productPaths` probably don't match. They're path prefixes from the repository root, such as `src/` or `apps/web/src/`. Run `--dry-run`: commits marked `[no product code]` didn't match.
+
+### No before and after slides
+- `screenshots.source` must be `git` or `folder`.
+- With `git`, `dir` is a path from the repository root, and the PNGs must have changed during the sprint.
+- A screen only gets a slide when the AI could say what changed. Tiny changes are skipped.
+- Every screen looks changed because of the menu? Set `ignore.left` and `ignore.top`.
+
+### The labels are in English but my content isn't
+The fixed labels ship in English and Dutch. For other languages, override them with `labels`. See [configuration](configuration.md#labels).
+
+### The logo doesn't show
+`brand.logo` must point to a PNG, JPG, SVG, WebP or GIF, relative to the config file. `doctor` checks that it exists.
+
+### Still stuck?
+[Open an issue](https://github.com/guuskeunen/sprint-review/issues) with the output of `doctor` and `--dry-run`. Leave out anything private.
+
+---
+
+<!-- docs/faq.md -->
+
+# FAQ
+
+### Can I run it without sending anything outside our network?
+Yes: use a local model with Ollama or LM Studio. The slides are plainer than with Claude, but nothing leaves your machine. See [models](models.md#ollama-local) and [security and privacy](security.md).
+
+### Does it send my code to an AI?
+No. It sends commit messages and file names of the sprint, pull request titles and descriptions when a GitHub token is set, plus your product description. Never source code, diffs, screenshots or usage numbers. See [what is sent](how-it-works.md#what-is-sent-to-the-ai).
+
+### Which AI does it use?
+Anthropic's Claude by default, through your own API key. Also Amazon Bedrock, Azure OpenAI, OpenAI, OpenRouter, Gemini, Mistral, and local models with Ollama or LM Studio: see [models and providers](models.md). With the library you can plug in any model yourself ([custom model client](library.md#your-own-model-client)).
+
+### What does it cost?
+Two or three API calls per review (the third only when the second reader flagged lines to rewrite), on your own account. `--dry-run` shows the token estimate before you spend anything.
+
+### Can it make things up?
+It's built so it can't get away with it. Every point must name real commits from the sprint, or it's dropped. Numbers come from your files, never from the AI. Pictures can only be screenshots that exist. And a second AI reads the result like your audience would. A person still reads the draft before it's presented.
+
+### My commit messages are bad. Will it still work?
+Better messages give better slides, but it copes: it also reads the changed file names, and Conventional Commit prefixes help it sort tooling from product work. With a GitHub token it also reads the pull request descriptions, which usually say why.
+
+### Do I need Conventional Commits?
+No. They help (a `ci:` commit is never a theme), but anything works.
+
+### Does it work with monorepos?
+Yes. Set `productPaths` to the folders that hold product code, such as `apps/web/src/`.
+
+### Can I use it for release notes instead of sprints?
+Yes: `--from v1.4.0 --to v1.5.0`. `review.md` works well as release notes.
+
+### Which languages?
+The AI writes the content in any language. Slide labels ship in English and Dutch; override them for others.
+
+### Can I use my company's slide template?
+Partly. Point `brand.from` at your PowerPoint and the deck takes its accent color, fonts and logo. The layout stays sprint-review's own; exporting into your own slide layouts is on the roadmap.
+
+### Is there a hosted version?
+No, on purpose. It runs where your code is, with your key, and produces a file. Nothing to sign up for, nothing to host.
+
+### What does the deck need to open?
+Any modern browser. No internet: everything is inside the one file.
+
+### Can I edit the deck in PowerPoint or Keynote?
+Yes: `--pptx` (or `output.pptx: true`) also writes `deck.pptx`, editable, with the speaker notes in the notes pane. Keynote opens it too.
+
+### Is it free?
+The tool is free and open source (MIT). You pay your model provider for the API calls.
+
+### Why not just ask an AI to write the review?
+You can, once. sprint-review does it every sprint with no one in the loop: it reads exactly the sprint's range, drops lines it can't trace to commits, diffs real screenshots, rewrites what a fresh reader didn't understand, and logs every correction. It also runs inside your AI assistant: see the [MCP server](integrations.md#claude-code-cursor-and-other-mcp-clients).
+
+### Can I use it from Claude Code or Cursor?
+Yes. `sprint-review mcp` is an MCP server, and there's a Claude Code skill. See [integrations](integrations.md).
+
+---
+
+<!-- docs/guides/how-to-run-a-sprint-review.md -->
+
+# How to run a sprint review that people want to attend
+
+A sprint review is where the team shows what it delivered and the people it delivers for react. In Scrum it's the second-to-last event of the sprint, before the retrospective. It's often the only moment the business, sales or management see the product move. Run well, it brings feedback that changes the next sprint. Run badly, it's a list of tickets nobody outside the team understands.
+
+## Before: an hour of prep, not a day
+
+1. **Collect what was done.** Merged pull requests and commits since the last review, not the sprint board's plan.
+2. **Group it into a few themes.** Three to six themes the audience cares about ("customers can book repairs online"), not components ("refactor booking API").
+3. **Say what each theme means for them.** One sentence of effect per theme: faster, fewer mistakes, less manual work, less risk, more insight.
+4. **Show it.** A screenshot or a short live demo per theme. Before and after beats any description.
+5. **Put plumbing in one place.** Dependency upgrades, CI and tests matter, but they belong on one *under the hood* slide.
+6. **Add the bigger picture.** Where are you on the roadmap, and what moved in usage?
+
+Steps 1 to 6 are what [sprint-review](https://github.com/guuskeunen/sprint-review) automates: it reads the git history, writes the themes in your audience's language, checks every line against the real commits, finds the screens that changed, and builds the deck.
+
+## During: 30 to 60 minutes
+
+- **Open with the sprint goal** and whether you reached it.
+- **Demo, don't read.** The slide is the headline; the product is the story. Keep speaker notes for what to click.
+- **Ask a question per theme.** "Would this change how you book a repair?" gets more useful feedback than "Any questions?"
+- **Write down feedback as it comes.** It's input for the backlog.
+- **End with what's next.** One slide: what the next sprint will likely pick up.
+
+## After
+
+- Share the deck and a short summary in the channel where the business lives.
+- Turn feedback into backlog items before the next planning.
+
+## Common mistakes
+
+| Mistake | Instead |
+|---|---|
+| Showing ticket numbers and branch names | Plain-language themes and effects |
+| Demoing everything | Three to six themes; the rest under the hood |
+| A status meeting | Something to react to: working software |
+| Slides prepared at the last minute | Generated from git before review day ([how](https://github.com/guuskeunen/sprint-review/blob/main/docs/github-action.md)) |
+
+## Sprint review or retrospective?
+
+The **sprint review** looks at the *product*: what was built, with the people it's for. The **retrospective** looks at the *way of working*, with the team only, right after. Different audiences, different questions; don't merge them.
+
+---
+
+<!-- docs/guides/sprint-review-template.md -->
+
+# Sprint review template
+
+A slide-by-slide structure for a sprint review that works for a non-technical audience. Use it by hand, or let [sprint-review](https://github.com/guuskeunen/sprint-review) fill it from your git history ([see a generated example](https://guuskeunen.github.io/sprint-review/demo/)).
+
+| # | Slide | What goes on it |
+|---|---|---|
+| 1 | **Cover** | Product, sprint dates, the sprint goal in one line |
+| 2 | **What it brings** | The themes grouped by value: faster, better quality, less manual work, less risk, more insight |
+| 3 | **In use** | Two to six numbers that moved, with last sprint for comparison |
+| 4 | **This sprint in short** | Three to four one-line highlights |
+| 5–10 | **One slide per theme** | A title of a few words, one sentence on the effect for the audience, two to four points, a screenshot; speaker notes on what to demo |
+| 11–13 | **Before and after** | The screens that changed, side by side, with one line on what to look at |
+| 14 | **Roadmap** | Milestones reached and open |
+| 15 | **Under the hood** | Maintenance, upgrades, tests, CI: one slide |
+| 16 | **Questions** | And what's next |
+
+## Writing rules that make it land
+
+- Write for the person in the room, not the person who wrote the code: "Front desk staff see a customer's whole history on one page", not "Added timeline endpoint".
+- At most 16 words per point, 25 for the effect sentence.
+- No ticket numbers, hashes or branch names on slides.
+- Every claim must match something that was actually merged.
+
+## Generate it instead
+
+```bash
+npx @guuskeunen/sprint-review --dry-run   # see what it would read
+npx @guuskeunen/sprint-review             # write the deck
+```
+
+The rules above are the checks sprint-review runs in code on every line.

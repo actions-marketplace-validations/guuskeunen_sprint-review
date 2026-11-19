@@ -1,0 +1,23 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "name": "io.github.guuskeunen/sprint-review",
+  "title": "sprint-review",
+  "description": "Write a sprint review deck from git history, with every line checked against the real commits.",
+  "repository": { "url": "https://github.com/guuskeunen/sprint-review", "source": "github" },
+  "websiteUrl": "https://guuskeunen.github.io/sprint-review/",
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@guuskeunen/sprint-review",
+      "version": "0.1.0",
+      "transport": { "type": "stdio" },
+      "packageArguments": [{ "type": "positional", "value": "mcp" }],
+      "environmentVariables": [
+        { "name": "ANTHROPIC_API_KEY", "description": "Anthropic API key (or set OPENAI_API_KEY with model.provider openai)", "isRequired": false, "isSecret": true },
+        { "name": "OPENAI_API_KEY", "description": "OpenAI API key, for model.provider openai", "isRequired": false, "isSecret": true },
+        { "name": "GITHUB_TOKEN", "description": "Optional: pull request descriptions as context", "isRequired": false, "isSecret": true }
+      ]
+    }
+  ]
+}

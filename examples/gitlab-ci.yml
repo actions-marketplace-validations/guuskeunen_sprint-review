@@ -1,0 +1,32 @@
+# Sprint review deck on GitLab CI.
+# Copy this job into your .gitlab-ci.yml. Set ANTHROPIC_API_KEY as a masked CI/CD variable
+# (Settings > CI/CD > Variables). The deck lands in the job's artifacts; with the pages job it
+# is also published on GitLab Pages.
+
+sprint-review:
+  image: node:22
+  stage: deploy
+  variables:
+    GIT_DEPTH: 0          # the whole history: a shallow clone has no sprint to look back on
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"   # e.g. a schedule every other Friday
+    - if: $CI_PIPELINE_SOURCE == "web"        # or start it by hand
+  script:
+    - npx --yes @guuskeunen/sprint-review@0 generate --out sprint-review-deck
+  artifacts:
+    name: sprint-review
+    paths:
+      - sprint-review-deck/
+    expire_in: 90 days
+
+# Optional: publish the latest deck on GitLab Pages.
+pages:
+  stage: deploy
+  needs: [sprint-review]
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+  script:
+    - mkdir -p public && cp sprint-review-deck/deck.html public/index.html
+  artifacts:
+    paths: [public]

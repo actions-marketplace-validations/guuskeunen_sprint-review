@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }}, Node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm install --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: The benchmark harness runs (no model)
+        run: node scripts/bench.ts --echo > /dev/null
+
+  package:
+    name: Package works on Node 20
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
+      - run: npm pack
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install the packed tarball and run it
+        run: |
+          mkdir /tmp/try && cd /tmp/try && npm init -y > /dev/null
+          npm install "$GITHUB_WORKSPACE"/guuskeunen-sprint-review-*.tgz --no-audit --no-fund
+          bin=/tmp/try/node_modules/.bin/sprint-review
+          $bin --version
+          $bin icons > /dev/null
+          cp "$GITHUB_WORKSPACE"/docs/demo/review.json /tmp/try/review.json
+          $bin render /tmp/try/review.json
+          test -s /tmp/try/deck.html
+          cd "$GITHUB_WORKSPACE" && $bin --dry-run --since 2026-01-01 > /dev/null
