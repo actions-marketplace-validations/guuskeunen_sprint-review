@@ -92,7 +92,7 @@ test('local providers default to json mode, a small input and no key', () => {
 test('a smaller input limit cuts what the model reads, and the check log names what it skipped', async () => {
   const dir = demoRepo();
   for (let i = 0; i < 40; i++) {
-    execFileSync('git', ['-C', dir, 'commit', '--allow-empty', '-q', '-m', `feat: extra change ${i}`, '-m', 'A long description. '.repeat(20)]);
+    execFileSync('git', ['-C', dir, '-c', 'user.name=Bench', '-c', 'user.email=bench@example.test', 'commit', '--allow-empty', '-q', '-m', `feat: extra change ${i}`, '-m', 'A long description. '.repeat(20)]);
   }
   const config = normalize({ product: { name: 'Spoke' }, github: { pullRequests: false }, model: { provider: 'ollama', name: 'qwen3', maxInputChars: 4000 } }, dir);
   const model = new FakeModel();
