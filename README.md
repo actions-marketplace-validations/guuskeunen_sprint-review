@@ -1,5 +1,10 @@
 <p align="center">
-  <img src="docs/assets/logo.svg" alt="sprint-review" width="420">
+  <a href="https://guuskeunen.github.io/sprint-review/">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
+      <img src="docs/assets/logo.svg" alt="sprint-review" width="460">
+    </picture>
+  </a>
 </p>
 
 <p align="center">
@@ -8,14 +13,17 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@guuskeunen/sprint-review"><img src="https://img.shields.io/npm/v/@guuskeunen/sprint-review?color=ea580c&label=npm" alt="npm"></a>
-  <a href="https://github.com/marketplace/actions/sprint-review-deck"><img src="https://img.shields.io/badge/GitHub%20Action-ready-0f172a" alt="GitHub Action"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-0f172a" alt="MIT license"></a>
-  <img src="https://img.shields.io/badge/node-%E2%89%A520-0f172a" alt="Node 20 or newer">
+  <a href="https://www.npmjs.com/package/@guuskeunen/sprint-review"><img src="https://img.shields.io/npm/v/@guuskeunen/sprint-review?color=b8914a&labelColor=16161b&label=npm" alt="npm"></a>
+  <a href="https://github.com/marketplace/actions/sprint-review-deck"><img src="https://img.shields.io/badge/GitHub%20Action-ready-b8914a?labelColor=16161b" alt="GitHub Action"></a>
+  <a href="docs/integrations.md#claude-code-cursor-and-other-mcp-clients"><img src="https://img.shields.io/badge/MCP-server-b8914a?labelColor=16161b" alt="MCP server"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-b8914a?labelColor=16161b" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/node-%E2%89%A520-b8914a?labelColor=16161b" alt="Node 20 or newer">
 </p>
 
 <p align="center">
-  <a href="https://guuskeunen.github.io/sprint-review/demo/"><b>See a live demo deck →</b></a>
+  <a href="https://guuskeunen.github.io/sprint-review/"><b>Website</b></a> ·
+  <a href="https://guuskeunen.github.io/sprint-review/demo/"><b>Live demo deck</b></a> ·
+  <a href="docs/getting-started.md"><b>Get started</b></a>
 </p>
 
 <p align="center">
@@ -39,9 +47,9 @@ Most AI summary tools hand your history to a model and hope for the best. sprint
 
 - **Every point has to name a real commit.** A point that points nowhere is dropped. That's how invented features stay off the slides.
 - **Code does everything that can be checked.** Word limits, no ticket numbers or hashes, no exclamation marks, the numbers, the pictures, the page itself. The model never writes HTML or counts anything.
-- **A second AI reads it like your audience would.** It sees only the slide text and flags whatever someone outside the team wouldn't understand.
+- **A second AI reads it like your audience would.** It sees only the slide text and flags whatever someone outside the team wouldn't understand. Those lines are rewritten once, and the rewrite has to pass every check again.
 - **Tooling never becomes a theme.** CI, test and dependency changes go under the hood automatically.
-- **Real screenshots, no customer data.** It reuses the pictures your visual tests already take, finds the screens that actually changed, and crops to the change.
+- **Real screenshots, no customer data.** It reuses the pictures your visual tests already take (or photographs your staging pages, with private bits masked), finds the screens that actually changed, and crops to the change.
 - **Nothing is published on its own.** You get a draft, the check log and an editable `review.json`.
 
 ## What you get
@@ -52,6 +60,7 @@ Most AI summary tools hand your history to a model and hope for the best. sprint
 | `review.json` | Everything on the slides. Edit it, then `sprint-review render` rebuilds the deck. |
 | `review.md` | A Markdown summary for a pull request, Slack or an email. |
 | `checks.md` | What the checks corrected, moved or dropped, and what the second reader flagged. |
+| `deck.pptx` | Optional (`--pptx`): the same deck as an editable PowerPoint, with speaker notes. |
 
 The deck has a cover with your logo and color, *What we gain* grouped by value, usage numbers, a summary, one slide per theme (with a screenshot when one fits), before and after slides, the roadmap, *Under the hood* and a closing slide.
 
@@ -75,7 +84,10 @@ More options:
 ```bash
 sprint-review --since 2026-11-03 --until 2026-11-16   # a date range
 sprint-review --from v1.4.0 --to v1.5.0              # between two tags
-sprint-review render sprint-reviews/2026-11-16/review.json
+sprint-review edit sprint-reviews/2026-11-16/review.json   # editor beside the live deck
+sprint-review render sprint-reviews/2026-11-16/review.json # rebuild after a hand edit
+sprint-review --pptx --slack                          # also PowerPoint, and post to Slack
+sprint-review capture                                 # photograph your staging pages
 sprint-review doctor                                  # check the setup
 ```
 
@@ -87,7 +99,7 @@ sprint-review doctor                                  # check the setup
 name: Sprint review
 on:
   schedule:
-    - cron: '0 7 * * 2'   # Tuesday morning, before the review
+    - cron: '0 7 * * 5'   # the morning of review day
   workflow_dispatch:
 
 jobs:
@@ -109,6 +121,14 @@ jobs:
 
 The review also lands in the job summary. Want a pull request to review and a shareable link on GitHub Pages instead? → **[GitHub Action guide](docs/github-action.md)**
 
+## Use it from Claude Code, Cursor or any MCP client
+
+```bash
+claude mcp add sprint-review -- npx -y @guuskeunen/sprint-review mcp
+```
+
+Then ask *"make our sprint review for the last two weeks"*. There's also a [Claude Code skill](skills/sprint-review/SKILL.md). → **[Integrations](docs/integrations.md)**: MCP, OpenAI, Slack, pull requests, GitLab
+
 ## Configuration at a glance
 
 ```yaml
@@ -119,7 +139,7 @@ organization: Northside Cycles
 audience: business          # business, executives, customers, team, or your own words
 language: English           # or Dutch, German, nl, de-DE …
 sprint: { days: 14 }
-brand: { color: "#ea580c", logo: ./logo.png }
+brand: { color: "#ea580c", logo: ./logo.png }   # or: brand: { from: our-template.pptx }
 productPaths: [src/]
 screenshots:
   source: git
@@ -133,31 +153,35 @@ screenshots:
 
 - [Getting started](docs/getting-started.md): from zero to your first deck in five minutes
 - [Configuration](docs/configuration.md): every option, with defaults
-- [Screenshots](docs/screenshots.md): before and after slides from your visual tests or a folder
-- [GitHub Action](docs/github-action.md): scheduled reviews, pull requests, GitHub Pages
-- [Editing and presenting](docs/editing.md): change a draft, present it, export to PDF
+- [Screenshots](docs/screenshots.md): before and after slides from your visual tests, a folder, or captured from URLs
+- [GitHub Action](docs/github-action.md): scheduled reviews, pull requests, GitHub Pages, Slack, GitLab
+- [Editing and presenting](docs/editing.md): the editor, presenting, PDF and PowerPoint
+- [Integrations](docs/integrations.md): MCP server, Claude Code skill, OpenAI, Slack, pull request context
 - [How it works](docs/how-it-works.md): the pipeline and every check
 - [Using it as a library](docs/library.md): the Node API
 - [Troubleshooting](docs/troubleshooting.md) and [FAQ](docs/faq.md)
+- Guides: [How to run a sprint review](docs/guides/how-to-run-a-sprint-review.md) · [Sprint review template](docs/guides/sprint-review-template.md)
 
 ## Privacy and cost
 
-- **What leaves your machine:** commit subjects, bodies and file names of the sprint, plus your product description, sent to Anthropic's API with your own key. **Never source code, never screenshots.** Pictures are compared and placed locally.
-- **What it costs:** two API calls per review, billed to your own Anthropic account. `--dry-run` shows how many tokens a review will use before you spend anything. Pick a smaller model in the config if you want it cheaper.
+- **What leaves your machine:** commit subjects, bodies and file names of the sprint, pull request titles and descriptions when a GitHub token is set, plus your product description, sent to Anthropic's (or OpenAI's) API with your own key. **Never source code, never screenshots.** Pictures are compared and placed locally.
+- **What it costs:** two or three API calls per review, billed to your own account. `--dry-run` shows how many tokens a review will use before you spend anything. Pick a smaller model in the config if you want it cheaper.
 
 ## Roadmap
 
 - [x] CLI, GitHub Action, deck, Markdown summary, check log
-- [x] Before and after screenshots from git or a folder
+- [x] Before and after screenshots from git, a folder, or captured from URLs
 - [x] English and Dutch slide labels, any language for the content
-- [ ] Pull request descriptions and linked issues as extra context
-- [ ] One automatic revision pass for lines the second reader flags
-- [ ] Brand from an existing deck: colors, fonts and logo from a `.pptx`
-- [ ] Export into your own PowerPoint template
-- [ ] Screenshots taken by the tool itself from a staging URL
-- [ ] Local editor (`sprint-review edit`)
-- [ ] GitLab CI template, Slack posting, more AI providers
-- [ ] Claude Code skill and MCP server
+- [x] Pull request descriptions as extra context
+- [x] One automatic revision pass for lines the second reader flags
+- [x] Brand from an existing deck: color, fonts and logo from a `.pptx`
+- [x] PowerPoint export with speaker notes
+- [x] Local editor (`sprint-review edit`)
+- [x] GitLab CI template, Slack posting, OpenAI as a second provider
+- [x] MCP server and Claude Code skill
+- [ ] Linked issues (GitHub, Jira, Linear) as extra context
+- [ ] Export into your own PowerPoint layouts, not just its look
+- [ ] More slide languages built in
 
 Ideas and bugs: [open an issue](https://github.com/guuskeunen/sprint-review/issues).
 

@@ -123,6 +123,15 @@ How many days a review covers when you don't pass `--since` or `--from`. Both en
 |---|---|
 | `color` | Accent color as `#rrggbb`. Lighter and darker shades are mixed from it. Default indigo `#4f46e5`. |
 | `logo` | Path to a PNG, JPG, SVG, WebP or GIF, or a `data:image/...` URI. Shown on the cover, on a white plate. |
+| `from` | Path to a `.pptx` or `.potx`: its theme's first accent color, its heading and body fonts and the logo on its slide master fill in whatever you didn't set here. Only the look is taken, not the layout. |
+| `theme` | `light` (default) or `dark`: near-black with warm ivory text and a champagne accent. |
+| `fonts.heading`, `fonts.body` | Font families for headings and text. Fonts aren't embedded, so pick ones installed where the deck is shown; the theme's own fonts are the fallback. |
+
+```yaml
+brand:
+  from: templates/company-template.pptx   # color, fonts and logo from our own template
+  color: "#0b7a75"                         # ...but this color wins
+```
 
 ### `productPaths`
 Folders (path prefixes) that hold product code. A commit that only touches files outside them can't carry a theme or a summary point; whatever the AI writes about it moves under the hood. Default: empty, meaning every commit counts. Strongly recommended for monorepos.
@@ -163,12 +172,29 @@ Before and after slides, and pictures on theme slides. See the [screenshots guid
 
 | Key | Description |
 |---|---|
-| `source` | `none` (default), `git` or `folder`. |
+| `source` | `none` (default), `git`, `folder` or `capture`. |
 | `dir` | `git`: the folder in the repository with the pictures, from the repository root. |
 | `before`, `after` | `folder`: two folders with the pictures at the start and end of the sprint. |
+| `pages`, `baseUrl`, `devices`, `mask`, `storageState`, `wait`, `storage` | `capture`: the tool takes the pictures itself. See [taking screenshots](screenshots.md#option-3-the-tool-takes-them-capture). |
 | `names` | Readable names per screen key. Also sets the order. |
 | `ignore.left` | Pixels on the left to skip when comparing desktop pictures (a side menu). |
 | `ignore.top` | Pixels at the top to skip (a top bar). |
+
+### `revise`
+After the second reader flags lines it got stuck on, the writer rewrites just those lines, once. A rewrite only replaces the original if it passes every check again; `checks.md` lists it as *corrected*. Lines that couldn't be fixed stay as warnings. Default `true`. Set `false` to only flag them.
+
+### `github`
+Pull request titles and descriptions as extra context: teams often write *why* in a pull request and only *what* in a commit.
+
+| Key | Default | Description |
+|---|---|---|
+| `pullRequests` | `auto` | `auto`: when `GITHUB_TOKEN` or `GH_TOKEN` is set (always true in GitHub Actions). `true`: always try. `false`: never. |
+| `repo` | from the environment | `owner/name`. Default: `GITHUB_REPOSITORY`, or the `origin` remote when it points at github.com. |
+
+One API request per commit with product code (at most 150). Any failure leaves the commits as they were: it never breaks a run.
+
+### `slack`
+`true` to post the summary to Slack after every run. The webhook URL comes from the `SLACK_WEBHOOK_URL` environment variable, never the config. Set `SPRINT_REVIEW_DECK_URL` (or pass `--deck-url`) to add an *Open the deck* button. Default `false`; `--slack` does the same for one run.
 
 ### `roadmap`
 A Markdown file in the repository, read as it was at the end of the sprint. Every line `- [x] text` is a reached milestone, `- [ ] text` an open one. Default `ROADMAP.md`. Set `false` to skip it. No file: no roadmap slide.
@@ -214,11 +240,19 @@ labels:
 
 | Key | Default | Description |
 |---|---|---|
-| `name` | `claude-opus-5-5` | The Anthropic model for both calls. |
+| `provider` | `anthropic` | `anthropic` or `openai`. |
+| `name` | `claude-opus-5-5` | The model for every call. Required for `openai`. |
 | `fallback` | `claude-sonnet-5-5` | Used when the first model fails after retries. `null` to turn off. |
 | `maxTokens` | `8000` | Room for the writer's answer. |
 
-The API key always comes from the `ANTHROPIC_API_KEY` environment variable, never from the config, so the config can be committed.
+The API key always comes from the environment, never from the config, so the config can be committed: `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` for `openai`. `OPENAI_BASE_URL` points the OpenAI client at a compatible endpoint, such as Azure OpenAI or a gateway.
+
+```yaml
+model:
+  provider: openai
+  name: gpt-5.1        # whichever model your account uses
+  fallback: null
+```
 
 ### `output`
 
@@ -226,3 +260,4 @@ The API key always comes from the `ANTHROPIC_API_KEY` environment variable, neve
 |---|---|---|
 | `dir` | `sprint-reviews` | Each review goes in `<dir>/<last day of the sprint>/`. `--out` overrides the whole path. |
 | `markdown` | `true` | Also write `review.md`. |
+| `pptx` | `false` | Also write `deck.pptx`, an editable PowerPoint with speaker notes. Needs `pptxgenjs` installed (`npm i -D pptxgenjs`). `--pptx` does the same for one run. |

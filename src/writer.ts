@@ -4,10 +4,10 @@ import type { ModelClient } from './model.ts';
 import { isIcon, VALUE_KEYS } from './icons.ts';
 import { commitLog, MAX_LOG_CHARS, NO_SCREEN, readerSystem, readerTool, slideText, untrusted, writerSystem, writerTool } from './prompt.ts';
 
-const POINT_WORDS_MAX = 16;
-const EFFECT_WORDS_MAX = 25;
-const NOTES_WORDS_MAX = 70;
-const TITLE_WORDS_MAX = 4;
+export const POINT_WORDS_MAX = 16;
+export const EFFECT_WORDS_MAX = 25;
+export const NOTES_WORDS_MAX = 70;
+export const TITLE_WORDS_MAX = 4;
 const POINTS_PER_THEME = 4;
 const SUMMARY_POINTS = 4;
 const HOOD_POINTS = 5;
@@ -46,11 +46,107 @@ export async function write(model: ModelClient, config: Config, commits: Commit[
     throw new WriterError('The model returned nothing usable. Try again, or check the commits in this range.');
   }
   const read = await complaints(model, config, written);
-  written.checks = [...unread(log, commits), ...read.checks, ...written.checks];
-  return { written, usage: { input: draft.usage.input + read.usage.input, output: draft.usage.output + read.usage.output } };
+  let readChecks = read.checks;
+  let extra = { input: 0, output: 0 };
+  if (config.revise && read.flagged.length) {
+    const revised = await revise(model, config, written, read.flagged);
+    extra = revised.usage;
+    const fixed = new Set(revised.fixed);
+    readChecks = [...readChecks.filter((c) => !fixed.has(c.text)), ...revised.checks];
+  }
+  written.checks = [...unread(log, commits), ...readChecks, ...written.checks];
+  return {
+    written,
+    usage: { input: draft.usage.input + read.usage.input + extra.input, output: draft.usage.output + read.usage.output + extra.output },
+  };
 }
 
-async function complaints(model: ModelClient, config: Config, written: WrittenReview): Promise<{ checks: Check[]; usage: { input: number; output: number } }> {
+/**
+ * One rewrite of the lines the reader got stuck on. The writer returns a new line per flagged
+ * line; each goes through the same checks as the first draft and only replaces the old line
+ * when it passes. A line that can't be fixed keeps its warning.
+ */
+async function revise(model: ModelClient, config: Config, written: WrittenReview, flagged: { text: string; why: string }[]): Promise<{ checks: Check[]; fixed: string[]; usage: { input: number; output: number } }> {
+  let answer;
+  try {
+    answer = await model.ask({
+      system: writerSystem(config),
+      tool: reviseTool(),
+      maxTokens: 2000,
+      messages: [
+        untrusted(slideText(written), 'the text of the slides'),
+        `A reader from the audience got stuck on these lines:\n${flagged.map((f) => `- "${f.text}" (${f.why})`).join('\n')}\n\nRewrite only these lines so this audience understands them. Keep every fact, add none, stay within the same word limits. Give each original line exactly as written.`,
+      ],
+    });
+  } catch {
+    return { checks: [], fixed: [], usage: { input: 0, output: 0 } };
+  }
+  const checks: Check[] = [];
+  const fixed: string[] = [];
+  for (const item of list(answer.toolInput?.revisions)) {
+    const original = str(item.original)?.trim();
+    if (!original) continue;
+    const reason = flagged.find((f) => f.text === original)?.why ?? '';
+    if (replaceLine(written, original, item.revised, config.replace)) {
+      fixed.push(original);
+      checks.push({ kind: 'corrected', text: `${original} → ${lineAfter(written, original, item.revised, config.replace)}`, reason: `Rewritten because the reader got stuck${reason ? `: ${reason}` : ''}` });
+    }
+  }
+  return { checks, fixed, usage: answer.usage };
+}
+
+/** Swap one line of the slides for its rewrite, if the rewrite passes the checks for that kind of line. */
+function replaceLine(w: WrittenReview, original: string, revised: unknown, replace: Record<string, string>): boolean {
+  const ok = (max: number) => {
+    const text = clean(revised, max, replace);
+    return text && text !== original ? text : null;
+  };
+  for (const p of w.summary) if (p.text === original) { const t = ok(POINT_WORDS_MAX); if (t) return (p.text = t), true; }
+  for (const th of w.themes) {
+    if (th.title === original) { const t = ok(TITLE_WORDS_MAX); if (t) return (th.title = t), true; }
+    if (th.effect === original) { const t = ok(EFFECT_WORDS_MAX); if (t) return (th.effect = t), true; }
+    const i = th.points.indexOf(original);
+    if (i !== -1) { const t = ok(POINT_WORDS_MAX); if (t) return (th.points[i] = t), true; }
+  }
+  const h = w.underTheHood.indexOf(original);
+  if (h !== -1) { const t = ok(POINT_WORDS_MAX); if (t) return (w.underTheHood[h] = t), true; }
+  for (const [screen, caption] of Object.entries(w.screenCaptions)) {
+    if (caption === original) { const t = ok(EFFECT_WORDS_MAX); if (t) return (w.screenCaptions[screen] = t), true; }
+  }
+  return false;
+}
+
+function lineAfter(_w: WrittenReview, _original: string, revised: unknown, replace: Record<string, string>): string {
+  return clean(revised, EFFECT_WORDS_MAX, replace) ?? String(revised);
+}
+
+function reviseTool() {
+  return {
+    name: 'revisions',
+    description: 'Deliver a rewrite for each flagged line.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        revisions: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              original: { type: 'string', description: 'The flagged line, exactly as it was written.' },
+              revised: { type: 'string', description: 'The rewrite.' },
+            },
+            required: ['original', 'revised'],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ['revisions'],
+      additionalProperties: false,
+    },
+  };
+}
+
+async function complaints(model: ModelClient, config: Config, written: WrittenReview): Promise<{ checks: Check[]; flagged: { text: string; why: string }[]; usage: { input: number; output: number } }> {
   try {
     const answer = await model.ask({
       system: readerSystem(config),
@@ -59,16 +155,19 @@ async function complaints(model: ModelClient, config: Config, written: WrittenRe
       messages: [untrusted(slideText(written), 'the text of the slides'), 'Read the text and point out where you get stuck.'],
     });
     const checks: Check[] = [];
-    const list = Array.isArray(answer.toolInput?.complaints) ? (answer.toolInput.complaints as unknown[]) : [];
-    for (const v of list) {
+    const flagged: { text: string; why: string }[] = [];
+    const items = Array.isArray(answer.toolInput?.complaints) ? (answer.toolInput.complaints as unknown[]) : [];
+    for (const v of items) {
       const c = v as Record<string, unknown>;
       if (typeof c?.text === 'string' && c.text.trim() && checks.length < MAX_COMPLAINTS) {
-        checks.push({ kind: 'warning', text: c.text.trim(), reason: `The reader got stuck here: ${typeof c.why === 'string' ? c.why.trim() : ''}`.trim() });
+        const why = typeof c.why === 'string' ? c.why.trim() : '';
+        flagged.push({ text: c.text.trim(), why });
+        checks.push({ kind: 'warning', text: c.text.trim(), reason: `The reader got stuck here: ${why}`.trim() });
       }
     }
-    return { checks, usage: answer.usage };
+    return { checks, flagged, usage: answer.usage };
   } catch {
-    return { checks: [{ kind: 'warning', text: 'Not proofread', reason: 'The second reader gave no answer. Read the slides extra carefully.' }], usage: { input: 0, output: 0 } };
+    return { checks: [{ kind: 'warning', text: 'Not proofread', reason: 'The second reader gave no answer. Read the slides extra carefully.' }], flagged: [], usage: { input: 0, output: 0 } };
   }
 }
 

@@ -64,9 +64,10 @@ export function demoRepo(): string {
 /** A model that answers like a good writer, using the real hashes from the commit log it is sent. */
 export class FakeModel implements ModelClient {
   requests: ModelRequest[] = [];
-  private readonly options: { failReader?: boolean };
+  private readonly options: { failReader?: boolean; revision?: string };
 
-  constructor(options: { failReader?: boolean } = {}) {
+  /** revision: what the writer answers when asked to rewrite a flagged line. Without it the rewrite call fails, as a model outage would. */
+  constructor(options: { failReader?: boolean; revision?: string } = {}) {
     this.options = options;
   }
 
@@ -76,6 +77,10 @@ export class FakeModel implements ModelClient {
     if (request.tool.name === 'reading_report') {
       if (this.options.failReader) throw new Error('reader down');
       return { model: 'fake', usage, toolInput: { complaints: [{ text: 'Status counts load with less work', kind: 'unclear', why: 'What is a status count?' }] } };
+    }
+    if (request.tool.name === 'revisions') {
+      if (!this.options.revision) throw new Error('no revision');
+      return { model: 'fake', usage, toolInput: { revisions: [{ original: 'Status counts load with less work', revised: this.options.revision }] } };
     }
     const log = request.messages[0] ?? '';
     const h = (word: string) => new RegExp(`^([0-9a-f]{7,}) \\S+ [^\\n]*${word}`, 'm').exec(log)?.[1] ?? 'deadbee';

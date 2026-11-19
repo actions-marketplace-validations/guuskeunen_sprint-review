@@ -21,3 +21,15 @@ The first public version.
 - Works without a config file.
 - GitHub Action with outputs and a job summary.
 - Node API: `generate`, `render`, `loadConfig` and the building blocks.
+- One automatic rewrite of the lines the second reader flags; rewrites pass every check again and are logged as corrected (`revise`).
+- Pull request titles and descriptions as context, from the GitHub API, when a token is set (`github`).
+- OpenAI as a second provider (`model.provider: openai`, `OPENAI_BASE_URL` for compatible endpoints).
+- `sprint-review edit`: a local editor beside the live deck, saving `review.json` and rebuilding the deck.
+- `sprint-review capture` and `screenshots.source: capture`: screenshots of your pages with Playwright, per device, with masks and a logged-in session.
+- PowerPoint export with speaker notes (`--pptx`, `output.pptx`).
+- Brand from an existing presentation: color, fonts and logo from a `.pptx` (`brand.from`), font settings (`brand.fonts`), and an optional dark deck (`brand.theme: dark`).
+- Slack posting (`--slack`, `slack`).
+- `sprint-review mcp`: an MCP server for Claude Code, Cursor and other clients, and a Claude Code skill.
+- GitLab CI example.
+- The deck can be embedded and driven by the page around it (`sprint-review:go` / `sprint-review:slide` messages).
+- A website with a live demo, `llms.txt` and structured data.

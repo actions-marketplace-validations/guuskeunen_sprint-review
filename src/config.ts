@@ -34,7 +34,15 @@ export interface Config {
   /** The language of the slides, as a name or code: "English", "nl", "de-DE". */
   language: string;
   goal: string | null;
-  brand: { color: string | null; logo: string | null };
+  brand: {
+    color: string | null;
+    logo: string | null;
+    /** A .pptx whose theme color, fonts and logo fill in whatever is not set here. */
+    from: string | null;
+    /** light (default) or dark. */
+    theme: 'dark' | 'light';
+    fonts: { heading: string | null; body: string | null };
+  };
   sprint: { days: number };
   /** Folders that hold product code. A commit outside them can only go under the hood. Empty: every commit counts. */
   productPaths: string[];
@@ -48,19 +56,41 @@ export interface Config {
   rules: string[];
   /** Override any label on the slides, by key (see src/i18n.ts). */
   labels: Record<string, string>;
+  /** Let the writer rewrite the lines the second reader flagged, once. The rewrites go through every check again. */
+  revise: boolean;
+  /** Pull request titles and descriptions as extra context, from the GitHub API. */
+  github: { pullRequests: 'auto' | 'on' | 'off'; repo: string | null };
   areas: Record<string, Area>;
   screenshots: ScreenshotConfig;
   roadmap: string | null;
   usage: string | null;
   limits: { themes: number; themeScreens: number; changedScreens: number; commits: number };
-  model: { name: string; fallback: string | null; maxTokens: number };
-  output: { dir: string; markdown: boolean };
+  model: { provider: 'anthropic' | 'openai'; name: string; fallback: string | null; maxTokens: number };
+  output: { dir: string; markdown: boolean; pptx: boolean };
+  /** Post the summary to Slack after generating. The webhook URL comes from SLACK_WEBHOOK_URL. */
+  slack: boolean;
 }
 
 export type ScreenshotConfig =
   | { source: 'none' }
   | { source: 'git'; dir: string; names: Record<string, string>; ignore: { left: number; top: number } }
-  | { source: 'folder'; before: string; after: string; names: Record<string, string>; ignore: { left: number; top: number } };
+  | { source: 'folder'; before: string; after: string; names: Record<string, string>; ignore: { left: number; top: number } }
+  | { source: 'capture'; capture: CaptureConfig; names: Record<string, string>; ignore: { left: number; top: number } };
+
+export interface CaptureConfig {
+  /** The pages to photograph, by screen key. Relative URLs are resolved against baseUrl. */
+  pages: Record<string, string>;
+  baseUrl: string | null;
+  devices: ('desktop' | 'phone')[];
+  /** CSS selectors to black out before the picture is taken: a safety net for real data. */
+  mask: string[];
+  /** A Playwright storage state file with a logged-in session. */
+  storageState: string | null;
+  /** Milliseconds to wait after the page has loaded. */
+  wait: number;
+  /** Where the pictures are kept, one folder per day. Keep it between runs (commit it or cache it in CI). */
+  dir: string;
+}
 
 const DEFAULT_FILES = ['sprint-review.config.yml', 'sprint-review.config.yaml', 'sprint-review.config.json'];
 
@@ -123,7 +153,16 @@ export function normalize(raw: unknown, root: string): Config {
       'The presenter is technical, knows the product and gives a short demo of each theme.',
     language: str(r.language, 'language') ?? 'English',
     goal: str(r.goal, 'goal'),
-    brand: { color, logo: str(brand.logo, 'brand.logo') },
+    brand: {
+      color,
+      logo: str(brand.logo, 'brand.logo'),
+      from: str(brand.from, 'brand.from'),
+      theme: themeOf(str(brand.theme, 'brand.theme')),
+      fonts: {
+        heading: str(obj(brand.fonts ?? {}, 'brand.fonts').heading, 'brand.fonts.heading'),
+        body: str(obj(brand.fonts ?? {}, 'brand.fonts').body, 'brand.fonts.body'),
+      },
+    },
     sprint: { days: int(sprint.days, 'sprint.days', 14, 1, 120) },
     productPaths: strList(r.productPaths, 'productPaths'),
     ignore: strList(r.ignore, 'ignore'),
@@ -131,6 +170,8 @@ export function normalize(raw: unknown, root: string): Config {
     replace: strMap(r.replace, 'replace'),
     rules: strList(r.rules, 'rules'),
     labels: strMap(r.labels, 'labels'),
+    revise: r.revise === undefined ? true : bool(r.revise, 'revise'),
+    github: github(r.github),
     areas,
     screenshots: screenshots(r.screenshots),
     roadmap: r.roadmap === false ? null : (str(r.roadmap, 'roadmap') ?? 'ROADMAP.md'),
@@ -141,15 +182,13 @@ export function normalize(raw: unknown, root: string): Config {
       changedScreens: int(limits.changedScreens, 'limits.changedScreens', 4, 0, 12),
       commits: int(limits.commits, 'limits.commits', 1000, 1, 100000),
     },
-    model: {
-      name: str(model.name, 'model.name') ?? 'claude-opus-5-5',
-      fallback: model.fallback === null ? null : (str(model.fallback, 'model.fallback') ?? 'claude-sonnet-5-5'),
-      maxTokens: int(model.maxTokens, 'model.maxTokens', 8000, 1000, 64000),
-    },
+    model: modelConfig(model),
     output: {
       dir: str(output.dir, 'output.dir') ?? 'sprint-reviews',
       markdown: output.markdown === undefined ? true : bool(output.markdown, 'output.markdown'),
+      pptx: output.pptx === undefined ? false : bool(output.pptx, 'output.pptx'),
     },
+    slack: r.slack === undefined ? false : bool(r.slack, 'slack'),
   };
 }
 
@@ -172,7 +211,55 @@ function screenshots(value: unknown): ScreenshotConfig {
     if (!before || !after) throw new ConfigError('screenshots.before and screenshots.after are required when screenshots.source is folder.');
     return { source: 'folder', before, after, names, ignore };
   }
-  throw new ConfigError(`screenshots.source must be none, git or folder, not "${source}".`);
+  if (source === 'capture') {
+    const pages = strMap(s.pages, 'screenshots.pages');
+    if (!Object.keys(pages).length) throw new ConfigError('screenshots.pages is required when screenshots.source is capture: a screen key per URL.');
+    const devices = s.devices === undefined ? (['desktop'] as ('desktop' | 'phone')[]) : strList(s.devices, 'screenshots.devices');
+    for (const d of devices) if (d !== 'desktop' && d !== 'phone') throw new ConfigError('screenshots.devices can hold desktop and phone.');
+    return {
+      source: 'capture',
+      names,
+      ignore,
+      capture: {
+        pages,
+        baseUrl: str(s.baseUrl, 'screenshots.baseUrl'),
+        devices: devices as ('desktop' | 'phone')[],
+        mask: strList(s.mask, 'screenshots.mask'),
+        storageState: str(s.storageState, 'screenshots.storageState'),
+        wait: int(s.wait, 'screenshots.wait', 500, 0, 60000),
+        dir: str(s.storage, 'screenshots.storage') ?? '.sprint-review/screenshots',
+      },
+    };
+  }
+  throw new ConfigError(`screenshots.source must be none, git, folder or capture, not "${source}".`);
+}
+
+function themeOf(v: string | null): 'dark' | 'light' {
+  if (v === null || v === 'light') return 'light';
+  if (v === 'dark') return 'dark';
+  throw new ConfigError('brand.theme must be dark or light.');
+}
+
+function github(value: unknown): Config['github'] {
+  if (value === undefined || value === null) return { pullRequests: 'auto', repo: null };
+  const g = obj(value, 'github');
+  const pr = g.pullRequests;
+  const pullRequests = pr === undefined || pr === 'auto' ? 'auto' : pr === true ? 'on' : pr === false ? 'off' : null;
+  if (pullRequests === null) throw new ConfigError('github.pullRequests must be auto, true or false.');
+  const repo = str(g.repo, 'github.repo');
+  if (repo !== null && !/^[\w.-]+\/[\w.-]+$/.test(repo)) throw new ConfigError('github.repo must look like owner/name.');
+  return { pullRequests, repo };
+}
+
+const DEFAULT_MODELS = { anthropic: { name: 'claude-opus-5-5', fallback: 'claude-sonnet-5-5' } };
+
+function modelConfig(model: Record<string, unknown>): Config['model'] {
+  const provider = str(model.provider, 'model.provider') ?? 'anthropic';
+  if (provider !== 'anthropic' && provider !== 'openai') throw new ConfigError('model.provider must be anthropic or openai.');
+  const name = str(model.name, 'model.name') ?? (provider === 'anthropic' ? DEFAULT_MODELS.anthropic.name : null);
+  if (!name) throw new ConfigError('model.name is required when model.provider is openai, for example the model your account uses.');
+  const fallback = model.fallback === null ? null : (str(model.fallback, 'model.fallback') ?? (provider === 'anthropic' ? DEFAULT_MODELS.anthropic.fallback : null));
+  return { provider, name, fallback, maxTokens: int(model.maxTokens, 'model.maxTokens', 8000, 1000, 64000) };
 }
 
 function obj(v: unknown, at: string): Record<string, unknown> {

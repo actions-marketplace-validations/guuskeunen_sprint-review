@@ -1,14 +1,20 @@
 #!/usr/bin/env node
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { ConfigError, loadConfig, normalize, type Config } from './config.ts';
-import { generate, NothingToReview, render, sprintRange } from './generate.ts';
+import { generate, NothingToReview, sprintRange } from './generate.ts';
 import { GitError, History, type Range } from './history.ts';
-import { AnthropicClient, ModelError } from './model.ts';
+import { clientFor, ModelError } from './model.ts';
+import { writeOutputs } from './output.ts';
+import { doctorChecks } from './doctor.ts';
+import { startEditor } from './editor.ts';
+import { serveMcp } from './mcp.ts';
+import { capture, CaptureError } from './capture.ts';
+import { postToSlack } from './slack.ts';
+import { PptxError } from './pptx.ts';
 import { commitLog, writerSystem } from './prompt.ts';
-import { renderChecks } from './markdown.ts';
 import { ICONS } from './icons-data.ts';
 import { WriterError } from './writer.ts';
 import type { Review } from './types.ts';
@@ -33,7 +39,10 @@ ${bold('Commands')}
   generate        Write the review for a sprint (default command)
   init            Create sprint-review.config.yml in this folder
   render <file>   Rebuild the deck from an edited review.json
+  edit <file>     Edit a review.json in your browser, with the deck beside it
+  capture         Take today's screenshots of the pages in the config
   doctor          Check that everything is set up
+  mcp             Run as an MCP server (for Claude Code, Cursor and others)
   icons           List the icons themes can use
 
 ${bold('Options for generate')}
@@ -42,13 +51,18 @@ ${bold('Options for generate')}
   --from <ref>      Start at a tag or commit instead of a date
   --to <ref>        End at a tag or commit (default: HEAD)
   --out <dir>       Where to write (default: sprint-reviews/<date>)
+  --pptx            Also write deck.pptx (needs pptxgenjs)
+  --slack           Post the summary to SLACK_WEBHOOK_URL
+  --deck-url <url>  Link to the published deck, for the Slack message
   --dry-run         Show what would be sent to the AI, without calling it
   -c, --config      Path to the config file
   -q, --quiet       Only print the paths of what was written
   --json            Print the result as JSON
 
 ${bold('Environment')}
-  ANTHROPIC_API_KEY   Your Anthropic API key (required for generate)
+  ANTHROPIC_API_KEY   Your Anthropic API key (or OPENAI_API_KEY with model.provider: openai)
+  GITHUB_TOKEN        Optional: adds pull request descriptions as context
+  SLACK_WEBHOOK_URL   Optional: where --slack posts
 
 Docs: https://github.com/guuskeunen/sprint-review#readme`;
 
@@ -62,6 +76,10 @@ async function main(argv: string[]): Promise<number> {
       from: { type: 'string' },
       to: { type: 'string' },
       out: { type: 'string' },
+      pptx: { type: 'boolean' },
+      slack: { type: 'boolean' },
+      'deck-url': { type: 'string' },
+      port: { type: 'string' },
       config: { type: 'string', short: 'c' },
       'dry-run': { type: 'boolean' },
       quiet: { type: 'boolean', short: 'q' },
@@ -85,6 +103,13 @@ async function main(argv: string[]): Promise<number> {
       return doctor(values.config);
     case 'render':
       return rerender(positionals[1], values.config);
+    case 'edit':
+      return edit(positionals[1], values.config, values.port);
+    case 'capture':
+      return shoot(values.config);
+    case 'mcp':
+      serveMcp();
+      return new Promise<number>(() => {});
     case 'generate':
       return run(values);
     default:
@@ -93,7 +118,7 @@ async function main(argv: string[]): Promise<number> {
   }
 }
 
-type Flags = { since?: string; until?: string; from?: string; to?: string; out?: string; config?: string; 'dry-run'?: boolean; quiet?: boolean; json?: boolean };
+type Flags = { since?: string; until?: string; from?: string; to?: string; out?: string; config?: string; 'dry-run'?: boolean; quiet?: boolean; json?: boolean; pptx?: boolean; slack?: boolean; 'deck-url'?: string };
 
 async function run(flags: Flags): Promise<number> {
   const config = configOrDefaults(flags.config);
@@ -102,26 +127,31 @@ async function run(flags: Flags): Promise<number> {
 
   if (flags['dry-run']) return dryRun(config, range);
 
-  const model = new AnthropicClient(process.env.ANTHROPIC_API_KEY ?? '', config.model.name, config.model.fallback);
+  const model = clientFor(config.model);
   if (!quiet) out(`${orange('●')} ${bold('sprint-review')} ${dim(`v${pkg.version}`)}\n`);
   const started = Date.now();
   const result = await generate(config, { model, range, onStep: quiet ? undefined : (m) => out(`  ${dim('›')} ${m}`) });
 
   const dir = resolve(config.root, flags.out ?? join(config.output.dir, result.review.until));
-  mkdirSync(dir, { recursive: true });
-  const files = {
-    deck: join(dir, 'deck.html'),
-    review: join(dir, 'review.json'),
-    markdown: join(dir, 'review.md'),
-    checks: join(dir, 'checks.md'),
-  };
-  writeFileSync(files.deck, result.html);
-  writeFileSync(files.review, JSON.stringify(result.review, null, 2) + '\n');
-  if (config.output.markdown) writeFileSync(files.markdown, result.markdown);
-  writeFileSync(files.checks, renderChecks(result.review));
+  const written = await writeOutputs(result.review, config, dir, { pptx: flags.pptx ? true : undefined });
+  const files = Object.fromEntries(Object.entries({ deck: written.deck, review: written.review, markdown: written.markdown, checks: written.checks, pptx: written.pptx }).filter(([, v]) => v)) as Record<string, string>;
+
+  let slack: string | null = null;
+  if (flags.slack || config.slack) {
+    const hook = process.env.SLACK_WEBHOOK_URL;
+    if (!hook) slack = 'SLACK_WEBHOOK_URL is not set: nothing posted';
+    else {
+      try {
+        await postToSlack(hook, result.review, flags['deck-url'] ?? process.env.SPRINT_REVIEW_DECK_URL ?? null);
+        slack = 'posted';
+      } catch (e) {
+        slack = (e as Error).message;
+      }
+    }
+  }
 
   if (flags.json) {
-    out(JSON.stringify({ ...files, themes: result.review.themes.length, checks: result.review.checks.length, usage: result.usage }, null, 2));
+    out(JSON.stringify({ ...files, dir, themes: result.review.themes.length, checks: result.review.checks.length, usage: result.usage, ...(slack ? { slack } : {}) }, null, 2));
     return 0;
   }
   if (flags.quiet) {
@@ -131,10 +161,13 @@ async function run(flags: Flags): Promise<number> {
   const rel = (p: string) => relative(process.cwd(), p) || p;
   const warnings = result.review.checks.filter((x) => x.kind === 'warning').length;
   out(`\n${green('✓')} ${bold(`${result.review.themes.length} themes`)}, ${result.review.screens.length} before-and-after slides, ${result.review.checks.length} checks ${dim(`(${((Date.now() - started) / 1000).toFixed(0)}s, ${result.usage.input + result.usage.output} tokens)`)}\n`);
-  out(`  ${bold('Deck')}     ${rel(files.deck)}`);
-  out(`  ${bold('Content')}  ${rel(files.review)} ${dim('edit this, then run sprint-review render')}`);
-  out(`  ${bold('Checks')}   ${rel(files.checks)}${warnings ? yellow(` ${warnings} to look at`) : ''}`);
-  if (config.output.markdown) out(`  ${bold('Summary')}  ${rel(files.markdown)}`);
+  out(`  ${bold('Deck')}     ${rel(files.deck!)}`);
+  out(`  ${bold('Content')}  ${rel(files.review!)} ${dim('edit this, then run sprint-review render')}`);
+  out(`  ${bold('Checks')}   ${rel(files.checks!)}${warnings ? yellow(` ${warnings} to look at`) : ''}`);
+  if (files.markdown) out(`  ${bold('Summary')}  ${rel(files.markdown)}`);
+  if (files.pptx) out(`  ${bold('PowerPoint')} ${rel(files.pptx)}`);
+  if (slack) out(`  ${bold('Slack')}    ${slack === 'posted' ? green('posted') : yellow(slack)}`);
+  out(`\n  ${dim('Change anything:')} sprint-review edit ${rel(files.review!)}`);
   out('');
   return 0;
 }
@@ -150,13 +183,13 @@ function dryRun(config: Config, range: Range): number {
   out(`${bold('Range')}     ${range.kind === 'dates' ? `${range.from} to ${range.until}` : `${range.from}..${range.to}`}`);
   out(`${bold('Commits')}   ${commits.length} (${commits.filter((x) => x.product).length} touch product code)`);
   out(`${bold('Model')}     ${config.model.name}${config.model.fallback ? dim(` (fallback ${config.model.fallback})`) : ''}`);
-  out(`${bold('Estimate')}  about ${tokens.toLocaleString('en-US')} input tokens for the two calls\n`);
+  out(`${bold('Estimate')}  about ${tokens.toLocaleString('en-US')} input tokens for the writer and the reader\n`);
   for (const cm of commits.slice(0, 40)) out(`  ${dim(cm.hash)} ${cm.subject}${cm.product ? '' : dim(' [no product code]')}`);
   if (commits.length > 40) out(dim(`  … and ${commits.length - 40} more`));
   return 0;
 }
 
-function rerender(file: string | undefined, configPath: string | undefined): number {
+async function rerender(file: string | undefined, configPath: string | undefined): Promise<number> {
   if (!file) {
     err('Give the path of a review.json: sprint-review render sprint-reviews/2026-11-10/review.json');
     return 2;
@@ -168,42 +201,60 @@ function rerender(file: string | undefined, configPath: string | undefined): num
     return 2;
   }
   const config = configOrDefaults(configPath);
-  const { html, markdown } = render(review, config);
-  writeFileSync(join(dirname(path), 'deck.html'), html);
-  if (config.output.markdown) writeFileSync(join(dirname(path), 'review.md'), markdown);
-  out(`${green('✓')} Rebuilt ${relative(process.cwd(), join(dirname(path), 'deck.html'))}`);
+  const written = await writeOutputs(review, config, dirname(path));
+  out(`${green('✓')} Rebuilt ${relative(process.cwd(), written.deck)}${written.pptx ? ` and ${relative(process.cwd(), written.pptx)}` : ''}`);
   return 0;
 }
 
-function doctor(configPath: string | undefined): number {
-  let ok = true;
-  const line = (good: boolean, text: string, fix?: string) => {
-    out(`${good ? green('✓') : red('✗')} ${text}${!good && fix ? `\n    ${dim(fix)}` : ''}`);
-    if (!good) ok = false;
-  };
+async function edit(file: string | undefined, configPath: string | undefined, port: string | undefined): Promise<number> {
+  if (!file) {
+    err('Give the path of a review.json: sprint-review edit sprint-reviews/2026-11-10/review.json');
+    return 2;
+  }
+  const config = configOrDefaults(configPath);
+  const editor = await startEditor(resolve(file), config, port ? Number(port) : 4321);
+  out(`${orange('●')} ${bold('Editor')} running at ${bold(editor.url)}`);
+  out(dim('  Save rebuilds deck.html next to the review. Ctrl+C stops the editor.'));
+  openBrowser(editor.url);
+  return new Promise<number>((done) => process.on('SIGINT', () => editor.close().then(() => done(0))));
+}
+
+async function shoot(configPath: string | undefined): Promise<number> {
+  const config = configOrDefaults(configPath);
+  if (config.screenshots.source !== 'capture') {
+    err('capture needs screenshots.source: capture in the config, with the pages to photograph. See docs/screenshots.md.');
+    return 2;
+  }
+  const files = await capture(config.screenshots.capture, config.root, undefined, (m) => out(`  ${dim('›')} ${m}`));
+  out(`${green('✓')} ${files.length} screenshot${files.length === 1 ? '' : 's'} in ${relative(process.cwd(), dirname(files[0] ?? config.screenshots.capture.dir)) || '.'}`);
+  return 0;
+}
+
+function openBrowser(url: string): void {
+  if (process.env.CI || !process.stdout.isTTY) return;
+  const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'cmd' : 'xdg-open';
+  const args = process.platform === 'win32' ? ['/c', 'start', '', url] : [url];
+  import('node:child_process').then(({ spawn }) => {
+    try {
+      spawn(cmd, args, { stdio: 'ignore', detached: true }).on('error', () => {}).unref();
+    } catch {}
+  });
+}
+
+async function doctor(configPath: string | undefined): Promise<number> {
   out(`${bold('sprint-review doctor')}\n`);
-  let config: Config | null = null;
+  const show = (good: boolean, text: string, fix?: string) => out(`${good ? green('✓') : red('✗')} ${text}${!good && fix ? `\n    ${dim(fix)}` : ''}`);
+  let config: Config;
   try {
     config = configOrDefaults(configPath);
-    line(true, configPath || findConfig() ? `Config read from ${relative(process.cwd(), config.root) || '.'}` : 'No config file: using defaults');
+    show(true, configPath || findConfig() ? `Config read from ${relative(process.cwd(), config.root) || '.'}` : 'No config file: using defaults');
   } catch (e) {
-    line(false, (e as Error).message);
+    show(false, (e as Error).message);
+    return 1;
   }
-  if (config) {
-    try {
-      new History(config.repo).assertUsable();
-      line(true, `Git history readable in ${relative(process.cwd(), config.repo) || '.'}`);
-    } catch (e) {
-      line(false, (e as Error).message, 'Run inside a git repository, or set repo in the config.');
-    }
-    if (config.screenshots.source === 'folder') {
-      line(existsSync(resolve(config.root, config.screenshots.before)) && existsSync(resolve(config.root, config.screenshots.after)), 'Screenshot folders exist', 'Check screenshots.before and screenshots.after.');
-    }
-    if (config.brand.logo && !config.brand.logo.startsWith('data:')) line(existsSync(resolve(config.root, config.brand.logo)), 'Logo file exists', `Check brand.logo: ${config.brand.logo}`);
-  }
-  line(!!process.env.ANTHROPIC_API_KEY, 'ANTHROPIC_API_KEY is set', 'Create a key at https://console.anthropic.com and export ANTHROPIC_API_KEY=...');
-  const major = Number(process.versions.node.split('.')[0]);
-  line(major >= 20, `Node ${process.versions.node}`, 'sprint-review needs Node 20 or newer.');
+  const lines = await doctorChecks(config);
+  for (const l of lines) show(l.ok, l.text, l.fix);
+  const ok = lines.every((l) => l.ok);
   out(ok ? `\n${green('All set.')} Run ${bold('sprint-review generate')}.` : `\n${yellow('Fix the items above, then run doctor again.')}`);
   return ok ? 0 : 1;
 }
@@ -268,7 +319,7 @@ function err(s: string): void {
 main(process.argv.slice(2)).then(
   (code) => process.exit(code),
   (e: unknown) => {
-    const known = e instanceof ConfigError || e instanceof GitError || e instanceof ModelError || e instanceof WriterError || e instanceof NothingToReview;
+    const known = e instanceof ConfigError || e instanceof GitError || e instanceof ModelError || e instanceof WriterError || e instanceof NothingToReview || e instanceof CaptureError || e instanceof PptxError;
     err(e instanceof Error ? e.message : String(e));
     if (!known && e instanceof Error && e.stack) process.stderr.write(dim(e.stack) + '\n');
     process.exit(1);

@@ -79,6 +79,16 @@ export function screens(config: ScreenshotConfig, root: string, history: History
       if (!changedIds.includes(id)) changedIds.push(id);
     }
     firstInRange = (id) => (pathOf.has(id) ? history.oldestInRange(range, pathOf.get(id)!) : null);
+  } else if (config.source === 'capture') {
+    // One folder per day of pictures: the last one before the sprint started, and the last one by its end.
+    const base = resolve(root, config.capture.dir);
+    const { from, until } = rangeDays(range, history);
+    const days = existsSync(base) ? readdirSync(base).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort() : [];
+    const beforeDay = [...days].reverse().find((d) => d < from) ?? null;
+    const afterDay = [...days].reverse().find((d) => d <= until && d !== beforeDay) ?? null;
+    startPics = beforeDay ? folderPics(join(base, beforeDay)) : new Map();
+    endPics = afterDay ? folderPics(join(base, afterDay)) : new Map();
+    changedIds = [...endPics.keys()].filter((id) => startPics.has(id));
   } else {
     const folder = (dir: string) => {
       const abs = resolve(root, dir);
@@ -133,6 +143,25 @@ export function screens(config: ScreenshotConfig, root: string, history: History
       return endPics.get(`${key}|${device}`)?.() ?? null;
     },
   };
+}
+
+function folderPics(abs: string): Map<string, () => Buffer | null> {
+  const map = new Map<string, () => Buffer | null>();
+  if (!existsSync(abs)) return map;
+  for (const file of readdirSync(abs)) {
+    const p = parseFile(file);
+    if (p) map.set(`${p.key}|${p.device}`, () => readFileSync(join(abs, file)));
+  }
+  return map;
+}
+
+/** The first and last day of a range; for refs, the dates of the commits at both ends. */
+export function rangeDays(range: Range, history: History): { from: string; until: string } {
+  if (range.kind === 'dates') return { from: range.from, until: range.until };
+  const { start, end } = history.ends(range);
+  const day = (rev: string | null) => (rev ? history.git(['show', '-s', '--format=%cs', rev], true).trim() : '');
+  const today = new Date().toISOString().slice(0, 10);
+  return { from: day(start) || today, until: day(end) || today };
 }
 
 export function humanize(key: string): string {

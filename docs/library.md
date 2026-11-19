@@ -8,10 +8,10 @@ npm install @guuskeunen/sprint-review
 
 ```ts
 import { writeFileSync } from 'node:fs';
-import { AnthropicClient, generate, loadConfig } from '@guuskeunen/sprint-review';
+import { clientFor, generate, loadConfig, writeOutputs } from '@guuskeunen/sprint-review';
 
 const config = loadConfig('sprint-review.config.yml');
-const model = new AnthropicClient(process.env.ANTHROPIC_API_KEY!, config.model.name, config.model.fallback);
+const model = clientFor(config.model); // Anthropic or OpenAI, key from the environment
 
 const { review, html, markdown, usage } = await generate(config, {
   model,
@@ -20,6 +20,8 @@ const { review, html, markdown, usage } = await generate(config, {
 });
 
 writeFileSync('deck.html', html);
+// or everything at once: deck.html, review.json, review.md, checks.md (and deck.pptx)
+await writeOutputs(review, config, 'sprint-reviews/2026-11-16', { pptx: true });
 ```
 
 ## Main functions
@@ -31,7 +33,15 @@ writeFileSync('deck.html', html);
 | `generate(config, options)` | The whole pipeline. Returns `{ review, html, markdown, usage }`. |
 | `render(review, config)` | Rebuilds `{ html, markdown }` from a stored review. |
 | `sprintRange(days, until?)` | The range of the sprint that ends on a day. |
-| `renderDeck(review, options)` | Just the deck, with `{ color, logo, labels, goal }`. |
+| `renderDeck(review, options)` | Just the deck, with `{ color, logo, labels, goal, theme, fonts }`. |
+| `writeOutputs(review, config, dir, { pptx? })` | Writes every output file into a folder. |
+| `renderPptx(review, options)` | The PowerPoint as a Buffer (needs `pptxgenjs`). |
+| `brandFromPptx(file)` | `{ color, fonts, logo }` from a presentation's theme and master. |
+| `capture(config.screenshots.capture, root)` | Takes today's screenshots (needs Playwright). |
+| `startEditor(file, config, port?)` | Starts the local editor; returns `{ url, close }`. |
+| `withPullRequests(commits, repo, token)` | Adds pull request titles and descriptions. |
+| `postToSlack(webhook, review, deckUrl)` | Posts the summary. |
+| `clientFor(config.model)` | An `AnthropicClient` or `OpenAIClient` with the key from the environment. |
 | `renderMarkdown(review)`, `renderChecks(review)` | The Markdown summary and the check log. |
 | `compareScreens(before, after, device, ignore)` | The screenshot comparison on its own. |
 | `clean(text, maxWords, replace?)` | The text check on its own. |

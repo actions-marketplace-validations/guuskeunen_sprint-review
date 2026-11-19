@@ -6,6 +6,18 @@ The deck is a draft, but it's written to be presented as it is. Read it through 
 
 ## Changing the content
 
+### In the editor
+
+```bash
+npx @guuskeunen/sprint-review edit sprint-reviews/2026-11-16/review.json
+```
+
+This opens a local editor in your browser: the content on the left, the live deck on the right. Click into a theme and the preview jumps to its slide. Word counts show the same limits the checks use. **Save and rebuild** (or Ctrl/⌘ + S) writes `review.json` and rebuilds `deck.html` next to it. Ctrl+C in the terminal stops the editor.
+
+The editor only listens on `127.0.0.1`, and only the page it opened can talk to it. `--port` picks another port (default 4321).
+
+### By hand
+
 Everything on the slides is in `review.json`, next to the deck:
 
 ```json
@@ -52,7 +64,11 @@ npx @guuskeunen/sprint-review render sprint-reviews/2026-11-16/review.json
 
 `render` also picks up config changes: a new logo, color, goal or labels show up in old reviews when you render them again.
 
-A local visual editor (`sprint-review edit`) is on the [roadmap](../README.md#roadmap).
+## PowerPoint
+
+Some teams present from PowerPoint or Keynote, or want to add a slide by hand. Add `--pptx` (or set `output.pptx: true`) and `deck.pptx` is written next to the deck: the same slides, editable, with the speaker notes in the notes pane. It needs `pptxgenjs` (`npm i -D pptxgenjs`). `render` and the editor rebuild it too when `output.pptx` is on.
+
+The HTML deck stays the richer one: animations, the presenter window and before-and-after wipes don't exist in PowerPoint.
 
 ## Presenting
 

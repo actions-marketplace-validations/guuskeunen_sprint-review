@@ -9,10 +9,12 @@
     --accent-deep: #3730a3;
     --accent-soft: #eef2ff;
     --good: #059669;
+    --font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-heading: var(--font-body);
   }
   * { box-sizing: border-box; margin: 0; }
   html, body { height: 100%; background: var(--surface); color: var(--ink); overflow: hidden; }
-  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+  body { font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
 
   .slide {
     position: absolute; inset: 0;
@@ -39,6 +41,7 @@
   @keyframes breathe { 0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; } 50% { transform: scale(1.06) rotate(8deg); opacity: .7; } }
   @media (prefers-reduced-motion: reduce) { .slide.active .icon.draw :is(path, circle, rect, line, polyline, polygon, ellipse) { animation: none; } }
 
+  h1, h2, h3 { font-family: var(--font-heading); }
   h1 { font-size: clamp(2.2rem, 6.5vw, 5rem); line-height: 1.02; letter-spacing: -0.03em; font-weight: 750; }
   h2 { font-size: clamp(1.7rem, 4.2vw, 3.2rem); line-height: 1.08; letter-spacing: -0.02em; font-weight: 700; }
   p, li { font-size: clamp(1rem, 2.1vw, 1.55rem); line-height: 1.45; color: var(--ink-soft); }

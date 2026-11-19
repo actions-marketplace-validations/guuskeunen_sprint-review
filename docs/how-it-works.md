@@ -13,7 +13,7 @@ The reason: AI is great at turning "optimize status count queries" into "the pla
 ## The pipeline
 
 ```
-git history ──► commits, changed screenshots, roadmap
+git history ──► commits (+ pull requests), changed screenshots, roadmap
                       │
                       ▼
           AI writer (one call, structured output)
@@ -25,6 +25,9 @@ git history ──► commits, changed screenshots, roadmap
           AI reader (one call, sees only the slide text)
                       │
                       ▼
+          one rewrite of the flagged lines ──► the same checks again
+                      │
+                      ▼
           deck: pictures, numbers, icons, brand ──► deck.html, review.json, review.md, checks.md
 ```
 
@@ -33,6 +36,7 @@ git history ──► commits, changed screenshots, roadmap
 - `git log` for the range, without merge commits: hash, date, subject, body and changed files.
 - Trailer lines (`Co-authored-by:`, `Signed-off-by:`, "Generated with…") are removed from bodies, and bodies are cut at 600 characters.
 - Commits matching `ignore` are left out.
+- With a GitHub token, the pull request behind each product commit is looked up; its title (and, on its first commit, its description, cut at 800 characters and without HTML comments) is added to the log.
 - Each commit is marked as product work or not: it must touch a file under `productPaths` (if set) and must not be a `ci:`, `build:`, `test:`, `docs:` or `chore:` commit (`nonProductTypes`).
 
 ### 2. The writer
@@ -66,7 +70,11 @@ Everything that happened goes into `checks.md`. Nothing is fixed silently.
 
 ### 4. The reader
 
-A second call gets only the slide text: no commits, no context, nothing it could use to fill a gap. It reads as your audience and lists every sentence it gets stuck on, as *unclear* or as an empty *promise*. It never rewrites, so everything on the slides still passed the checks. Its findings go into `checks.md`. If the call fails, the draft is kept, with a "Not proofread" warning at the top of the check log.
+A second call gets only the slide text: no commits, no context, nothing it could use to fill a gap. It reads as your audience and lists every sentence it gets stuck on, as *unclear* or as an empty *promise*. The reader never rewrites anything itself. Its findings go into `checks.md`. If the call fails, the draft is kept, with a "Not proofread" warning at the top of the check log.
+
+### 4b. One rewrite
+
+The flagged lines go back to the writer, with the reader's reason, once. Each rewrite goes through the same checks as the first draft (word limits, references stripped, team words applied) and only replaces the original when it passes; it's logged as *corrected*, old and new side by side. A line that couldn't be fixed keeps its warning, so you know to look at it. `revise: false` turns this off.
 
 ### 5. The deck
 
@@ -75,13 +83,14 @@ Code builds the page from the checked content:
 - **Screenshots:** before and after slides only for changed screens the writer could explain in a line (at most `limits.changedScreens`). Theme pictures at most `limits.themeScreens`, and a picture never shows twice: not on two themes, and not on a theme when it already has a desktop before and after slide.
 - **Values:** the "What we gain" slide groups themes by the value the writer picked.
 - **Numbers:** usage comes from your `usage` file, milestones from your roadmap file at the end of the sprint. The model never writes a number.
-- **Brand:** your color (with lighter and darker shades mixed from it) and your logo.
+- **Brand:** your color (with lighter and darker shades mixed from it), your logo and fonts, or all three from a `.pptx` with `brand.from`. Light by default; `brand.theme: dark` for a dark deck.
 
 The result is one HTML file with everything inline: styles, script, icons, pictures. No fonts, scripts or images are loaded from anywhere, so it works offline and keeps working.
 
 ## What is sent to the AI
 
-- The writer gets: the system prompt (your product description, audience, language, rules), the commit log (hashes, dates, subjects, bodies, up to six file names per commit) and the names of the screens.
+- The writer gets: the system prompt (your product description, audience, language, rules), the commit log (hashes, dates, subjects, bodies, up to six file names per commit, pull request titles and descriptions when a token is set) and the names of the screens.
 - The reader gets: the slide text.
+- The rewrite gets: the slide text and the flagged lines with the reader's reasons.
 
 Never source code, never diffs, never pictures, never usage numbers.

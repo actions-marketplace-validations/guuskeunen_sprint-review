@@ -5,10 +5,12 @@ import type { ChangedScreen, Review, ReviewScreen, ReviewTheme, UsageMetric, Wri
 import { History, type Range } from './history.ts';
 import { screens as openScreens, type Screens } from './screenshots.ts';
 import { write } from './writer.ts';
+import { githubRepo, withPullRequests } from './github.ts';
 import type { ModelClient } from './model.ts';
 import { fill, labelsFor, longDate, shortDate } from './i18n.ts';
 import { renderDeck } from './render.ts';
 import { renderMarkdown } from './markdown.ts';
+import { brandFromPptx, type Brand } from './brand.ts';
 
 export class NothingToReview extends Error {}
 
@@ -18,6 +20,8 @@ export interface GenerateOptions {
   model: ModelClient;
   /** Called with a line for each step, for the CLI's progress output. */
   onStep?: (message: string) => void;
+  /** For the GitHub API; tests pass a fake. */
+  fetch?: typeof fetch;
 }
 
 export interface Generated {
@@ -45,9 +49,19 @@ export async function generate(config: Config, options: GenerateOptions): Promis
   history.assertUsable();
 
   step('Reading the git history');
-  const commits = history.commits(range, config.productPaths, config.ignore, config.limits.commits, config.nonProductTypes);
+  let commits = history.commits(range, config.productPaths, config.ignore, config.limits.commits, config.nonProductTypes);
   if (!commits.length) throw new NothingToReview(`No commits found ${describe(range)}.`);
   step(`Found ${commits.length} commit${commits.length === 1 ? '' : 's'} ${describe(range)}`);
+
+  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || null;
+  const wantPrs = config.github.pullRequests === 'on' || (config.github.pullRequests === 'auto' && token !== null);
+  const repo = wantPrs ? githubRepo(history, config.github.repo) : null;
+  if (repo) {
+    step(`Reading pull requests from ${repo}`);
+    const withPrs = await withPullRequests(commits, repo, token, options.fetch ?? fetch);
+    commits = withPrs.commits;
+    step(`${withPrs.found} pull request${withPrs.found === 1 ? '' : 's'} found`);
+  }
 
   const t = labelsFor(config.language, config.labels);
   const shots = openScreens(config.screenshots, config.root, history, range, { phone: t.phone, desktop: t.desktop });
@@ -89,9 +103,24 @@ export async function generate(config: Config, options: GenerateOptions): Promis
 
 /** Render a stored review again: after editing review.json, or after a brand change. */
 export function render(review: Review, config: Config): { html: string; markdown: string } {
+  const brand = resolvedBrand(config);
   return {
-    html: renderDeck(review, { color: config.brand.color, logo: logoDataUri(config), labels: config.labels, goal: config.goal }),
+    html: renderDeck(review, { color: brand.color, logo: brand.logo, labels: config.labels, goal: config.goal, theme: config.brand.theme, fonts: brand.fonts }),
     markdown: renderMarkdown(review, config.labels),
+  };
+}
+
+/** The brand as set in the config, with anything missing taken from brand.from (a .pptx). */
+export function resolvedBrand(config: Config): Brand {
+  const own = { color: config.brand.color, logo: logoDataUri(config), fonts: config.brand.fonts };
+  if (!config.brand.from) return own;
+  const file = resolve(config.root, config.brand.from);
+  if (!existsSync(file)) throw new Error(`brand.from not found: ${file}`);
+  const theirs = brandFromPptx(file);
+  return {
+    color: own.color ?? theirs.color,
+    logo: own.logo ?? theirs.logo,
+    fonts: { heading: own.fonts.heading ?? theirs.fonts.heading, body: own.fonts.body ?? theirs.fonts.body },
   };
 }
 

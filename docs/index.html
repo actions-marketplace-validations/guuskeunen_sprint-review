@@ -1,1 +1,448 @@
-<!doctype html><meta charset="utf-8"><title>sprint-review</title><meta http-equiv="refresh" content="0; url=demo/"><a href="demo/">Open the demo deck</a>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sprint-review: your sprint review deck, written from git</title>
+<meta name="description" content="Open-source CLI and GitHub Action that turns a sprint's git history into a sprint review deck the business understands. Every line traced to real commits, with before-and-after screenshots.">
+<link rel="canonical" href="https://guuskeunen.github.io/sprint-review/">
+<meta name="theme-color" content="#0a0a0d">
+<link rel="icon" type="image/svg+xml" href="assets/icon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="sprint-review">
+<meta property="og:title" content="sprint-review: your sprint review deck, written from git">
+<meta property="og:description" content="Turn a sprint's git history into a sprint review deck anyone can follow. Checked against the real commits. Open source.">
+<meta property="og:url" content="https://guuskeunen.github.io/sprint-review/">
+<meta property="og:image" content="https://guuskeunen.github.io/sprint-review/assets/social-preview.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="sprint-review: your sprint review deck, written from git">
+<meta name="twitter:description" content="Turn a sprint's git history into a sprint review deck anyone can follow. Checked against the real commits.">
+<meta name="twitter:image" content="https://guuskeunen.github.io/sprint-review/assets/social-preview.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "sprint-review",
+  "alternateName": "@guuskeunen/sprint-review",
+  "description": "Open-source CLI, GitHub Action and MCP server that turns a sprint's git history into a sprint review presentation in business language, with every line checked against the real commits and before-and-after screenshots.",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "macOS, Linux, Windows (Node.js 20+)",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "license": "https://opensource.org/licenses/MIT",
+  "url": "https://guuskeunen.github.io/sprint-review/",
+  "downloadUrl": "https://www.npmjs.com/package/@guuskeunen/sprint-review",
+  "codeRepository": "https://github.com/guuskeunen/sprint-review",
+  "author": { "@type": "Person", "name": "Guus Keunen" },
+  "keywords": "sprint review, sprint demo, scrum, release notes, changelog, presentation, git, GitHub Action, MCP"
+}
+</script>
+<style>
+  :root {
+    --bg: #09090b; --ink: #f4efe6; --soft: #b5aea2; --faint: #7a746b; --line: rgb(244 239 230 / .08); --line-2: rgb(244 239 230 / .14);
+    --gold: #d6b36a; --gold-hi: #f6e3b4; --gold-lo: #9c7a3c; --glow: rgb(214 179 106 / .22);
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", "Hoefler Text", Georgia, serif;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.6 var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  body::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 100; opacity: .35; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  a { color: inherit; text-decoration: none; }
+  .wrap { width: min(1180px, 100% - 48px); margin: 0 auto; }
+  .gold { background: linear-gradient(180deg, var(--gold-hi) 5%, var(--gold) 55%, var(--gold-lo)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+  /* Nav */
+  nav { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(14px) saturate(1.2); background: rgb(9 9 11 / .65); border-bottom: 1px solid var(--line); }
+  nav .wrap { display: flex; align-items: center; gap: 28px; height: 64px; }
+  .brand { display: flex; align-items: center; gap: 10px; font: 500 20px var(--serif); letter-spacing: -.01em; }
+  .brand img { width: 30px; height: 30px; }
+  .brand b { color: var(--gold); font-weight: 400; margin: 0 -.02em; }
+  nav .links { display: flex; gap: 24px; margin-left: auto; font-size: 14.5px; color: var(--soft); }
+  nav .links a:hover { color: var(--ink); }
+  .btn { display: inline-flex; align-items: center; gap: 8px; font: 600 14.5px var(--sans); padding: 10px 18px; border-radius: 999px; border: 1px solid var(--line-2); background: rgb(244 239 230 / .04); color: var(--ink); cursor: pointer; transition: border-color .25s, transform .25s, background .25s; }
+  .btn:hover { border-color: rgb(214 179 106 / .55); transform: translateY(-1px); }
+  .btn.gold-btn { background: linear-gradient(180deg, #ecd294, #b8914a); color: #17120a; border-color: transparent; box-shadow: 0 10px 30px -12px var(--glow), inset 0 1px 0 rgb(255 255 255 / .45); }
+  .btn svg { width: 16px; height: 16px; }
+
+  /* Hero */
+  header.hero { position: relative; padding: 96px 0 40px; text-align: center; }
+  header.hero::before { content: ""; position: absolute; left: 50%; top: -260px; width: 1100px; height: 760px; transform: translateX(-50%); background: radial-gradient(closest-side, rgb(214 179 106 / .16), transparent 70%); pointer-events: none; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 12px; font: 600 12px var(--sans); letter-spacing: .3em; text-transform: uppercase; color: var(--gold); }
+  .eyebrow::before, .eyebrow::after { content: ""; width: 36px; height: 1px; background: linear-gradient(90deg, transparent, var(--gold)); }
+  .eyebrow::after { transform: scaleX(-1); }
+  h1 { font: 400 clamp(44px, 7.4vw, 92px)/1.0 var(--serif); letter-spacing: -.025em; margin: 22px auto 22px; max-width: 13ch; }
+  h1 em { font-style: italic; }
+  .lede { max-width: 640px; margin: 0 auto; color: var(--soft); font-size: clamp(17px, 1.6vw, 20px); }
+  .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 34px; }
+  .copy { display: inline-flex; align-items: center; gap: 14px; font: 14.5px var(--mono); padding: 10px 10px 10px 18px; border-radius: 999px; border: 1px solid rgb(214 179 106 / .28); background: rgb(214 179 106 / .05); color: var(--ink); cursor: pointer; }
+  .copy span::before { content: "$ "; color: var(--faint); }
+  .copy i { font: 600 12px var(--sans); font-style: normal; padding: 5px 10px; border-radius: 999px; background: rgb(244 239 230 / .07); color: var(--soft); transition: color .2s; }
+  .copy.done i { color: var(--gold); }
+  .meta { margin-top: 18px; font-size: 13px; color: var(--faint); letter-spacing: .02em; }
+
+  /* The stage: terminal, then the deck */
+  .stage { position: relative; margin: 64px auto 0; width: min(1100px, 100%); aspect-ratio: 1100 / 659; perspective: 1800px; }
+  .stage::after { content: ""; position: absolute; left: 8%; right: 8%; bottom: -60px; height: 120px; background: radial-gradient(closest-side, rgb(214 179 106 / .28), transparent); filter: blur(30px); z-index: -1; }
+  .window { position: absolute; inset: 0; border-radius: 16px; border: 1px solid var(--line-2); background: #0e0e12; box-shadow: 0 80px 160px -60px #000, inset 0 1px 0 rgb(244 239 230 / .06); overflow: hidden; display: grid; grid-template-rows: 40px 1fr; transition: opacity .7s ease, transform 1s cubic-bezier(.2, .8, .2, 1), filter .7s; }
+  .bar { display: flex; align-items: center; gap: 8px; padding: 0 16px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, #15151a, #0f0f13); }
+  .bar i { width: 11px; height: 11px; border-radius: 50%; background: #2c2c33; }
+  .bar span { margin: 0 auto; font-size: 12.5px; color: var(--faint); letter-spacing: .02em; transform: translateX(-24px); }
+  .bar .live { margin-left: auto; margin-right: 0; transform: none; display: flex; align-items: center; gap: 6px; color: var(--gold); font-weight: 600; letter-spacing: .14em; font-size: 10.5px; text-transform: uppercase; }
+  .bar .live::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 10px var(--gold); animation: pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  #term { z-index: 2; }
+  #term pre { margin: 0; padding: 28px 32px; font: 15px/1.75 var(--mono); color: #d9d3c7; white-space: pre-wrap; text-align: left; }
+  #term .p { color: var(--gold); }
+  #term .d { color: var(--faint); }
+  #term .ok { color: #9bd3b0; }
+  #term .b { color: var(--ink); font-weight: 600; }
+  #term .caret { display: inline-block; width: .6em; height: 1.15em; vertical-align: -.2em; background: var(--gold); animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  #deckwin { opacity: 0; transform: translateY(40px) rotateX(10deg) scale(.94); filter: blur(6px); z-index: 1; }
+  .stage.open #term { opacity: 0; transform: translateY(-30px) scale(.96); filter: blur(8px); pointer-events: none; }
+  .stage.open #deckwin { opacity: 1; transform: none; filter: none; z-index: 3; }
+  #deckwin .view { position: relative; overflow: hidden; background: #fff; }
+  #deckwin iframe { position: absolute; left: 0; top: 0; width: 1440px; height: 810px; border: 0; display: block; background: #fff; transform-origin: 0 0; }
+  .deck-ctl { position: absolute; left: 50%; bottom: -54px; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; color: var(--faint); font-size: 13px; opacity: 0; transition: opacity .6s .6s; white-space: nowrap; }
+  .stage.open .deck-ctl { opacity: 1; }
+  .dots { display: flex; gap: 6px; }
+  .dots b { width: 6px; height: 6px; border-radius: 50%; background: rgb(244 239 230 / .16); transition: background .3s, width .3s; }
+  .dots b.on { width: 22px; border-radius: 6px; background: var(--gold); }
+  .deck-ctl button { font: inherit; color: var(--soft); background: none; border: 1px solid var(--line-2); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+  .deck-ctl button:hover { color: var(--ink); border-color: rgb(214 179 106 / .5); }
+
+  /* Sections */
+  section { padding: 140px 0 0; }
+  .kicker { font: 600 12px var(--sans); letter-spacing: .3em; text-transform: uppercase; color: var(--gold); display: flex; align-items: center; gap: 12px; }
+  .kicker::before { content: ""; width: 36px; height: 1px; background: linear-gradient(90deg, transparent, var(--gold)); }
+  h2 { font: 400 clamp(34px, 4.6vw, 58px)/1.05 var(--serif); letter-spacing: -.02em; margin: 18px 0 18px; max-width: 18ch; }
+  .sub { color: var(--soft); max-width: 620px; margin: 0; }
+
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 56px; counter-reset: s; }
+  .step { position: relative; padding: 28px 24px 26px; border-radius: 18px; border: 1px solid var(--line); background: linear-gradient(180deg, rgb(244 239 230 / .045), rgb(244 239 230 / .01)); box-shadow: inset 0 1px 0 rgb(244 239 230 / .05); }
+  .step::before { counter-increment: s; content: "0" counter(s); font: 400 15px var(--serif); color: var(--gold); letter-spacing: .1em; }
+  .step h3 { font: 500 22px/1.2 var(--serif); margin: 18px 0 8px; }
+  .step p { color: var(--soft); font-size: 15px; margin: 0; }
+
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 56px; border-radius: 20px; overflow: hidden; background: var(--line); border: 1px solid var(--line); }
+  .feature { padding: 34px 30px; background: #0c0c0f; transition: background .4s; }
+  .feature:hover { background: #111115; }
+  .feature svg { width: 26px; height: 26px; color: var(--gold); }
+  .feature h3 { font: 500 21px/1.25 var(--serif); margin: 18px 0 8px; }
+  .feature p { color: var(--soft); font-size: 15px; margin: 0; }
+
+  .split { display: grid; grid-template-columns: 1fr 1.1fr; gap: 60px; align-items: center; }
+  .code { border-radius: 16px; border: 1px solid var(--line-2); background: #0e0e12; overflow: hidden; box-shadow: 0 50px 100px -50px #000; }
+  .code .bar span { transform: none; }
+  .code pre { margin: 0; padding: 24px 26px; font: 14px/1.75 var(--mono); color: #d9d3c7; overflow-x: auto; }
+  .code .k { color: var(--gold); } .code .s { color: #9bd3b0; } .code .c { color: var(--faint); }
+  .tabs { display: flex; gap: 4px; padding: 0 10px; }
+  .tabs button { font: 12.5px var(--sans); color: var(--faint); background: none; border: 0; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+  .tabs button.on { color: var(--ink); background: rgb(244 239 230 / .06); }
+
+  .quote { margin: 0 auto; max-width: 880px; text-align: center; }
+  .quote blockquote { font: 400 clamp(28px, 3.6vw, 44px)/1.25 var(--serif); letter-spacing: -.015em; margin: 0; }
+  .quote cite { display: block; margin-top: 22px; font: normal 600 12px var(--sans); letter-spacing: .28em; text-transform: uppercase; color: var(--gold); }
+
+  .faq { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 40px; margin-top: 48px; }
+  details { border-bottom: 1px solid var(--line); padding: 18px 0; }
+  summary { cursor: pointer; list-style: none; font: 500 19px var(--serif); display: flex; justify-content: space-between; gap: 20px; }
+  summary::after { content: "+"; color: var(--gold); font-family: var(--sans); transition: transform .3s; }
+  details[open] summary::after { transform: rotate(45deg); }
+  details p { color: var(--soft); font-size: 15.5px; margin: 10px 0 0; }
+
+  .final { text-align: center; padding: 160px 0 120px; position: relative; }
+  .final::before { content: ""; position: absolute; left: 50%; top: 40px; width: 900px; height: 500px; transform: translateX(-50%); background: radial-gradient(closest-side, rgb(214 179 106 / .12), transparent 70%); pointer-events: none; }
+  .final h2 { margin: 18px auto; }
+  footer { border-top: 1px solid var(--line); padding: 30px 0 46px; color: var(--faint); font-size: 13.5px; }
+  footer .wrap { display: flex; gap: 24px; flex-wrap: wrap; align-items: center; }
+  footer .wrap > :first-child { margin-right: auto; }
+  footer a:hover { color: var(--ink); }
+
+  .reveal { opacity: 0; transform: translateY(24px); transition: opacity .9s ease, transform 1s cubic-bezier(.2, .8, .2, 1); }
+  .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } .window, .deck-ctl { transition: none; } }
+  @media (max-width: 900px) {
+    nav .links a:not(.keep) { display: none; }
+    .steps, .features, .faq { grid-template-columns: 1fr; }
+    .split { grid-template-columns: 1fr; gap: 30px; }
+    #term pre { font-size: 12px; padding: 18px; }
+    section { padding-top: 100px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="./"><img src="assets/icon.svg" alt=""><span>sprint<b>-</b>review</span></a>
+    <div class="links">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#start">Get started</a>
+      <a href="https://github.com/guuskeunen/sprint-review#readme">Docs</a>
+    </div>
+    <a class="btn keep" href="https://github.com/guuskeunen/sprint-review"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.56-.29-5.25-1.28-5.25-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.7 5.38-5.27 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/></svg>Star on GitHub</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow">Open source · MIT</span>
+    <h1>Your sprint review, <em class="gold">written from git.</em></h1>
+    <p class="lede">sprint-review reads what your team shipped and writes the deck the business understands. Every line traced to a real commit, real screenshots of what changed, ready before the meeting.</p>
+    <div class="cta">
+      <button class="copy" id="copy" type="button" aria-label="Copy the command"><span>npx @guuskeunen/sprint-review</span><i>Copy</i></button>
+      <a class="btn" href="demo/">Open the demo deck →</a>
+    </div>
+    <p class="meta">CLI · GitHub Action · MCP server · Node 20+ · Claude or OpenAI</p>
+
+    <div class="stage" id="stage" aria-label="A demo: the command runs, then the deck it made plays">
+      <div class="window" id="term" aria-hidden="true">
+        <div class="bar"><i></i><i></i><i></i><span>~/northside/spoke</span></div>
+        <pre id="out"></pre>
+      </div>
+      <div class="window" id="deckwin">
+        <div class="bar"><i></i><i></i><i></i><span>sprint-reviews/2026-11-16/deck.html</span><span class="live">Live deck</span></div>
+        <div class="view" id="view"><iframe id="deck" title="Demo sprint review deck" tabindex="-1"></iframe></div>
+      </div>
+      <div class="deck-ctl"><div class="dots" id="dots"></div><span id="ctl-text">Playing</span><button type="button" id="replay">Replay</button><a class="btn" href="demo/" style="padding:4px 12px;font-weight:500">Full screen ↗</a></div>
+    </div>
+  </div>
+</header>
+
+<section id="how">
+  <div class="wrap">
+    <p class="kicker reveal">How it works</p>
+    <h2 class="reveal">The model writes. The code checks.</h2>
+    <p class="sub reveal">A model alone gets the words right and the facts wrong. So the words come from the model, and everything that has to be true is done in code.</p>
+    <div class="steps">
+      <div class="step reveal"><h3>Read the sprint</h3><p>Commits, changed files and pull request descriptions from your git history, by date or by tag.</p></div>
+      <div class="step reveal"><h3>Write for the room</h3><p>Themes in the language of your audience: what changed for them, not which files moved.</p></div>
+      <div class="step reveal"><h3>Check every line</h3><p>Each point must name real commits. Plumbing moves under the hood. A second reader flags what's unclear, and it gets rewritten.</p></div>
+      <div class="step reveal"><h3>Ship the deck</h3><p>One self-contained HTML deck with speaker notes and a presenter view. Also PowerPoint and Markdown.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <p class="kicker reveal">Features</p>
+    <h2 class="reveal">Built to run every sprint, unattended.</h2>
+    <div class="features reveal">
+      <div class="feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg><h3>Traced to commits</h3><p>A line that can't name the commits behind it doesn't make the deck. Every correction is logged in checks.md.</p></div>
+      <div class="feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="9" height="14" rx="2"/><rect x="13" y="4" width="9" height="14" rx="2"/><path d="M6.5 21h11"/></svg><h3>Before and after</h3><p>Screenshots diffed pixel by pixel: from your visual tests, a folder, or taken by the tool from your app's URLs.</p></div>
+      <div class="feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><h3>A second reader</h3><p>A separate call reads only the slides, like your audience will. Lines it stumbles on are rewritten once and checked again.</p></div>
+      <div class="feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><h3>In CI, on a schedule</h3><p>A GitHub Action and a GitLab template: the deck is ready on review day, posted to Slack if you like.</p></div>
+      <div class="feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><h3>Edit in your browser</h3><p>sprint-review edit opens the content beside the live deck. Change a word, see the slide, save.</p></div>
+      <div class="feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><circle cx="17.5" cy="15.5" r="2.5"/><path d="M8.6 11.3 11.4 7.7M8.9 13.5l6.3 1.3"/></svg><h3>Your brand, your agent</h3><p>Colors, fonts and logo from your own PowerPoint. Runs from Claude Code, Cursor and other MCP clients.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="start">
+  <div class="wrap split">
+    <div>
+      <p class="kicker reveal">Get started</p>
+      <h2 class="reveal">One command. No config needed.</h2>
+      <p class="sub reveal">Run it in any git repository with an API key set. Add a config later to name your product, set the audience and point it at your screenshots.</p>
+      <div class="cta reveal" style="justify-content:flex-start">
+        <a class="btn gold-btn" href="https://github.com/guuskeunen/sprint-review/blob/main/docs/getting-started.md">Read the guide</a>
+        <a class="btn" href="https://www.npmjs.com/package/@guuskeunen/sprint-review">npm package</a>
+      </div>
+    </div>
+    <div class="code reveal">
+      <div class="bar"><div class="tabs" role="tablist"><button class="on" data-tab="cli">Terminal</button><button data-tab="action">GitHub Action</button><button data-tab="mcp">Claude Code</button></div></div>
+<pre data-pane="cli"><span class="c"># a preview of what it reads, no AI call</span>
+npx @guuskeunen/sprint-review --dry-run
+
+<span class="c"># write the deck for the last sprint</span>
+<span class="k">export</span> ANTHROPIC_API_KEY=...
+npx @guuskeunen/sprint-review
+
+<span class="c"># change anything, with the deck beside it</span>
+npx @guuskeunen/sprint-review edit sprint-reviews/2026-11-16/review.json</pre>
+<pre data-pane="action" hidden><span class="k">on</span>:
+  <span class="k">schedule</span>: [{ <span class="k">cron</span>: <span class="s">'0 7 * * 5'</span> }]
+<span class="k">jobs</span>:
+  <span class="k">deck</span>:
+    <span class="k">runs-on</span>: ubuntu-latest
+    <span class="k">steps</span>:
+      - <span class="k">uses</span>: actions/checkout@v4
+        <span class="k">with</span>: { <span class="k">fetch-depth</span>: 0 }
+      - <span class="k">uses</span>: guuskeunen/sprint-review@v0
+        <span class="k">with</span>:
+          <span class="k">anthropic-api-key</span>: ${{ secrets.ANTHROPIC_API_KEY }}</pre>
+<pre data-pane="mcp" hidden><span class="c"># add the MCP server</span>
+claude mcp add sprint-review -- npx -y @guuskeunen/sprint-review mcp
+
+<span class="c"># then just ask</span>
+<span class="s">&gt; make our sprint review for the last two weeks</span></pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap quote reveal">
+    <blockquote>“I finally understand what the developers did.”</blockquote>
+    <cite>Project manager, on the first generated review</cite>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <p class="kicker reveal">Questions</p>
+    <h2 class="reveal">Good to know</h2>
+    <div class="faq reveal">
+      <details><summary>Why not just ask an AI for a sprint review?</summary><p>You can, once. sprint-review does it every sprint with no one in the loop: it reads the exact range, refuses lines it can't trace to commits, diffs real screenshots, and keeps a log of every correction. The result is something you can present without checking it line by line.</p></details>
+      <details><summary>What does it send to the model?</summary><p>Commit subjects, bodies, changed file names and, if you allow it, pull request descriptions. Never your code. Run --dry-run to see exactly what would be sent.</p></details>
+      <details><summary>What does a run cost?</summary><p>Two or three model calls per sprint, typically a few cents to a few dimes depending on the size of the sprint and the model.</p></details>
+      <details><summary>Which models does it work with?</summary><p>Anthropic's Claude models by default, with a fallback model on errors. OpenAI and compatible endpoints work too.</p></details>
+      <details><summary>Can it match our company style?</summary><p>Set a color and logo, or point it at an existing PowerPoint: it takes the accent color, fonts and logo from the theme. There's a light and a dark deck.</p></details>
+      <details><summary>Does it work without screenshots?</summary><p>Yes. Screenshots make the deck better, but themes, speaker notes, milestones and usage numbers all work without them.</p></details>
+    </div>
+  </div>
+</section>
+
+<div class="final">
+  <div class="wrap">
+    <span class="eyebrow">Ready on review day</span>
+    <h2>Spend the hour on the demo, <em class="gold">not the slides.</em></h2>
+    <div class="cta">
+      <a class="btn gold-btn" href="https://github.com/guuskeunen/sprint-review">Get sprint-review</a>
+      <a class="btn" href="demo/">See the demo deck</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <span>sprint-review · MIT license · made by Guus Keunen</span>
+    <a href="https://github.com/guuskeunen/sprint-review">GitHub</a>
+    <a href="https://www.npmjs.com/package/@guuskeunen/sprint-review">npm</a>
+    <a href="https://github.com/guuskeunen/sprint-review/blob/main/CHANGELOG.md">Changelog</a>
+    <a href="llms.txt">llms.txt</a>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Copy the command
+  var copy = document.getElementById('copy');
+  copy.addEventListener('click', function () {
+    navigator.clipboard && navigator.clipboard.writeText('npx @guuskeunen/sprint-review').then(function () {
+      copy.classList.add('done'); copy.querySelector('i').textContent = 'Copied';
+      setTimeout(function () { copy.classList.remove('done'); copy.querySelector('i').textContent = 'Copy'; }, 1800);
+    });
+  });
+
+  // Code tabs
+  Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (b) {
+    b.addEventListener('click', function () {
+      Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (x) { x.classList.toggle('on', x === b); });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-pane]'), function (p) { p.hidden = p.getAttribute('data-pane') !== b.getAttribute('data-tab'); });
+    });
+  });
+
+  // Reveal on scroll
+  var io = 'IntersectionObserver' in window ? new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }); }, { threshold: .15 }) : null;
+  Array.prototype.forEach.call(document.querySelectorAll('.reveal'), function (el) { io ? io.observe(el) : el.classList.add('in'); });
+
+  // The show: the command runs, then the deck it made opens and plays itself.
+  var stage = document.getElementById('stage'), out = document.getElementById('out'), deck = document.getElementById('deck');
+  var dots = document.getElementById('dots'), ctlText = document.getElementById('ctl-text');
+  var SCRIPT = [
+    ['type', 'npx @guuskeunen/sprint-review'],
+    ['line', '<span class="d">●</span> <span class="b">sprint-review</span> <span class="d">v0.1.0</span>', 500],
+    ['line', '', 120],
+    ['line', '  <span class="d">›</span> Reading the git history', 420],
+    ['line', '  <span class="d">›</span> Found 23 commits from 2026-11-03 to 2026-11-16', 520],
+    ['line', '  <span class="d">›</span> Reading pull requests from northside/spoke', 520],
+    ['line', '  <span class="d">›</span> Comparing screenshots', 460],
+    ['line', '  <span class="d">›</span> 3 screens changed, 8 pictures available', 600],
+    ['line', '  <span class="d">›</span> Writing the slides with claude-opus-5-5', 1300],
+    ['line', '  <span class="d">›</span> A second reader checks the slides', 900],
+    ['line', '  <span class="d">›</span> Rewrote 1 line the reader got stuck on', 600],
+    ['line', '', 100],
+    ['line', '<span class="ok">✓</span> <span class="b">5 themes</span>, 3 before-and-after slides, 9 checks', 450],
+    ['line', '  <span class="b">Deck</span>     sprint-reviews/2026-11-16/deck.html', 260],
+    ['line', '  <span class="b">Checks</span>   sprint-reviews/2026-11-16/checks.md', 900],
+  ];
+  var timers = [], playing = false, expected = 0, current = 1, total = 15, autoplay = null;
+  function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
+  function clear() { timers.forEach(clearTimeout); timers = []; clearInterval(autoplay); }
+
+  function run() {
+    clear();
+    stage.classList.remove('open');
+    out.innerHTML = '';
+    var html = '', t = 600;
+    var prompt = '<span class="p">❯</span> ';
+    SCRIPT.forEach(function (s) {
+      if (s[0] === 'type') {
+        var text = s[1];
+        for (var i = 0; i <= text.length; i++) (function (i) { later(function () { out.innerHTML = prompt + text.slice(0, i) + '<span class="caret"></span>'; }, t + i * 38); })(i);
+        t += text.length * 38 + 450;
+        html = prompt + text + '\n';
+        (function (h) { later(function () { out.innerHTML = h; }, t); })(html);
+      } else {
+        t += s[2];
+        html += s[1] + '\n';
+        (function (h) { later(function () { out.innerHTML = h; }, t); })(html);
+      }
+    });
+    later(open, t + 300);
+  }
+
+  function open() {
+    if (!deck.src) deck.src = 'demo/';
+    stage.classList.add('open');
+    play();
+  }
+  function go(n) { expected = n; deck.contentWindow && deck.contentWindow.postMessage({ type: 'sprint-review:go', to: n }, '*'); }
+  function play() {
+    playing = true; ctlText.textContent = 'Playing · click the deck to take over';
+    clearInterval(autoplay);
+    later(function () { go(1); }, 50);
+    autoplay = setInterval(function () { go(current >= total ? 1 : current + 1); }, 3600);
+  }
+  function stop() { playing = false; clearInterval(autoplay); ctlText.textContent = 'Use ← → to browse'; }
+  function drawDots() {
+    if (dots.children.length !== total) { dots.innerHTML = ''; for (var i = 0; i < total; i++) dots.appendChild(document.createElement('b')); }
+    Array.prototype.forEach.call(dots.children, function (d, i) { d.classList.toggle('on', i === current - 1); });
+  }
+  window.addEventListener('message', function (e) {
+    if (e.source !== deck.contentWindow || !e.data || e.data.type !== 'sprint-review:slide') return;
+    current = e.data.n; total = e.data.total; drawDots();
+    if (playing && expected && current !== expected) stop(); // someone clicked or used the keys
+  });
+  // Clicking into the deck means they want to drive.
+  window.addEventListener('blur', function () { if (document.activeElement === deck && playing) stop(); });
+  document.getElementById('replay').addEventListener('click', run);
+
+  // The deck is laid out at its real size, 1440 by 810, and scaled to the frame.
+  var view = document.getElementById('view');
+  function fit() { var k = Math.min(view.clientWidth / 1440, view.clientHeight / 810); deck.style.transform = 'translate(' + (view.clientWidth - 1440 * k) / 2 + 'px,' + (view.clientHeight - 810 * k) / 2 + 'px) scale(' + k + ')'; }
+  fit();
+  'ResizeObserver' in window ? new ResizeObserver(fit).observe(view) : window.addEventListener('resize', fit);
+
+  // Start when the stage scrolls into view (it usually is on load).
+  if (reduce) { deck.src = 'demo/'; stage.classList.add('open'); ctlText.textContent = 'Use ← → to browse'; return; }
+  var started = false;
+  var so = 'IntersectionObserver' in window ? new IntersectionObserver(function (es) { if (es[0].isIntersecting && !started) { started = true; run(); so.disconnect(); } }, { threshold: .3 }) : null;
+  so ? so.observe(stage) : run();
+  // Load the deck early so it's ready when the terminal finishes.
+  setTimeout(function () { if (!deck.src) deck.src = 'demo/'; }, 1200);
+})();
+</script>
+</body>
+</html>

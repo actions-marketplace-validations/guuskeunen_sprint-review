@@ -7,8 +7,17 @@ branding:
 
 inputs:
   anthropic-api-key:
-    description: Your Anthropic API key. Store it as a repository secret.
-    required: true
+    description: Your Anthropic API key. Store it as a repository secret. Required unless you use openai-api-key with model.provider openai.
+    required: false
+    default: ''
+  openai-api-key:
+    description: Your OpenAI API key, for model.provider openai in the config.
+    required: false
+    default: ''
+  github-token:
+    description: Token to read pull request titles and descriptions as context. Empty string turns it off.
+    required: false
+    default: ${{ github.token }}
   config:
     description: Path to the config file. Default sprint-review.config.yml (or .yaml/.json), or built-in defaults when there is none.
     required: false
@@ -33,6 +42,18 @@ inputs:
     description: Folder to write to. Default sprint-reviews/<date>.
     required: false
     default: ''
+  pptx:
+    description: Also write deck.pptx, an editable PowerPoint.
+    required: false
+    default: 'false'
+  slack:
+    description: Post the summary to Slack. Set SLACK_WEBHOOK_URL in the step's env from a secret.
+    required: false
+    default: 'false'
+  deck-url:
+    description: Link to the published deck, for the button in the Slack message.
+    required: false
+    default: ''
   summary:
     description: Add the review and its checks to the job summary.
     required: false
@@ -55,6 +76,9 @@ outputs:
   checks:
     description: Path of the check log (checks.md).
     value: ${{ steps.run.outputs.checks }}
+  pptx:
+    description: Path of deck.pptx, when pptx is true.
+    value: ${{ steps.run.outputs.pptx }}
   dir:
     description: The folder everything was written to.
     value: ${{ steps.run.outputs.dir }}
@@ -80,6 +104,11 @@ runs:
       shell: bash
       env:
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        OPENAI_API_KEY: ${{ inputs.openai-api-key }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        SR_PPTX: ${{ inputs.pptx }}
+        SR_SLACK: ${{ inputs.slack }}
+        SR_DECK_URL: ${{ inputs.deck-url }}
         SR_CONFIG: ${{ inputs.config }}
         SR_SINCE: ${{ inputs.since }}
         SR_UNTIL: ${{ inputs.until }}
@@ -95,13 +124,16 @@ runs:
         [ -n "$SR_FROM" ] && args+=(--from "$SR_FROM")
         [ -n "$SR_TO" ] && args+=(--to "$SR_TO")
         [ -n "$SR_OUT" ] && args+=(--out "$SR_OUT")
+        [ "$SR_PPTX" = "true" ] && args+=(--pptx)
+        [ "$SR_SLACK" = "true" ] && args+=(--slack)
+        [ -n "$SR_DECK_URL" ] && args+=(--deck-url "$SR_DECK_URL")
         result="$(npx --yes "@guuskeunen/sprint-review@${SR_VERSION}" "${args[@]}")"
         echo "$result"
         node -e '
           const r = JSON.parse(process.argv[1]);
           const path = require("node:path");
-          const lines = ["deck", "review", "markdown", "checks"].map((k) => `${k}=${r[k]}`);
-          lines.push(`dir=${path.dirname(r.deck)}`);
+          const lines = ["deck", "review", "markdown", "checks", "pptx"].filter((k) => r[k]).map((k) => `${k}=${r[k]}`);
+          lines.push(`dir=${r.dir || path.dirname(r.deck)}`);
           require("node:fs").appendFileSync(process.env.GITHUB_OUTPUT, lines.join("\n") + "\n");
         ' "$result"
 

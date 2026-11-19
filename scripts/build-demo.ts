@@ -15,7 +15,7 @@ const config = normalize(
     product: { name: 'Spoke', description: 'the planning and customer app of Northside Cycles, a chain of bike repair shops' },
     organization: 'Northside Cycles',
     goal: 'One customer page for the front desk',
-    brand: { color: '#ea580c' },
+    brand: { color: '#a37b35' },
     productPaths: ['src/'],
     screenshots: { source: 'git', dir: 'e2e/__screenshots__', names: { 'customer-page': 'Customer page', planner: 'Workshop planner', repairs: 'Repairs' }, ignore: { left: 0, top: 0 } },
     usage: join(root, 'test/fixtures/usage.json'),

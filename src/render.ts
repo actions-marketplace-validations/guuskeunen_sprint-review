@@ -5,6 +5,7 @@ import { fill, labelsFor, localeOf, type Labels } from './i18n.ts';
 import { hoodIcon, themeIcon, valueIcon, VALUE_KEYS } from './icons.ts';
 
 const CSS = readFileSync(fileURLToPath(new URL('../assets/deck.css', import.meta.url)), 'utf8');
+const DARK_CSS = readFileSync(fileURLToPath(new URL('../assets/deck-dark.css', import.meta.url)), 'utf8');
 
 export interface RenderOptions {
   /** #rrggbb */
@@ -13,6 +14,16 @@ export interface RenderOptions {
   logo?: string | null;
   labels?: Record<string, string>;
   goal?: string | null;
+  /** light (default) or dark. */
+  theme?: 'dark' | 'light';
+  /** Font families as CSS would take them. Fonts must be installed where the deck is shown. */
+  fonts?: { heading?: string | null; body?: string | null };
+}
+
+/** A font name from a config or a .pptx, quoted, with the theme's own fonts behind it. Anything odd is dropped. */
+function fontStack(name: string): string {
+  const clean = name.replace(/[^\p{L}\p{N} ._-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 60);
+  return clean ? `"${clean}", var(--font-body, system-ui), sans-serif` : 'inherit';
 }
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -166,13 +177,20 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
 </section>`);
 
   const hasNotes = !!review.summaryNotes || review.themes.some((th) => th.notes);
-  const brandCss = color
-    ? `:root { --accent: ${color}; --accent-deep: color-mix(in srgb, ${color} 70%, #0f172a); --accent-soft: color-mix(in srgb, ${color} 9%, #fff); }`
-    : '';
+  const theme = options.theme === 'dark' ? 'dark' : 'light';
+  const brandCss = !color
+    ? ''
+    : theme === 'dark'
+      ? `html[data-theme="dark"] { --accent: ${color}; --accent-deep: color-mix(in srgb, ${color} 65%, #000); --accent-soft: color-mix(in srgb, ${color} 12%, transparent); --accent-glow: color-mix(in srgb, ${color} 24%, transparent); }`
+      : `:root { --accent: ${color}; --accent-deep: color-mix(in srgb, ${color} 70%, #0f172a); --accent-soft: color-mix(in srgb, ${color} 9%, #fff); }`;
+  const fontCss = [
+    options.fonts?.heading ? `--font-heading: ${fontStack(options.fonts.heading)};` : '',
+    options.fonts?.body ? `--font-body: ${fontStack(options.fonts.body)};` : '',
+  ].join(' ').trim();
   const lang = localeOf(review.language);
 
   return `<!doctype html>
-<html lang="${esc(lang)}">
+<html lang="${esc(lang)}" data-theme="${theme}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -184,7 +202,9 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
 <script>document.documentElement.classList.add('js')</script>
 <style>
 ${CSS}
+${theme === 'dark' ? DARK_CSS : ''}
   ${brandCss}
+  ${fontCss ? `html[data-theme] { ${fontCss} }` : ''}
   :root { --notes-label: "${t.notesLabel.replace(/["\\]/g, '')}"; }
 </style>
 </head>
@@ -249,10 +269,24 @@ function script(t: Labels, lang: string): string {
     slides[current].classList.add('active');
     progress.style.width = ((current + 1) / slides.length * 100) + '%';
     counter.textContent = (current + 1) + ' / ' + slides.length;
-    if (history.replaceState) history.replaceState(null, '', '#' + (current + 1));
+    try { if (history.replaceState) history.replaceState(null, '', '#' + (current + 1)); } catch (e) { /* not allowed in an embedded preview */ }
     countUp(slides[current]);
     tellPresenter();
+    // Embedded (the editor's preview, a landing page): tell the page around it where we are.
+    if (window.parent !== window) window.parent.postMessage({ type: 'sprint-review:slide', n: current + 1, total: slides.length }, '*');
   }
+  // ...and let it move the deck: { type: 'sprint-review:go', to: 3 | 'next' | 'prev' }.
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (window.parent === window || e.source !== window.parent || !d || d.type !== 'sprint-review:go') return;
+    if (d.to === 'next') show(current + 1);
+    else if (d.to === 'prev') show(current - 1);
+    else if (typeof d.to === 'number') show(d.to - 1);
+  });
+  window.addEventListener('hashchange', function () {
+    var n = parseInt((location.hash || '').slice(1), 10);
+    if (n > 0 && n - 1 !== current) show(n - 1);
+  });
 
   document.addEventListener('keydown', function (e) {
     if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].indexOf(e.key) !== -1) { e.preventDefault(); show(current + 1); }

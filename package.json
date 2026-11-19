@@ -4,7 +4,7 @@
     "access": "public"
   },
   "version": "0.1.0",
-  "description": "Turn a sprint's git history into a sprint review deck that non-technical colleagues can follow. AI writes the words, code checks every claim.",
+  "description": "Turn a sprint's git history into a sprint review deck anyone can follow. AI writes the words, code checks every line against the real commits. CLI, GitHub Action and MCP server.",
   "license": "MIT",
   "author": "Guus Keunen",
   "repository": {
@@ -28,7 +28,9 @@
     "assets",
     "action.yml",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "skills",
+    "examples"
   ],
   "engines": {
     "node": ">=20"
@@ -37,7 +39,8 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test test/*.test.ts",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "docs": "node scripts/build-demo.ts && node scripts/build-llms.ts"
   },
   "dependencies": {
     "sharp": "^0.34.0",
@@ -48,12 +51,38 @@
     "typescript": "^5.7.0"
   },
   "keywords": [
-    "sprint-review",
-    "scrum",
-    "changelog",
-    "presentation",
-    "git",
+    "agile",
     "ai",
-    "claude"
-  ]
+    "changelog",
+    "claude",
+    "deck",
+    "git",
+    "github-action",
+    "llm",
+    "mcp",
+    "mcp-server",
+    "openai",
+    "pptx",
+    "presentation",
+    "release-notes",
+    "scrum",
+    "slides",
+    "sprint demo",
+    "sprint review",
+    "sprint-review",
+    "stakeholder-update"
+  ],
+  "homepage": "https://guuskeunen.github.io/sprint-review/",
+  "optionalDependencies": {
+    "pptxgenjs": "^4.0.1"
+  },
+  "peerDependencies": {
+    "playwright": ">=1.40"
+  },
+  "peerDependenciesMeta": {
+    "playwright": {
+      "optional": true
+    }
+  },
+  "mcpName": "io.github.guuskeunen/sprint-review"
 }

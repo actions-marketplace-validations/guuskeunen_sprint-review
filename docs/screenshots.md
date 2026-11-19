@@ -5,7 +5,7 @@ Before and after pictures are what make a sprint review land. sprint-review can 
 - **Before and after slides** for screens that changed during the sprint, with one line on what to look at.
 - **A screenshot on a theme slide**, when one shows what the theme is about.
 
-The tool never takes screenshots of your live product, so no customer data ends up on a slide. It works with pictures you already have. Screenshots are always optional: without them, theme slides show an icon instead and the deck still looks complete.
+There are three ways to get them: from your visual tests, from two folders, or taken by the tool from URLs you choose (best on staging with demo data, so no customer data ends up on a slide). Screenshots are always optional: without them, theme slides show an icon instead and the deck still looks complete.
 
 ## Option 1: pictures from your visual tests (`git`)
 
@@ -56,6 +56,43 @@ screenshots:
 
 Pictures that are in both folders and differ are compared exactly as above. Pictures in `after` are also available for theme slides.
 
+## Option 3: the tool takes them (`capture`)
+
+No visual tests? Give sprint-review the pages and it photographs them with Playwright. Each run keeps the pictures in a folder per day; the next review compares the last pictures from before the sprint with the newest ones.
+
+```bash
+npm install --save-dev playwright
+npx playwright install chromium
+```
+
+```yaml
+screenshots:
+  source: capture
+  baseUrl: https://staging.example.com
+  pages:
+    customer-page: /customers/1042      # screen key: path or full URL
+    planner: /planner?branch=north
+  devices: [desktop, phone]             # default: desktop
+  mask: [".email", "[data-private]"]    # painted over before the picture is taken
+  storageState: .auth/staging.json      # optional: a logged-in session
+  wait: 800                             # ms after the page settles, default 500
+  storage: .sprint-review/screenshots   # default
+  names:
+    customer-page: Customer page
+```
+
+Take today's pictures:
+
+```bash
+npx @guuskeunen/sprint-review capture
+```
+
+Run `capture` at the end of every sprint, right before `generate` (in CI: as a step before it). Keep the storage folder between runs: commit it, or cache it in CI. The first run has nothing to compare with, so its pictures only show on theme slides.
+
+- **Point it at staging with demo data**, never production. `mask` is a safety net, not a plan.
+- **A login?** Save one with `npx playwright codegen --save-storage=.auth/staging.json https://staging.example.com`, and keep that file out of git.
+- **No Playwright browser download?** Set `SPRINT_REVIEW_CHROME` to a Chrome or Chromium binary.
+
 ## File names
 
 | File name | Screen key | Device |
@@ -81,6 +118,3 @@ areas:
   planner: { icon: calendar, label: Workshop planner, screen: planner }
 ```
 
-## Coming later
-
-Taking pictures automatically from a staging URL with Playwright, with selectors to black out. Follow the [roadmap](../README.md#roadmap).

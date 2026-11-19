@@ -8,6 +8,8 @@ export interface Commit {
   files: string[];
   /** Whether the commit touched product code (see `productPaths` in the config). */
   product: boolean;
+  /** The pull request that brought the commit in, when the GitHub API was reachable. */
+  pullRequest?: { number: number; title: string; body: string };
 }
 
 export interface Screenshot {

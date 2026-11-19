@@ -16,7 +16,7 @@ Run sprint-review on a schedule, so the draft is ready before the meeting.
 name: Sprint review
 on:
   schedule:
-    - cron: '0 7 * * 2'   # every Tuesday at 07:00 UTC
+    - cron: '0 7 * * 5'   # review day (here Friday) at 07:00 UTC
   workflow_dispatch:       # and a button to run it by hand
 
 jobs:
@@ -122,13 +122,18 @@ Turn on Pages first: Settings → Pages → Source: **GitHub Actions**. Pages on
 
 | Input | Default | Description |
 |---|---|---|
-| `anthropic-api-key` | **required** | Your Anthropic API key, from a secret. |
+| `anthropic-api-key` | | Your Anthropic API key, from a secret. Required unless you use OpenAI. |
+| `openai-api-key` | | Your OpenAI API key, for `model.provider: openai`. |
+| `github-token` | `github.token` | Reads pull request titles and descriptions as context. `''` turns it off. |
 | `config` | auto | Path to the config file. |
 | `since` | | First day of the sprint, `YYYY-MM-DD`. |
 | `until` | today | Last day of the sprint. |
 | `from` | | Start at a tag or commit instead of a date. |
 | `to` | `HEAD` | End at a tag or commit. |
 | `out` | `sprint-reviews/<date>` | Folder to write to. |
+| `pptx` | `false` | Also write `deck.pptx`. |
+| `slack` | `false` | Post the summary to `SLACK_WEBHOOK_URL`. |
+| `deck-url` | | Link to the published deck, for the Slack button. |
 | `summary` | `true` | Add the review and the check log to the job summary. |
 | `version` | `0` | The npm version of `@guuskeunen/sprint-review` to run. `0` means the newest 0.x. |
 
@@ -141,6 +146,7 @@ Turn on Pages first: Settings → Pages → Source: **GitHub Actions**. Pages on
 | `review` | Path of `review.json`. |
 | `markdown` | Path of `review.md`. |
 | `checks` | Path of `checks.md`. |
+| `pptx` | Path of `deck.pptx`, when `pptx` is on. |
 
 ## Reviews per release instead of per sprint
 
@@ -174,17 +180,62 @@ The action is a thin wrapper around the CLI. Anywhere with Node 20 and a full gi
 npx --yes @guuskeunen/sprint-review generate --json
 ```
 
-For example in GitLab CI:
+### GitLab CI
+
+A ready-to-copy job, with an optional GitLab Pages job, is in [`examples/gitlab-ci.yml`](../examples/gitlab-ci.yml):
 
 ```yaml
 sprint-review:
   image: node:22
   variables:
-    GIT_DEPTH: 0
-  script:
-    - npx --yes @guuskeunen/sprint-review
-  artifacts:
-    paths: [sprint-reviews/]
+    GIT_DEPTH: 0          # the whole history
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
+  script:
+    - npx --yes @guuskeunen/sprint-review@0 generate --out sprint-review-deck
+  artifacts:
+    paths: [sprint-review-deck/]
+```
+
+Set `ANTHROPIC_API_KEY` as a masked CI/CD variable, and add a pipeline schedule for review day.
+
+## Posting to Slack
+
+Create an [incoming webhook](https://api.slack.com/messaging/webhooks), store it as a secret, and pass `--slack`. The message has the title, the summary points and one line per theme, plus a button to the deck when you give its URL:
+
+```yaml
+      - uses: guuskeunen/sprint-review@v0
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          slack: true
+          deck-url: https://acme.github.io/spoke/sprint-review/
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+```
+
+## Pull request descriptions
+
+In GitHub Actions the action passes the workflow's `GITHUB_TOKEN`, so pull request titles and descriptions are read automatically (see [`github`](configuration.md#github) in the config). Give the job `pull-requests: read` permission if your repository restricts the token:
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: read
+```
+
+## Screenshots taken in CI
+
+With `screenshots.source: capture`, run `capture` before `generate` and keep the pictures between runs with a cache:
+
+```yaml
+      - uses: actions/cache@v4
+        with:
+          path: .sprint-review/screenshots
+          key: sprint-review-shots-${{ github.run_id }}
+          restore-keys: sprint-review-shots-
+      - run: npm i -D playwright && npx playwright install --with-deps chromium
+      - run: npx @guuskeunen/sprint-review capture
+      - uses: guuskeunen/sprint-review@v0
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
