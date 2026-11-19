@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { loadConfig, normalize, type Config } from './config.ts';
 import { generate, sprintRange } from './generate.ts';
 import { History, type Range } from './history.ts';
-import { clientFor } from './model.ts';
+import { clientFor } from './providers.ts';
 import { commitLog } from './prompt.ts';
 import { writeOutputs } from './output.ts';
 import { doctorChecks } from './doctor.ts';

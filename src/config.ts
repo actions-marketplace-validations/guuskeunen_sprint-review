@@ -1,3 +1,4 @@
+import { isLocal, PROVIDERS, type ProviderName } from './providers.ts';
 import { readFileSync, existsSync } from 'node:fs';
 import { dirname, resolve, extname } from 'node:path';
 import YAML from 'yaml';
@@ -65,10 +66,27 @@ export interface Config {
   roadmap: string | null;
   usage: string | null;
   limits: { themes: number; themeScreens: number; changedScreens: number; commits: number };
-  model: { provider: 'anthropic' | 'openai'; name: string; fallback: string | null; maxTokens: number };
+  model: ModelConfig;
   output: { dir: string; markdown: boolean; pptx: boolean };
   /** Post the summary to Slack after generating. The webhook URL comes from SLACK_WEBHOOK_URL. */
   slack: boolean;
+}
+
+export type Provider = ProviderName;
+
+export interface ModelConfig {
+  provider: Provider;
+  name: string;
+  fallback: string | null;
+  maxTokens: number;
+  /** An OpenAI-compatible endpoint: Azure, a gateway, a local server. Defaults per provider. */
+  baseUrl: string | null;
+  /** tools: forced tool call (best). json: ask for JSON that matches a schema, for servers that don't force tools well. */
+  mode: 'tools' | 'json';
+  /** How much of the commit log the model gets, in characters. Small local models have small context windows. */
+  maxInputChars: number;
+  /** Bedrock: the AWS region. Default AWS_REGION. */
+  region: string | null;
 }
 
 export type ScreenshotConfig =
@@ -251,15 +269,32 @@ function github(value: unknown): Config['github'] {
   return { pullRequests, repo };
 }
 
-const DEFAULT_MODELS = { anthropic: { name: 'claude-opus-5-5', fallback: 'claude-sonnet-5-5' } };
-
-function modelConfig(model: Record<string, unknown>): Config['model'] {
-  const provider = str(model.provider, 'model.provider') ?? 'anthropic';
-  if (provider !== 'anthropic' && provider !== 'openai') throw new ConfigError('model.provider must be anthropic or openai.');
-  const name = str(model.name, 'model.name') ?? (provider === 'anthropic' ? DEFAULT_MODELS.anthropic.name : null);
-  if (!name) throw new ConfigError('model.name is required when model.provider is openai, for example the model your account uses.');
-  const fallback = model.fallback === null ? null : (str(model.fallback, 'model.fallback') ?? (provider === 'anthropic' ? DEFAULT_MODELS.anthropic.fallback : null));
-  return { provider, name, fallback, maxTokens: int(model.maxTokens, 'model.maxTokens', 8000, 1000, 64000) };
+function modelConfig(model: Record<string, unknown>): ModelConfig {
+  const provider = (str(model.provider, 'model.provider') ?? 'anthropic') as ProviderName;
+  if (!PROVIDERS.includes(provider)) throw new ConfigError(`model.provider must be one of ${PROVIDERS.join(', ')}.`);
+  const local = isLocal(provider);
+  const name = str(model.name, 'model.name') ?? (provider === 'anthropic' ? 'claude-opus-5-5' : null);
+  if (!name) throw new ConfigError(`model.name is required when model.provider is ${provider}: ${provider === 'bedrock' ? 'the Bedrock model or inference profile id' : local ? 'the model you pulled, such as qwen3:32b' : 'the model your account uses'}.`);
+  const fallback = model.fallback === null ? null : (str(model.fallback, 'model.fallback') ?? (provider === 'anthropic' ? 'claude-sonnet-5-5' : null));
+  const baseUrl = str(model.baseUrl, 'model.baseUrl');
+  if (baseUrl !== null && !/^https?:\/\//.test(baseUrl)) throw new ConfigError('model.baseUrl must start with http:// or https://.');
+  if ((provider === 'anthropic' || provider === 'bedrock') && baseUrl !== null) throw new ConfigError(`model.baseUrl is not used for ${provider}.`);
+  if (provider === 'azure' && baseUrl === null) throw new ConfigError('model.baseUrl is required for azure: https://<resource>.openai.azure.com/openai/v1');
+  const mode = str(model.mode, 'model.mode') ?? (local ? 'json' : 'tools');
+  if (mode !== 'tools' && mode !== 'json') throw new ConfigError('model.mode must be tools or json.');
+  if ((provider === 'anthropic' || provider === 'bedrock') && mode === 'json') throw new ConfigError(`model.mode json is not used for ${provider}: it always forces the tool.`);
+  const region = str(model.region, 'model.region');
+  if (region !== null && provider !== 'bedrock') throw new ConfigError('model.region is only for bedrock.');
+  return {
+    provider,
+    name,
+    fallback,
+    maxTokens: int(model.maxTokens, 'model.maxTokens', 8000, 1000, 64000),
+    baseUrl,
+    mode,
+    maxInputChars: int(model.maxInputChars, 'model.maxInputChars', local ? 24_000 : 120_000, 4_000, 400_000),
+    region,
+  };
 }
 
 function obj(v: unknown, at: string): Record<string, unknown> {

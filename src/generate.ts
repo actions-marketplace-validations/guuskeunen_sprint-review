@@ -70,7 +70,7 @@ export async function generate(config: Config, options: GenerateOptions): Promis
   const available = shots.available();
   if (config.screenshots.source !== 'none') step(`${changed.length} screen${changed.length === 1 ? '' : 's'} changed, ${available.size} picture${available.size === 1 ? '' : 's'} available`);
 
-  step(`Writing the slides with ${config.model.name}`);
+  step(`Writing the slides with ${config.model.name}${config.model.provider === 'anthropic' ? '' : ` via ${config.model.provider}`}`);
   const { written, usage } = await write(options.model, config, commits, changed.map((c) => c.name), [...available.keys()]);
 
   const reviewScreens = explained(changed, written.screenCaptions, config.limits.changedScreens);

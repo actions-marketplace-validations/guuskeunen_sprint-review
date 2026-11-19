@@ -22,13 +22,15 @@ Quick start (Node 20+, inside a git repository):
 - [Screenshots](https://github.com/guuskeunen/sprint-review/blob/main/docs/screenshots.md): from visual tests, a folder, or captured from URLs
 - [GitHub Action and CI](https://github.com/guuskeunen/sprint-review/blob/main/docs/github-action.md): schedule, Pages, Slack, GitLab
 - [Editing](https://github.com/guuskeunen/sprint-review/blob/main/docs/editing.md): the editor, review.json, PowerPoint
-- [Integrations](https://github.com/guuskeunen/sprint-review/blob/main/docs/integrations.md): MCP server, Claude Code skill, OpenAI, Slack, pull requests
+- [Integrations](https://github.com/guuskeunen/sprint-review/blob/main/docs/integrations.md): MCP server, Claude Code skill, Slack, pull requests
+- [Models and providers](https://github.com/guuskeunen/sprint-review/blob/main/docs/models.md)
+- [Security and privacy](https://github.com/guuskeunen/sprint-review/blob/main/docs/security.md)
 - [How it works](https://github.com/guuskeunen/sprint-review/blob/main/docs/how-it-works.md): the writer, the checks, the second reader
 - [Troubleshooting](https://github.com/guuskeunen/sprint-review/blob/main/docs/troubleshooting.md) and [FAQ](https://github.com/guuskeunen/sprint-review/blob/main/docs/faq.md)
 
 ## Facts
 
-- Models: Anthropic by default (claude-opus-5-5, falling back to claude-sonnet-5-5); OpenAI with `model.provider: openai` and `model.name`.
+- Models: Anthropic by default (claude-opus-5-5, falling back to claude-sonnet-5-5). Also `model.provider`: bedrock, azure, openai, openrouter, gemini, mistral, ollama, lmstudio (local: nothing leaves the network).
 - Sends commit subjects, bodies, file names and (with GITHUB_TOKEN) pull request descriptions. Never source code.
 - Checks in code: each point must cite real commit hashes or it is dropped; ci/build/test/docs/chore commits only go under the hood; word limits; ticket and PR numbers stripped; a team word list applied; a second model call reads only the slides and flags unclear lines, which are rewritten once and checked again. All logged in checks.md.
 - Brand: `brand.color`, `brand.logo`, `brand.fonts`, or `brand.from: our-template.pptx` to take the theme color, fonts and logo from a PowerPoint. `brand.theme: light` (default) or `dark`.
@@ -171,7 +173,9 @@ screenshots:
 - [Screenshots](docs/screenshots.md): before and after slides from your visual tests, a folder, or captured from URLs
 - [GitHub Action](docs/github-action.md): scheduled reviews, pull requests, GitHub Pages, Slack, GitLab
 - [Editing and presenting](docs/editing.md): the editor, presenting, PDF and PowerPoint
-- [Integrations](docs/integrations.md): MCP server, Claude Code skill, OpenAI, Slack, pull request context
+- [Integrations](docs/integrations.md): MCP server, Claude Code skill, Slack, pull request context
+- [Models and providers](docs/models.md): Claude, Bedrock, Azure, OpenAI, OpenRouter, Gemini, Mistral, Ollama, LM Studio
+- [Security and privacy](docs/security.md): what it reads, what it sends where, what it never does
 - [How it works](docs/how-it-works.md): the pipeline and every check
 - [Using it as a library](docs/library.md): the Node API
 - [Troubleshooting](docs/troubleshooting.md) and [FAQ](docs/faq.md)
@@ -179,7 +183,7 @@ screenshots:
 
 ## Privacy and cost
 
-- **What leaves your machine:** commit subjects, bodies and file names of the sprint, pull request titles and descriptions when a GitHub token is set, plus your product description, sent to Anthropic's (or OpenAI's) API with your own key. **Never source code, never screenshots.** Pictures are compared and placed locally.
+- **What leaves your machine:** commit subjects, bodies and file names of the sprint, pull request titles and descriptions when a GitHub token is set, plus your product description, sent to the AI provider you choose with your own key. **Never source code, never screenshots.** No sprint-review server, no telemetry. With a local model (Ollama, LM Studio) nothing leaves your network at all. → **[Security and privacy](docs/security.md)**
 - **What it costs:** two or three API calls per review, billed to your own account. `--dry-run` shows how many tokens a review will use before you spend anything. Pick a smaller model in the config if you want it cheaper.
 
 ## Roadmap
@@ -192,7 +196,8 @@ screenshots:
 - [x] Brand from an existing deck: color, fonts and logo from a `.pptx`
 - [x] PowerPoint export with speaker notes
 - [x] Local editor (`sprint-review edit`)
-- [x] GitLab CI template, Slack posting, OpenAI as a second provider
+- [x] GitLab CI template, Slack posting
+- [x] More models: Bedrock, Azure, OpenAI, OpenRouter, Gemini, Mistral, Ollama, LM Studio
 - [x] MCP server and Claude Code skill
 - [ ] Linked issues (GitHub, Jira, Linear) as extra context
 - [ ] Export into your own PowerPoint layouts, not just its look
@@ -605,18 +610,22 @@ labels:
 
 | Key | Default | Description |
 |---|---|---|
-| `provider` | `anthropic` | `anthropic` or `openai`. |
-| `name` | `claude-opus-5-5` | The model for every call. Required for `openai`. |
-| `fallback` | `claude-sonnet-5-5` | Used when the first model fails after retries. `null` to turn off. |
+| `provider` | `anthropic` | `anthropic`, `bedrock`, `openai`, `azure`, `openrouter`, `gemini`, `mistral`, `ollama` or `lmstudio`. See [models and providers](models.md). |
+| `name` | `claude-opus-5-5` | The model for every call. Required for every provider but `anthropic`. |
+| `fallback` | `claude-sonnet-5-5` | Used when the first model fails after retries. `null` to turn off. Default none for other providers. |
 | `maxTokens` | `8000` | Room for the writer's answer. |
+| `baseUrl` | per provider | The endpoint, for `azure` (required), a gateway or a local server on another port. |
+| `mode` | `tools` | `json` asks for JSON matching the schema instead of forcing a tool call. Default `json` for `ollama` and `lmstudio`. |
+| `maxInputChars` | `120000` | How much of the commit log the model gets. `24000` for local models. |
+| `region` | `AWS_REGION` | `bedrock` only. |
 
-The API key always comes from the environment, never from the config, so the config can be committed: `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` for `openai`. `OPENAI_BASE_URL` points the OpenAI client at a compatible endpoint, such as Azure OpenAI or a gateway.
+The key always comes from the environment, never from the config, so the config can be committed: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `AZURE_OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `MISTRAL_API_KEY`, or `AWS_BEARER_TOKEN_BEDROCK` (or AWS access keys) for Bedrock. Local models need none.
 
 ```yaml
 model:
-  provider: openai
-  name: gpt-5.1        # whichever model your account uses
-  fallback: null
+  provider: bedrock
+  name: us.anthropic.claude-opus-5-5-v1:0
+  region: eu-central-1
 ```
 
 ### `output`
@@ -1157,21 +1166,9 @@ GITHUB_TOKEN=$(gh auth token) npx @guuskeunen/sprint-review
 
 See [`github`](configuration.md#github) for the options. Pull request text is treated as untrusted input, like commit messages: wrapped and marked as data in the prompt.
 
-## OpenAI
+## Other models
 
-```yaml
-model:
-  provider: openai
-  name: gpt-5.1      # the model your account uses
-```
-
-```bash
-export OPENAI_API_KEY=sk-...
-# optional, for Azure OpenAI or a gateway:
-export OPENAI_BASE_URL=https://my-gateway.example.com/v1
-```
-
-Both providers get the same prompts and the same forced structured output, and every answer goes through the same checks.
+Claude by default; Bedrock, Azure OpenAI, OpenAI, OpenRouter, Gemini, Mistral, and local models with Ollama or LM Studio are a config line away. See [models and providers](models.md) for setup and an honest table of what's been tested.
 
 ## Slack
 
@@ -1189,6 +1186,259 @@ Anywhere with Node 20 and the full git history: `npx --yes @guuskeunen/sprint-re
 ## As a library
 
 All of it is importable from TypeScript or JavaScript. See [the library guide](library.md).
+
+---
+
+<!-- docs/models.md -->
+
+# Models and providers
+
+sprint-review works with any model that can answer in a fixed JSON shape. Claude is the default because it writes the best slides; the others are there for choice, cost and privacy.
+
+## Which to pick
+
+| Situation | Use |
+|---|---|
+| Best slides, simplest setup | `anthropic` (default), Claude Opus with Sonnet as fallback |
+| Your company already has Claude through AWS | `bedrock` |
+| Your company already has Azure OpenAI | `azure` |
+| One key for many models, or comparing them | `openrouter` |
+| Nothing may leave your network | `ollama` or `lmstudio` |
+
+## Tested models
+
+What "tested" means here, honestly:
+
+- **Verified:** run end to end against the real service with this version. Nothing is marked verified yet: this table fills in as real runs come in.
+- **Code tested:** the request and answer handling are covered by the test suite against recorded or fake responses, but not yet run against the live service. These should work; please [report how it went](https://github.com/guuskeunen/sprint-review/issues/new?title=Model%20report:%20).
+
+| Provider | Model | Status | Quality of the slides |
+|---|---|---|---|
+| `anthropic` | `claude-opus-5-5` | The default: the prompts were developed on it | Best: clear themes, good effect sentences |
+| `anthropic` | `claude-sonnet-5-5` | The fallback | Very good, cheaper and faster |
+| `bedrock` | Claude through Bedrock | Code tested; request signing checked against AWS's official test vector | Same as Claude directly |
+| `openai`, `azure` | Your GPT model | Code tested | Expected good |
+| `openrouter` | Any | Code tested | Depends on the model |
+| `gemini` | Gemini models | Code tested | Expected good |
+| `mistral` | Mistral models | Code tested | Expected decent |
+| `ollama`, `lmstudio` | Qwen, Llama, Mistral and others, 30B+ recommended | Code tested | Works, but plainer: fewer and flatter themes |
+
+Whatever the model, every answer goes through the same checks: a point that can't be traced to a real commit is dropped, word limits hold, tooling goes under the hood. A weaker model gives a plainer deck, not a wrong one.
+
+Tried a model? Open an issue with the provider, model and how the deck read, and it goes in this table.
+
+## Setup per provider
+
+Keys always come from environment variables, never from the config.
+
+### Anthropic (default)
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+```
+
+No config needed. To pick another model: `model: { name: claude-sonnet-5-5 }`.
+
+### Amazon Bedrock
+
+```yaml
+model:
+  provider: bedrock
+  name: us.anthropic.claude-opus-5-5-v1:0   # your model or inference profile id, from the Bedrock console
+  region: eu-central-1                      # or set AWS_REGION
+```
+
+Credentials, one of:
+
+- a **Bedrock API key**: `export AWS_BEARER_TOKEN_BEDROCK=...` (simplest; create one in the Bedrock console)
+- **AWS access keys**: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and, for temporary credentials, `AWS_SESSION_TOKEN`. This is what `aws-actions/configure-aws-credentials` sets in GitHub Actions, so OIDC roles work.
+
+Your account needs access to the model in that region (Bedrock console → Model access).
+
+### OpenAI
+
+```yaml
+model: { provider: openai, name: gpt-5.1 }
+```
+
+```bash
+export OPENAI_API_KEY=sk-...
+```
+
+### Azure OpenAI
+
+```yaml
+model:
+  provider: azure
+  name: my-deployment                                   # your deployment name
+  baseUrl: https://my-resource.openai.azure.com/openai/v1
+```
+
+```bash
+export AZURE_OPENAI_API_KEY=...
+```
+
+### OpenRouter
+
+```yaml
+model: { provider: openrouter, name: anthropic/claude-sonnet-5.5 }
+```
+
+```bash
+export OPENROUTER_API_KEY=sk-or-...
+```
+
+### Google Gemini
+
+```yaml
+model: { provider: gemini, name: gemini-3-pro }
+```
+
+```bash
+export GEMINI_API_KEY=...
+```
+
+### Mistral
+
+```yaml
+model: { provider: mistral, name: mistral-large-latest }
+```
+
+```bash
+export MISTRAL_API_KEY=...
+```
+
+### Ollama (local)
+
+```bash
+ollama pull qwen3:32b
+OLLAMA_CONTEXT_LENGTH=32768 ollama serve     # a large context window matters
+```
+
+```yaml
+model: { provider: ollama, name: "qwen3:32b" }
+```
+
+No key needed. Run `sprint-review doctor` to check that Ollama answers and the model is there.
+
+### LM Studio (local)
+
+Load a model, start the server (Developer tab), then:
+
+```yaml
+model: { provider: lmstudio, name: qwen3-32b }
+```
+
+### Any other OpenAI-compatible endpoint
+
+A gateway, vLLM, LiteLLM, Groq, Together, DeepSeek…
+
+```yaml
+model:
+  provider: openai
+  name: the-model
+  baseUrl: https://my-gateway.example.com/v1
+```
+
+## Settings for smaller and local models
+
+| Setting | What it does |
+|---|---|
+| `model.mode: json` | Ask for JSON matching the schema instead of forcing a tool call. The default for Ollama and LM Studio; try it for any server whose tool calling is unreliable. |
+| `model.maxInputChars` | How much of the commit log the model gets. Default 120,000 characters, 24,000 for local models. Commits past it are listed in `checks.md`. |
+| `model.maxTokens` | Room for the answer. Default 8,000. |
+| `model.fallback` | A second model when the first fails. Default Sonnet for Anthropic, none for others. |
+
+If a model answers in text instead of through the tool, sprint-review looks for the JSON in its answer and checks it like any other. Local models are slow: a run can take several minutes.
+
+---
+
+<!-- docs/security.md -->
+
+# Security and privacy
+
+A one-page answer for whoever has to approve sprint-review: what it reads, what it sends where, and what it never does.
+
+## In short
+
+- **It runs on your machine or in your own CI.** There is no sprint-review server, no account and no telemetry. The author never sees your data.
+- **It sends commit text, not code.** Commit subjects, descriptions and changed file names go to the AI provider you configure, with your own key. Source code, diffs and screenshots never leave.
+- **You choose the provider,** including ones your company already approved (Azure OpenAI, Amazon Bedrock) or a local model where nothing leaves your network.
+- **`--dry-run` shows exactly what would be sent,** before anything is.
+
+## What it reads
+
+| Source | What | When |
+|---|---|---|
+| Your git repository | Commit hashes, dates, subjects, descriptions and changed file names in the range; the roadmap file at the end of the sprint | Always |
+| Screenshot pictures | Pixels, compared locally | When `screenshots` is set |
+| Your pages (capture) | Screenshots of the URLs you list, in a local browser | Only with `screenshots.source: capture` |
+| The GitHub API | Title and description of the pull request behind each commit | Only when `GITHUB_TOKEN` or `GH_TOKEN` is set (always in GitHub Actions), and `github.pullRequests` isn't `false` |
+| A usage file | The numbers you put in it | When `usage` is set |
+
+It needs **read access** to the repository only. It writes nothing to git and never pushes.
+
+## What it sends, and where
+
+Each run makes two or three calls to **one** AI provider: the one in `model.provider`, with the key from your environment.
+
+| Call | Gets |
+|---|---|
+| Writer | Your product description, audience and rules from the config; the commit log described above (up to `model.maxInputChars`); the names of screens |
+| Second reader | Only the text of the slides |
+| Rewrite (when the reader flagged lines) | The text of the slides and the flagged lines |
+
+**Never sent:** source code, diffs, file contents, screenshots or other pictures, usage numbers, environment variables, secrets.
+
+Commit and pull request text is treated as untrusted: it's wrapped in random markers and the model is told it's data, so a commit message that says "ignore your instructions" is just a commit message. Whatever the model answers goes through checks in code, and anything that can't be traced to a real commit is dropped.
+
+### Keeping things out
+
+- **Sensitive commits:** `ignore` patterns skip matching commits entirely; they're never sent.
+- **Customer or internal names:** `replace` rewrites words in the output; for the input, `ignore` the commits or keep names out of commit messages.
+- **No pull request text:** `github: { pullRequests: false }`, or run without a token.
+- **Less of the log:** `model.maxInputChars`.
+
+### Where the data goes, per provider
+
+Data handling follows **your** agreement with the provider you pick. sprint-review adds nothing in between.
+
+| Provider | Data goes to | Notes |
+|---|---|---|
+| `anthropic` (default) | Anthropic API | API data isn't used for training by default; check your plan's terms |
+| `openai` | OpenAI API | |
+| `azure` | Your Azure OpenAI resource | Stays in your Azure tenant and region |
+| `bedrock` | Amazon Bedrock in your AWS account and region | Uses your AWS credentials or a Bedrock API key |
+| `openrouter`, `gemini`, `mistral` | That service | |
+| `ollama`, `lmstudio` | A model on your own machine or server | **Nothing leaves your network** |
+
+## Keys and secrets
+
+- Keys are read from **environment variables only**, never from the config file, so the config can be committed safely.
+- In CI, keep keys in your CI's secret store (GitHub: repository or organization secrets).
+- Keys are only sent to the provider they belong to, in an HTTP header. They're never written to a file or a log.
+
+## The outputs
+
+`deck.html`, `review.json`, `review.md` and `checks.md` (and `deck.pptx`) are written to a local folder. They contain what's on the slides, plus screenshots if you configured them. **Nothing is published on its own:** sharing the deck is a step you take (an artifact, GitHub Pages, Slack).
+
+The deck is a single file with no outside requests: no fonts, scripts, images or trackers are loaded from anywhere.
+
+## The local editor
+
+`sprint-review edit` starts a web server on `127.0.0.1` only, so it can't be reached from other machines. Every request must carry a random token that only the page it opened knows, so other websites in your browser can't read or change the review. It stops when you press Ctrl+C.
+
+## The MCP server
+
+`sprint-review mcp` talks over stdio with the client that started it (Claude Code, Cursor…). It doesn't open a network port. Its tools read the git history and write the outputs in the folder you point it at; the model call uses the same provider and key as the CLI.
+
+## Dependencies
+
+Two runtime dependencies, `sharp` (image comparison) and `yaml` (the config), plus `pptxgenjs` as an optional one for PowerPoint export. Playwright is only needed if you use `capture`, and you install it yourself. HTTP calls use Node's built-in `fetch`. Releases are published to npm with [provenance](https://docs.npmjs.com/generating-provenance-statements), so you can verify a package was built from this repository.
+
+## Reporting a vulnerability
+
+See [SECURITY.md](../SECURITY.md).
 
 ---
 
@@ -1441,11 +1691,14 @@ The fixed labels ship in English and Dutch. For other languages, override them w
 
 # FAQ
 
+### Can I run it without sending anything outside our network?
+Yes: use a local model with Ollama or LM Studio. The slides are plainer than with Claude, but nothing leaves your machine. See [models](models.md#ollama-local) and [security and privacy](security.md).
+
 ### Does it send my code to an AI?
 No. It sends commit messages and file names of the sprint, pull request titles and descriptions when a GitHub token is set, plus your product description. Never source code, diffs, screenshots or usage numbers. See [what is sent](how-it-works.md#what-is-sent-to-the-ai).
 
 ### Which AI does it use?
-Anthropic's Claude by default, through your own API key, or OpenAI with `model.provider: openai` (and any OpenAI-compatible endpoint through `OPENAI_BASE_URL`). The model is a setting, and with the library you can plug in any model yourself ([custom model client](library.md#your-own-model-client)).
+Anthropic's Claude by default, through your own API key. Also Amazon Bedrock, Azure OpenAI, OpenAI, OpenRouter, Gemini, Mistral, and local models with Ollama or LM Studio: see [models and providers](models.md). With the library you can plug in any model yourself ([custom model client](library.md#your-own-model-client)).
 
 ### What does it cost?
 Two or three API calls per review (the third only when the second reader flagged lines to rewrite), on your own account. `--dry-run` shows the token estimate before you spend anything.

@@ -39,7 +39,7 @@ export async function write(model: ModelClient, config: Config, commits: Commit[
     system: writerSystem(config),
     tool: writerTool(config, changedScreens, availableScreens),
     maxTokens: config.model.maxTokens,
-    messages: [untrusted(log, 'the commits of the sprint: hash, date, subject, files and description, newest first'), `${screens}Now create the content of the presentation.`],
+    messages: [untrusted(log, 'the commits of the sprint: hash, date, subject, files and description, newest first', config.model.maxInputChars), `${screens}Now create the content of the presentation.`],
   });
   const written = parse(draft.toolInput, commits, changedScreens, availableScreens, config);
   if (written.themes.length === 0 && written.summary.length === 0) {
@@ -54,7 +54,7 @@ export async function write(model: ModelClient, config: Config, commits: Commit[
     const fixed = new Set(revised.fixed);
     readChecks = [...readChecks.filter((c) => !fixed.has(c.text)), ...revised.checks];
   }
-  written.checks = [...unread(log, commits), ...readChecks, ...written.checks];
+  written.checks = [...unread(log, commits, config.model.maxInputChars), ...readChecks, ...written.checks];
   return {
     written,
     usage: { input: draft.usage.input + read.usage.input + extra.input, output: draft.usage.output + read.usage.output + extra.output },
@@ -301,8 +301,8 @@ function named(hashes: unknown, commits: Commit[]): Commit[] {
 }
 
 /** The commits that fell outside what the model could read. */
-function unread(log: string, commits: Commit[]): Check[] {
-  const read = log.slice(0, MAX_LOG_CHARS);
+export function unread(log: string, commits: Commit[], max = MAX_LOG_CHARS): Check[] {
+  const read = log.slice(0, max);
   return commits.filter((c) => !read.includes(c.hash)).map((c) => ({ kind: 'warning' as const, text: c.subject, reason: 'Not read: the sprint was too long. Check whether this belongs in the presentation.' }));
 }
 

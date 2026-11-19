@@ -6,7 +6,8 @@ import { parseArgs } from 'node:util';
 import { ConfigError, loadConfig, normalize, type Config } from './config.ts';
 import { generate, NothingToReview, sprintRange } from './generate.ts';
 import { GitError, History, type Range } from './history.ts';
-import { clientFor, ModelError } from './model.ts';
+import { ModelError } from './model.ts';
+import { clientFor } from './providers.ts';
 import { writeOutputs } from './output.ts';
 import { doctorChecks } from './doctor.ts';
 import { startEditor } from './editor.ts';
@@ -60,7 +61,9 @@ ${bold('Options for generate')}
   --json            Print the result as JSON
 
 ${bold('Environment')}
-  ANTHROPIC_API_KEY   Your Anthropic API key (or OPENAI_API_KEY with model.provider: openai)
+  ANTHROPIC_API_KEY   Your Anthropic API key. Other providers (model.provider in the config):
+                      OPENAI_API_KEY, OPENROUTER_API_KEY, GEMINI_API_KEY, MISTRAL_API_KEY,
+                      AZURE_OPENAI_API_KEY, AWS_BEARER_TOKEN_BEDROCK; none for ollama or lmstudio
   GITHUB_TOKEN        Optional: adds pull request descriptions as context
   SLACK_WEBHOOK_URL   Optional: where --slack posts
 
@@ -182,7 +185,7 @@ function dryRun(config: Config, range: Range): number {
   out(`${bold('Dry run')} ${dim('nothing is sent')}\n`);
   out(`${bold('Range')}     ${range.kind === 'dates' ? `${range.from} to ${range.until}` : `${range.from}..${range.to}`}`);
   out(`${bold('Commits')}   ${commits.length} (${commits.filter((x) => x.product).length} touch product code)`);
-  out(`${bold('Model')}     ${config.model.name}${config.model.fallback ? dim(` (fallback ${config.model.fallback})`) : ''}`);
+  out(`${bold('Model')}     ${config.model.name} ${dim(`via ${config.model.provider}`)}${config.model.fallback ? dim(` (fallback ${config.model.fallback})`) : ''}`);
   out(`${bold('Estimate')}  about ${tokens.toLocaleString('en-US')} input tokens for the writer and the reader\n`);
   for (const cm of commits.slice(0, 40)) out(`  ${dim(cm.hash)} ${cm.subject}${cm.product ? '' : dim(' [no product code]')}`);
   if (commits.length > 40) out(dim(`  … and ${commits.length - 40} more`));

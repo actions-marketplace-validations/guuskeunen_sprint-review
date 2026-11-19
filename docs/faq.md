@@ -1,10 +1,13 @@
 # FAQ
 
+### Can I run it without sending anything outside our network?
+Yes: use a local model with Ollama or LM Studio. The slides are plainer than with Claude, but nothing leaves your machine. See [models](models.md#ollama-local) and [security and privacy](security.md).
+
 ### Does it send my code to an AI?
 No. It sends commit messages and file names of the sprint, pull request titles and descriptions when a GitHub token is set, plus your product description. Never source code, diffs, screenshots or usage numbers. See [what is sent](how-it-works.md#what-is-sent-to-the-ai).
 
 ### Which AI does it use?
-Anthropic's Claude by default, through your own API key, or OpenAI with `model.provider: openai` (and any OpenAI-compatible endpoint through `OPENAI_BASE_URL`). The model is a setting, and with the library you can plug in any model yourself ([custom model client](library.md#your-own-model-client)).
+Anthropic's Claude by default, through your own API key. Also Amazon Bedrock, Azure OpenAI, OpenAI, OpenRouter, Gemini, Mistral, and local models with Ollama or LM Studio: see [models and providers](models.md). With the library you can plug in any model yourself ([custom model client](library.md#your-own-model-client)).
 
 ### What does it cost?
 Two or three API calls per review (the third only when the second reader flagged lines to rewrite), on your own account. `--dry-run` shows the token estimate before you spend anything.

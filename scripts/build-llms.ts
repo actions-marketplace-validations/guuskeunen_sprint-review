@@ -11,6 +11,8 @@ const files = [
   'docs/github-action.md',
   'docs/editing.md',
   'docs/integrations.md',
+  'docs/models.md',
+  'docs/security.md',
   'docs/how-it-works.md',
   'docs/library.md',
   'docs/troubleshooting.md',

@@ -240,18 +240,22 @@ labels:
 
 | Key | Default | Description |
 |---|---|---|
-| `provider` | `anthropic` | `anthropic` or `openai`. |
-| `name` | `claude-opus-5-5` | The model for every call. Required for `openai`. |
-| `fallback` | `claude-sonnet-5-5` | Used when the first model fails after retries. `null` to turn off. |
+| `provider` | `anthropic` | `anthropic`, `bedrock`, `openai`, `azure`, `openrouter`, `gemini`, `mistral`, `ollama` or `lmstudio`. See [models and providers](models.md). |
+| `name` | `claude-opus-5-5` | The model for every call. Required for every provider but `anthropic`. |
+| `fallback` | `claude-sonnet-5-5` | Used when the first model fails after retries. `null` to turn off. Default none for other providers. |
 | `maxTokens` | `8000` | Room for the writer's answer. |
+| `baseUrl` | per provider | The endpoint, for `azure` (required), a gateway or a local server on another port. |
+| `mode` | `tools` | `json` asks for JSON matching the schema instead of forcing a tool call. Default `json` for `ollama` and `lmstudio`. |
+| `maxInputChars` | `120000` | How much of the commit log the model gets. `24000` for local models. |
+| `region` | `AWS_REGION` | `bedrock` only. |
 
-The API key always comes from the environment, never from the config, so the config can be committed: `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` for `openai`. `OPENAI_BASE_URL` points the OpenAI client at a compatible endpoint, such as Azure OpenAI or a gateway.
+The key always comes from the environment, never from the config, so the config can be committed: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `AZURE_OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `MISTRAL_API_KEY`, or `AWS_BEARER_TOKEN_BEDROCK` (or AWS access keys) for Bedrock. Local models need none.
 
 ```yaml
 model:
-  provider: openai
-  name: gpt-5.1        # whichever model your account uses
-  fallback: null
+  provider: bedrock
+  name: us.anthropic.claude-opus-5-5-v1:0
+  region: eu-central-1
 ```
 
 ### `output`

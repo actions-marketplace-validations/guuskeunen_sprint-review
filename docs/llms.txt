@@ -22,13 +22,15 @@ Quick start (Node 20+, inside a git repository):
 - [Screenshots](https://github.com/guuskeunen/sprint-review/blob/main/docs/screenshots.md): from visual tests, a folder, or captured from URLs
 - [GitHub Action and CI](https://github.com/guuskeunen/sprint-review/blob/main/docs/github-action.md): schedule, Pages, Slack, GitLab
 - [Editing](https://github.com/guuskeunen/sprint-review/blob/main/docs/editing.md): the editor, review.json, PowerPoint
-- [Integrations](https://github.com/guuskeunen/sprint-review/blob/main/docs/integrations.md): MCP server, Claude Code skill, OpenAI, Slack, pull requests
+- [Integrations](https://github.com/guuskeunen/sprint-review/blob/main/docs/integrations.md): MCP server, Claude Code skill, Slack, pull requests
+- [Models and providers](https://github.com/guuskeunen/sprint-review/blob/main/docs/models.md)
+- [Security and privacy](https://github.com/guuskeunen/sprint-review/blob/main/docs/security.md)
 - [How it works](https://github.com/guuskeunen/sprint-review/blob/main/docs/how-it-works.md): the writer, the checks, the second reader
 - [Troubleshooting](https://github.com/guuskeunen/sprint-review/blob/main/docs/troubleshooting.md) and [FAQ](https://github.com/guuskeunen/sprint-review/blob/main/docs/faq.md)
 
 ## Facts
 
-- Models: Anthropic by default (claude-opus-5-5, falling back to claude-sonnet-5-5); OpenAI with `model.provider: openai` and `model.name`.
+- Models: Anthropic by default (claude-opus-5-5, falling back to claude-sonnet-5-5). Also `model.provider`: bedrock, azure, openai, openrouter, gemini, mistral, ollama, lmstudio (local: nothing leaves the network).
 - Sends commit subjects, bodies, file names and (with GITHUB_TOKEN) pull request descriptions. Never source code.
 - Checks in code: each point must cite real commit hashes or it is dropped; ci/build/test/docs/chore commits only go under the hood; word limits; ticket and PR numbers stripped; a team word list applied; a second model call reads only the slides and flags unclear lines, which are rewritten once and checked again. All logged in checks.md.
 - Brand: `brand.color`, `brand.logo`, `brand.fonts`, or `brand.from: our-template.pptx` to take the theme color, fonts and logo from a PowerPoint. `brand.theme: light` (default) or `dark`.

@@ -156,7 +156,9 @@ screenshots:
 - [Screenshots](docs/screenshots.md): before and after slides from your visual tests, a folder, or captured from URLs
 - [GitHub Action](docs/github-action.md): scheduled reviews, pull requests, GitHub Pages, Slack, GitLab
 - [Editing and presenting](docs/editing.md): the editor, presenting, PDF and PowerPoint
-- [Integrations](docs/integrations.md): MCP server, Claude Code skill, OpenAI, Slack, pull request context
+- [Integrations](docs/integrations.md): MCP server, Claude Code skill, Slack, pull request context
+- [Models and providers](docs/models.md): Claude, Bedrock, Azure, OpenAI, OpenRouter, Gemini, Mistral, Ollama, LM Studio
+- [Security and privacy](docs/security.md): what it reads, what it sends where, what it never does
 - [How it works](docs/how-it-works.md): the pipeline and every check
 - [Using it as a library](docs/library.md): the Node API
 - [Troubleshooting](docs/troubleshooting.md) and [FAQ](docs/faq.md)
@@ -164,7 +166,7 @@ screenshots:
 
 ## Privacy and cost
 
-- **What leaves your machine:** commit subjects, bodies and file names of the sprint, pull request titles and descriptions when a GitHub token is set, plus your product description, sent to Anthropic's (or OpenAI's) API with your own key. **Never source code, never screenshots.** Pictures are compared and placed locally.
+- **What leaves your machine:** commit subjects, bodies and file names of the sprint, pull request titles and descriptions when a GitHub token is set, plus your product description, sent to the AI provider you choose with your own key. **Never source code, never screenshots.** No sprint-review server, no telemetry. With a local model (Ollama, LM Studio) nothing leaves your network at all. → **[Security and privacy](docs/security.md)**
 - **What it costs:** two or three API calls per review, billed to your own account. `--dry-run` shows how many tokens a review will use before you spend anything. Pick a smaller model in the config if you want it cheaper.
 
 ## Roadmap
@@ -177,7 +179,8 @@ screenshots:
 - [x] Brand from an existing deck: color, fonts and logo from a `.pptx`
 - [x] PowerPoint export with speaker notes
 - [x] Local editor (`sprint-review edit`)
-- [x] GitLab CI template, Slack posting, OpenAI as a second provider
+- [x] GitLab CI template, Slack posting
+- [x] More models: Bedrock, Azure, OpenAI, OpenRouter, Gemini, Mistral, Ollama, LM Studio
 - [x] MCP server and Claude Code skill
 - [ ] Linked issues (GitHub, Jira, Linear) as extra context
 - [ ] Export into your own PowerPoint layouts, not just its look

@@ -1,7 +1,7 @@
 export { loadConfig, normalize, AUDIENCES, ConfigError, type Config, type ScreenshotConfig, type CaptureConfig, type Area } from './config.ts';
 export { generate, render, resolvedBrand, sprintRange, NothingToReview, type Generated, type GenerateOptions } from './generate.ts';
 export { History, GitError, type Range } from './history.ts';
-export { AnthropicClient, OpenAIClient, clientFor, ModelError, type ModelClient, type ModelRequest, type ModelAnswer, type ToolSpec } from './model.ts';
+export { AnthropicClient, OpenAIClient, extractJson, ModelError, type ModelClient, type ModelRequest, type ModelAnswer, type ToolSpec } from './model.ts';
 export { write, parse, clean, WriterError } from './writer.ts';
 export { compareScreens } from './compare.ts';
 export { renderDeck, type RenderOptions } from './render.ts';
@@ -18,3 +18,4 @@ export { withPullRequests, githubRepo } from './github.ts';
 export { slackMessage, postToSlack } from './slack.ts';
 export { doctorChecks, type DoctorLine } from './doctor.ts';
 export { handle as handleMcp, TOOLS as MCP_TOOLS, serveMcp } from './mcp.ts';
+export { clientFor, BedrockClient, signV4, bedrockAuth, PRESETS, PROVIDERS, keyEnvFor, type ProviderName, type ClientConfig } from './providers.ts';

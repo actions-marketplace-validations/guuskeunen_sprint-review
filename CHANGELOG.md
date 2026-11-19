@@ -23,7 +23,9 @@ The first public version.
 - Node API: `generate`, `render`, `loadConfig` and the building blocks.
 - One automatic rewrite of the lines the second reader flags; rewrites pass every check again and are logged as corrected (`revise`).
 - Pull request titles and descriptions as context, from the GitHub API, when a token is set (`github`).
-- OpenAI as a second provider (`model.provider: openai`, `OPENAI_BASE_URL` for compatible endpoints).
+- More providers: Amazon Bedrock (API key or AWS signature), Azure OpenAI, OpenAI, OpenRouter, Gemini, Mistral, and local models with Ollama and LM Studio (`model.provider`, `baseUrl`, `mode`, `maxInputChars`, `region`).
+- A model that answers in text instead of through the tool still works: the JSON is taken from the answer and checked as usual.
+- `doctor` checks the key for the chosen provider, and whether a local model server answers and has the model.
 - `sprint-review edit`: a local editor beside the live deck, saving `review.json` and rebuilding the deck.
 - `sprint-review capture` and `screenshots.source: capture`: screenshots of your pages with Playwright, per device, with masks and a logged-in session.
 - PowerPoint export with speaker notes (`--pptx`, `output.pptx`).
@@ -33,3 +35,4 @@ The first public version.
 - GitLab CI example.
 - The deck can be embedded and driven by the page around it (`sprint-review:go` / `sprint-review:slide` messages).
 - A website with a live demo, `llms.txt` and structured data.
+- Security and privacy page, and a security policy.

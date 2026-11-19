@@ -51,21 +51,9 @@ GITHUB_TOKEN=$(gh auth token) npx @guuskeunen/sprint-review
 
 See [`github`](configuration.md#github) for the options. Pull request text is treated as untrusted input, like commit messages: wrapped and marked as data in the prompt.
 
-## OpenAI
+## Other models
 
-```yaml
-model:
-  provider: openai
-  name: gpt-5.1      # the model your account uses
-```
-
-```bash
-export OPENAI_API_KEY=sk-...
-# optional, for Azure OpenAI or a gateway:
-export OPENAI_BASE_URL=https://my-gateway.example.com/v1
-```
-
-Both providers get the same prompts and the same forced structured output, and every answer goes through the same checks.
+Claude by default; Bedrock, Azure OpenAI, OpenAI, OpenRouter, Gemini, Mistral, and local models with Ollama or LM Studio are a config line away. See [models and providers](models.md) for setup and an honest table of what's been tested.
 
 ## Slack
 

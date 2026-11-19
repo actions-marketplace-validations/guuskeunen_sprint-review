@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import type { Config } from './config.ts';
 import { History } from './history.ts';
+import { bedrockAuth, isLocal, keyEnvFor, PRESETS } from './providers.ts';
 
 export interface DoctorLine {
   ok: boolean;
@@ -10,7 +11,7 @@ export interface DoctorLine {
 }
 
 /** Everything that has to be right before generate can work, as a list the CLI and the MCP server both show. */
-export async function doctorChecks(config: Config, cwd = process.cwd(), env = process.env): Promise<DoctorLine[]> {
+export async function doctorChecks(config: Config, cwd = process.cwd(), env = process.env, fetchImpl: typeof fetch = fetch): Promise<DoctorLine[]> {
   const lines: DoctorLine[] = [];
   const add = (ok: boolean, text: string, fix?: string) => lines.push({ ok, text, ...(ok || !fix ? {} : { fix }) });
   try {
@@ -39,8 +40,26 @@ export async function doctorChecks(config: Config, cwd = process.cwd(), env = pr
   }
   if (config.brand.logo && !config.brand.logo.startsWith('data:')) add(existsSync(resolve(config.root, config.brand.logo)), 'Logo file exists', `Check brand.logo: ${config.brand.logo}`);
   if (config.brand.from) add(existsSync(resolve(config.root, config.brand.from)), 'Brand presentation exists', `Check brand.from: ${config.brand.from}`);
-  if (config.model.provider === 'openai') add(!!env.OPENAI_API_KEY, 'OPENAI_API_KEY is set', 'Create a key at https://platform.openai.com/api-keys and export OPENAI_API_KEY=...');
-  else add(!!env.ANTHROPIC_API_KEY, 'ANTHROPIC_API_KEY is set', 'Create a key at https://console.anthropic.com and export ANTHROPIC_API_KEY=...');
+  const provider = config.model.provider;
+  if (isLocal(provider)) {
+    const base = config.model.baseUrl ?? PRESETS[provider as 'ollama' | 'lmstudio'].baseUrl!;
+    let models: string[] | null = null;
+    try {
+      const res = await fetchImpl(`${base.replace(/\/+$/, '')}/models`, { signal: AbortSignal.timeout(3000) });
+      const data = (await res.json()) as { data?: { id?: string }[] };
+      models = (data.data ?? []).map((m) => m.id ?? '').filter(Boolean);
+    } catch {}
+    add(models !== null, `${provider === 'ollama' ? 'Ollama' : 'LM Studio'} answers at ${base}`, provider === 'ollama' ? 'Start it with: ollama serve' : 'Start the local server in LM Studio (Developer tab).');
+    if (models) add(models.includes(config.model.name), `Model ${config.model.name} is available`, provider === 'ollama' ? `ollama pull ${config.model.name}` : 'Load the model in LM Studio.');
+    if (provider === 'ollama') add(true, 'Tip: give Ollama a large context window, e.g. OLLAMA_CONTEXT_LENGTH=32768 ollama serve');
+  } else if (provider === 'bedrock') {
+    const auth = bedrockAuth(env);
+    add(auth.kind !== 'none', auth.kind === 'token' ? 'Bedrock API key is set' : 'AWS credentials are set', 'export AWS_BEARER_TOKEN_BEDROCK=... (a Bedrock API key), or AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY');
+    add(!!(config.model.region ?? env.AWS_REGION ?? env.AWS_DEFAULT_REGION), 'AWS region is set', 'export AWS_REGION=us-east-1, or set model.region');
+  } else {
+    const keyEnv = keyEnvFor(provider)!;
+    add(!!env[keyEnv], `${keyEnv} is set`, provider === 'anthropic' ? 'Create a key at https://console.anthropic.com and export ANTHROPIC_API_KEY=...' : `export ${keyEnv}=...`);
+  }
   if (config.slack) add(!!env.SLACK_WEBHOOK_URL, 'SLACK_WEBHOOK_URL is set', 'Create an incoming webhook in Slack and export SLACK_WEBHOOK_URL=...');
   const token = env.GITHUB_TOKEN || env.GH_TOKEN;
   if (config.github.pullRequests === 'on') add(!!token, 'GITHUB_TOKEN is set for pull requests', 'Export GITHUB_TOKEN, or set github.pullRequests: auto.');
