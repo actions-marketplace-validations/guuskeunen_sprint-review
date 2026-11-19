@@ -1,0 +1,14 @@
+{
+  "name": "sprint-review",
+  "owner": { "name": "Guus Keunen", "url": "https://github.com/guuskeunen" },
+  "metadata": { "description": "sprint-review for Claude Code: the skill and the MCP server in one plugin." },
+  "plugins": [
+    {
+      "name": "sprint-review",
+      "source": "./",
+      "description": "Write a sprint review deck from the git history, with every line checked against the real commits.",
+      "category": "productivity",
+      "homepage": "https://guuskeunen.github.io/sprint-review/"
+    }
+  ]
+}

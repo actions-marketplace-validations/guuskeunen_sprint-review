@@ -2,6 +2,17 @@
 
 sprint-review is a command-line tool first. Everything else here builds on it.
 
+## The Claude Code plugin
+
+The skill and the MCP server in one install:
+
+```
+/plugin marketplace add guuskeunen/sprint-review
+/plugin install sprint-review@sprint-review
+```
+
+Then ask Claude Code for a sprint review, or type `/sprint-review`. The plugin runs `npx @guuskeunen/sprint-review@0 mcp`, so it picks up new releases by itself. Set your API key in the environment Claude Code starts from.
+
 ## Claude Code, Cursor and other MCP clients
 
 `sprint-review mcp` runs an [MCP](https://modelcontextprotocol.io) server over stdio. An AI assistant in your editor can then check the setup, preview a sprint's commits, write the review and rebuild it after an edit, and tell you what the checks did.
@@ -37,9 +48,9 @@ Then ask: *"Make our sprint review for the last two weeks"*, or *"What would the
 
 Every tool takes `directory` (the project folder; default where the server started) and the range arguments `since`, `until`, `from` and `to`.
 
-## The Claude Code skill
+## The Claude Code skill on its own
 
-[`skills/sprint-review/SKILL.md`](../skills/sprint-review/SKILL.md) teaches Claude Code the workflow: check, preview, generate, report the checks, edit. Copy the folder into your project's `.claude/skills/` (or `~/.claude/skills/` for all projects).
+[`skills/sprint-review/SKILL.md`](../skills/sprint-review/SKILL.md) teaches Claude Code the workflow: check, preview, generate, report the checks, edit. The plugin includes it; without the plugin, copy the folder into your project's `.claude/skills/` (or `~/.claude/skills/` for all projects).
 
 ## Pull request descriptions
 

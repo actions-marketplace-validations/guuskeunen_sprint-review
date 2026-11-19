@@ -37,10 +37,11 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.check.json",
     "test": "node --test test/*.test.ts",
     "prepublishOnly": "npm run build",
-    "docs": "node scripts/build-demo.ts && node scripts/build-llms.ts"
+    "docs": "node scripts/build-demo.ts && node scripts/build-llms.ts",
+    "bench": "node scripts/bench.ts"
   },
   "dependencies": {
     "sharp": "^0.34.0",

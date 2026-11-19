@@ -1,0 +1,39 @@
+{
+  "name": "billing-saas",
+  "about": "Invoicing software for small agencies. Terse, technical commit messages; the business meaning has to be inferred from the code areas.",
+  "config": {
+    "product": { "name": "Ledgerly", "description": "invoicing and time tracking for small creative agencies" },
+    "organization": "Ledgerly",
+    "audience": "customers",
+    "productPaths": ["app/", "web/"]
+  },
+  "range": { "from": "2026-11-02", "until": "2026-11-13" },
+  "commits": [
+    { "date": "2026-10-01", "message": "init", "files": { "app/main.py": "1" } },
+    { "date": "2026-11-02", "message": "add sepa direct debit to checkout", "files": { "app/payments/sepa.py": "1", "web/checkout/Sepa.tsx": "1" } },
+    { "date": "2026-11-03", "message": "invoice reminders: 3/7/14 day schedule, configurable per client", "files": { "app/reminders/schedule.py": "1", "web/settings/Reminders.tsx": "1" } },
+    { "date": "2026-11-04", "message": "fix rounding on multi-currency totals (EUR/GBP)", "files": { "app/invoices/totals.py": "1" } },
+    { "date": "2026-11-05", "message": "timer: keep running across tabs, stop on idle 30m", "files": { "web/timer/Timer.tsx": "1" } },
+    { "date": "2026-11-06", "message": "JIRA-881 export hours to csv per project", "files": { "app/exports/csv.py": "1", "web/reports/Export.tsx": "1" } },
+    { "date": "2026-11-07", "message": "bump django 5.1 -> 5.2", "files": { "requirements.txt": "django==5.2" } },
+    { "date": "2026-11-10", "message": "dark mode for invoice editor", "files": { "web/editor/theme.css": "1" } },
+    { "date": "2026-11-11", "message": "terraform: move db to eu-central-1", "files": { "infra/db.tf": "1" } },
+    { "date": "2026-11-12", "message": "WIP", "files": { "app/tmp.py": "1" } },
+    { "date": "2026-11-12", "message": "pdf invoices now include payment QR code", "files": { "app/invoices/pdf.py": "1" } },
+    { "date": "2026-11-13", "message": "Merge branch 'main' into feature/qr", "files": { "app/invoices/pdf.py": "2" } }
+  ],
+  "expect": {
+    "themes": [
+      { "name": "direct debit payments", "any": ["sepa", "direct debit", "debit"] },
+      { "name": "payment reminders", "any": ["reminder"] },
+      { "name": "time tracking timer", "any": ["timer", "time track", "idle"] },
+      { "name": "hours export", "any": ["export", "csv"] },
+      { "name": "QR code on invoices", "any": ["qr"] }
+    ],
+    "hood": [
+      { "name": "framework upgrade", "any": ["django"] },
+      { "name": "database move", "any": ["terraform", "eu-central"] }
+    ],
+    "never": ["JIRA-881", "WIP", "Merge branch"]
+  }
+}

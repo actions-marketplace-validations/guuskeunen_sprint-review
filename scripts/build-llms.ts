@@ -13,6 +13,7 @@ const files = [
   'docs/integrations.md',
   'docs/models.md',
   'docs/security.md',
+  'docs/benchmark.md',
   'docs/how-it-works.md',
   'docs/library.md',
   'docs/troubleshooting.md',

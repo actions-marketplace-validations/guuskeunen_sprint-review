@@ -202,7 +202,7 @@
       <button class="copy" id="copy" type="button" aria-label="Copy the command"><span>npx @guuskeunen/sprint-review</span><i>Copy</i></button>
       <a class="btn" href="demo/">Open the demo deck →</a>
     </div>
-    <p class="meta">CLI · GitHub Action · MCP server · Node 20+ · Claude or OpenAI</p>
+    <p class="meta">CLI · GitHub Action · Claude Code plugin · MCP server · Claude, GPT, Gemini, Bedrock or a local model</p>
 
     <div class="stage" id="stage" aria-label="A demo: the command runs, then the deck it made plays">
       <div class="window" id="term" aria-hidden="true">
@@ -280,8 +280,9 @@ npx @guuskeunen/sprint-review edit sprint-reviews/2026-11-16/review.json</pre>
       - <span class="k">uses</span>: guuskeunen/sprint-review@v0
         <span class="k">with</span>:
           <span class="k">anthropic-api-key</span>: ${{ secrets.ANTHROPIC_API_KEY }}</pre>
-<pre data-pane="mcp" hidden><span class="c"># add the MCP server</span>
-claude mcp add sprint-review -- npx -y @guuskeunen/sprint-review mcp
+<pre data-pane="mcp" hidden><span class="c"># install the plugin: the skill and the MCP server</span>
+/plugin marketplace add guuskeunen/sprint-review
+/plugin install sprint-review@sprint-review
 
 <span class="c"># then just ask</span>
 <span class="s">&gt; make our sprint review for the last two weeks</span></pre>
@@ -302,9 +303,9 @@ claude mcp add sprint-review -- npx -y @guuskeunen/sprint-review mcp
     <h2 class="reveal">Good to know</h2>
     <div class="faq reveal">
       <details><summary>Why not just ask an AI for a sprint review?</summary><p>You can, once. sprint-review does it every sprint with no one in the loop: it reads the exact range, refuses lines it can't trace to commits, diffs real screenshots, and keeps a log of every correction. The result is something you can present without checking it line by line.</p></details>
-      <details><summary>What does it send to the model?</summary><p>Commit subjects, bodies, changed file names and, if you allow it, pull request descriptions. Never your code. Run --dry-run to see exactly what would be sent.</p></details>
+      <details><summary>What does it send to the model?</summary><p>Commit subjects, bodies, changed file names and, if you allow it, pull request descriptions. Never your code. It runs on your machine or in your CI with your own key: there's no sprint-review server. Run --dry-run to see exactly what would be sent, and read the <a href="https://github.com/guuskeunen/sprint-review/blob/main/docs/security.md" style="color:var(--gold)">security and privacy</a> page.</p></details>
       <details><summary>What does a run cost?</summary><p>Two or three model calls per sprint, typically a few cents to a few dimes depending on the size of the sprint and the model.</p></details>
-      <details><summary>Which models does it work with?</summary><p>Anthropic's Claude models by default, with a fallback model on errors. OpenAI and compatible endpoints work too.</p></details>
+      <details><summary>Which models does it work with?</summary><p>Claude by default, with a fallback model on errors. Also Amazon Bedrock, Azure OpenAI, OpenAI, OpenRouter, Gemini, Mistral, and local models with Ollama or LM Studio, where nothing leaves your network.</p></details>
       <details><summary>Can it match our company style?</summary><p>Set a color and logo, or point it at an existing PowerPoint: it takes the accent color, fonts and logo from the theme. There's a light and a dark deck.</p></details>
       <details><summary>Does it work without screenshots?</summary><p>Yes. Screenshots make the deck better, but themes, speaker notes, milestones and usage numbers all work without them.</p></details>
     </div>

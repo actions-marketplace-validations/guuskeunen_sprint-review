@@ -18,7 +18,8 @@ npm test
 | Command | Does |
 |---|---|
 | `npm test` | All tests. |
-| `npm run typecheck` | Type checks without building. |
+| `npm run typecheck` | Type checks the code, the tests and the scripts. |
+| `npm run bench` | The [quality benchmark](docs/benchmark.md) against a real model. `-- --echo` checks the harness without one. |
 | `npm run build` | Builds `dist/`. |
 | `node src/cli.ts --dry-run` | Runs the CLI from source in any repository. |
 | `node scripts/build-demo.ts` | Rebuilds the demo deck in `docs/demo/`. |
@@ -30,7 +31,12 @@ npm test
 | `src/history.ts` | Reads commits, files and the roadmap from git. |
 | `src/screenshots.ts`, `src/compare.ts` | Finds changed screenshots and compares them. |
 | `src/prompt.ts` | Everything the model is told, and the answer shapes. |
-| `src/writer.ts` | The two model calls and every check on what comes back. |
+| `src/writer.ts` | The model calls and every check on what comes back. |
+| `src/model.ts`, `src/providers.ts` | The Anthropic and OpenAI-compatible clients, the presets, Bedrock. |
+| `src/editor.ts`, `assets/editor.html` | The local editor. |
+| `src/mcp.ts` | The MCP server. |
+| `src/pptx.ts`, `src/brand.ts` | PowerPoint export, and the brand from a .pptx. |
+| `bench/` | The quality benchmark: cases and scoring. |
 | `src/generate.ts` | Puts it all together. |
 | `src/render.ts`, `assets/deck.css` | The deck. |
 | `src/i18n.ts` | Slide labels per language. |
@@ -55,3 +61,7 @@ Keep them focused, explain the why in the description, and make sure `npm test` 
 1. Update `CHANGELOG.md` and the version in `package.json`.
 2. `npm publish`.
 3. Tag `vX.Y.Z`, move the `v0` tag to it, and publish a GitHub release (tick *Publish this Action to the GitHub Marketplace*).
+
+## Releases
+
+Releases are automatic. Commit messages follow [Conventional Commits](https://www.conventionalcommits.org) (`feat:`, `fix:`, `docs:`…). On every push to `main`, release-please updates a release pull request with the next version and the changelog. Merging it tags the release, publishes to npm with provenance, and moves the `v0` tag. Changing the prompts? Run `npm run bench` before and after, and put both numbers in the pull request.

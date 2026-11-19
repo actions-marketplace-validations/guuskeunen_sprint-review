@@ -13,6 +13,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/guuskeunen/sprint-review/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/guuskeunen/sprint-review/ci.yml?branch=main&label=tests&color=b8914a&labelColor=16161b" alt="Tests"></a>
   <a href="https://www.npmjs.com/package/@guuskeunen/sprint-review"><img src="https://img.shields.io/npm/v/@guuskeunen/sprint-review?color=b8914a&labelColor=16161b&label=npm" alt="npm"></a>
   <a href="https://github.com/marketplace/actions/sprint-review-deck"><img src="https://img.shields.io/badge/GitHub%20Action-ready-b8914a?labelColor=16161b" alt="GitHub Action"></a>
   <a href="docs/integrations.md#claude-code-cursor-and-other-mcp-clients"><img src="https://img.shields.io/badge/MCP-server-b8914a?labelColor=16161b" alt="MCP server"></a>
@@ -123,11 +124,12 @@ The review also lands in the job summary. Want a pull request to review and a sh
 
 ## Use it from Claude Code, Cursor or any MCP client
 
-```bash
-claude mcp add sprint-review -- npx -y @guuskeunen/sprint-review mcp
+```
+/plugin marketplace add guuskeunen/sprint-review
+/plugin install sprint-review@sprint-review
 ```
 
-Then ask *"make our sprint review for the last two weeks"*. There's also a [Claude Code skill](skills/sprint-review/SKILL.md). → **[Integrations](docs/integrations.md)**: MCP, OpenAI, Slack, pull requests, GitLab
+The Claude Code plugin brings the skill and the MCP server. Other clients: `npx -y @guuskeunen/sprint-review mcp`. Then ask *"make our sprint review for the last two weeks"*. → **[Integrations](docs/integrations.md)**: MCP, OpenAI, Slack, pull requests, GitLab
 
 ## Configuration at a glance
 
@@ -159,6 +161,7 @@ screenshots:
 - [Integrations](docs/integrations.md): MCP server, Claude Code skill, Slack, pull request context
 - [Models and providers](docs/models.md): Claude, Bedrock, Azure, OpenAI, OpenRouter, Gemini, Mistral, Ollama, LM Studio
 - [Security and privacy](docs/security.md): what it reads, what it sends where, what it never does
+- [Quality benchmark](docs/benchmark.md): how every prompt and model change is measured
 - [How it works](docs/how-it-works.md): the pipeline and every check
 - [Using it as a library](docs/library.md): the Node API
 - [Troubleshooting](docs/troubleshooting.md) and [FAQ](docs/faq.md)
@@ -181,7 +184,8 @@ screenshots:
 - [x] Local editor (`sprint-review edit`)
 - [x] GitLab CI template, Slack posting
 - [x] More models: Bedrock, Azure, OpenAI, OpenRouter, Gemini, Mistral, Ollama, LM Studio
-- [x] MCP server and Claude Code skill
+- [x] MCP server, Claude Code skill and plugin
+- [x] A quality benchmark for every prompt and model change
 - [ ] Linked issues (GitHub, Jira, Linear) as extra context
 - [ ] Export into your own PowerPoint layouts, not just its look
 - [ ] More slide languages built in
@@ -190,7 +194,7 @@ Ideas and bugs: [open an issue](https://github.com/guuskeunen/sprint-review/issu
 
 ## Contributing
 
-PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). `npm test` runs the whole pipeline against a fake repo and a fake model, so you don't need an API key.
+PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). `npm test` runs the whole pipeline against a fake repo and a fake model, so you don't need an API key. Prompt changes come with a [benchmark](docs/benchmark.md) run, before and after.
 
 ## License
 

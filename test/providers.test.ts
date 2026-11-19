@@ -53,13 +53,13 @@ test('json mode sends the schema in the prompt and response_format, without tool
   assert.equal((r.calls[0]!.init.headers as Record<string, string>).authorization, undefined, 'no key for a local server');
 });
 
-test('each preset gets its address, key and way to force the tool', () => {
+test('each preset gets its address, key and way to force the tool', async () => {
   const cases = [
     ['openrouter', 'OPENROUTER_API_KEY', 'https://openrouter.ai/api/v1/chat/completions', { type: 'function', function: { name: 'presentation' } }],
     ['gemini', 'GEMINI_API_KEY', 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', 'required'],
     ['mistral', 'MISTRAL_API_KEY', 'https://api.mistral.ai/v1/chat/completions', 'any'],
   ] as const;
-  return Promise.all(
+  await Promise.all(
     cases.map(async ([provider, env, url, choice]) => {
       const r = recorder(chat({ tool_calls: [{ function: { name: 'presentation', arguments: '{}' } }] }));
       await clientFor({ provider, name: 'x', fallback: null }, { [env]: 'secret' }, r.impl).ask(request);

@@ -11,6 +11,7 @@ Quick start (Node 20+, inside a git repository):
 - `npx @guuskeunen/sprint-review --since 2026-11-03 --until 2026-11-16` or `--from v1.4.0 --to v1.5.0` for a specific range.
 - `npx @guuskeunen/sprint-review edit sprint-reviews/<date>/review.json` opens a local editor beside the live deck.
 - `npx @guuskeunen/sprint-review init` writes a commented `sprint-review.config.yml`.
+- Claude Code plugin: `/plugin marketplace add guuskeunen/sprint-review` then `/plugin install sprint-review@sprint-review`.
 - `npx @guuskeunen/sprint-review mcp` runs it as an MCP server (tools: generate_sprint_review, preview_sprint_commits, render_sprint_review, check_sprint_review_setup). Claude Code: `claude mcp add sprint-review -- npx -y @guuskeunen/sprint-review mcp`.
 - GitHub Action: `uses: guuskeunen/sprint-review@v0` with `anthropic-api-key`, after `actions/checkout@v4` with `fetch-depth: 0`.
 

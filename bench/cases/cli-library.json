@@ -1,0 +1,36 @@
+{
+  "name": "cli-library",
+  "about": "An open-source command-line tool, reviewed for its own developer community: the audience is technical, so plain but precise language is right.",
+  "config": {
+    "product": { "name": "tidyfs", "description": "a command-line tool that finds and cleans up duplicate and stale files" },
+    "audience": "team",
+    "productPaths": ["src/"]
+  },
+  "range": { "from": "2026-11-01", "until": "2026-11-14" },
+  "commits": [
+    { "date": "2026-10-10", "message": "feat: initial release", "files": { "src/main.rs": "1" } },
+    { "date": "2026-11-01", "message": "feat(scan): parallel hashing with a worker pool (3x faster on SSDs)", "files": { "src/scan/hash.rs": "1" } },
+    { "date": "2026-11-03", "message": "feat(clean): --dry-run prints what would be removed", "files": { "src/clean/mod.rs": "1" } },
+    { "date": "2026-11-04", "message": "feat(clean)!: move files to trash instead of deleting\n\nBREAKING CHANGE: --force is now needed to delete for good.", "files": { "src/clean/trash.rs": "1" } },
+    { "date": "2026-11-06", "message": "fix(scan): follow symlinks only with --follow, avoid loops", "files": { "src/scan/walk.rs": "1" } },
+    { "date": "2026-11-08", "message": "feat(output): --json for scripts", "files": { "src/output/json.rs": "1" } },
+    { "date": "2026-11-10", "message": "build: release binaries for linux-arm64", "files": { ".github/workflows/release.yml": "1", "Cross.toml": "1" } },
+    { "date": "2026-11-11", "message": "docs: man page", "files": { "docs/tidyfs.1": "1" } },
+    { "date": "2026-11-12", "message": "chore: clippy fixes", "files": { "src/main.rs": "2" } },
+    { "date": "2026-11-13", "message": "test(clean): property tests for trash restore", "files": { "tests/trash.rs": "1" } }
+  ],
+  "expect": {
+    "themes": [
+      { "name": "faster scanning", "any": ["faster", "parallel", "hash"] },
+      { "name": "safe cleanup via trash", "any": ["trash"] },
+      { "name": "dry run", "any": ["dry run", "dry-run", "would be removed", "preview"] },
+      { "name": "json output", "any": ["json", "script"] },
+      { "name": "symlink safety", "any": ["symlink", "loop"] }
+    ],
+    "hood": [
+      { "name": "arm64 builds", "any": ["arm64", "arm"] },
+      { "name": "lint fixes", "any": ["clippy", "lint"] }
+    ],
+    "never": []
+  }
+}

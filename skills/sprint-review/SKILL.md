@@ -11,6 +11,10 @@ is placed by code.
 
 ## Steps
 
+If the `sprint-review` MCP tools are available (`check_sprint_review_setup`, `preview_sprint_commits`,
+`generate_sprint_review`, `render_sprint_review`), use them for steps 1 to 3 and 5. Otherwise use the CLI
+commands below.
+
 1. Check the setup: `npx @guuskeunen/sprint-review doctor`. If there is no
    `sprint-review.config.yml`, run `npx @guuskeunen/sprint-review init` and fill in
    `product.name`, `product.description` and `audience` with the user. Ask what the product
@@ -18,8 +22,8 @@ is placed by code.
 2. Preview what would be sent, without calling a model:
    `npx @guuskeunen/sprint-review generate --dry-run`. Tell the user how many commits and
    screens it found.
-3. Generate: `npx @guuskeunen/sprint-review generate --json`. It needs `ANTHROPIC_API_KEY`
-   (or `OPENAI_API_KEY` with `model.provider: openai`). Use `--since`/`--until` for dates or
+3. Generate: `npx @guuskeunen/sprint-review generate --json`. It needs `ANTHROPIC_API_KEY`, or the key
+   for the provider in `model.provider` (see docs/models.md); local models need none. Use `--since`/`--until` for dates or
    `--from`/`--to` for tags, when the user names a sprint.
 4. Read `checks.md` in the output folder and tell the user, briefly, what was corrected,
    moved or dropped, and every warning. Warnings are lines the second reader got stuck on.
