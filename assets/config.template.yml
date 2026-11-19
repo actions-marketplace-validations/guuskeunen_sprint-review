@@ -1,0 +1,64 @@
+# sprint-review configuration
+# Full reference: https://github.com/guuskeunen/sprint-review/blob/main/docs/configuration.md
+
+product:
+  name: {{name}}
+  # One or two sentences on what the product is and who uses it. The AI uses this to explain
+  # changes in terms your audience knows.
+  description: ""
+
+# Shown on the cover and the "What we gain" slide.
+organization: ""
+
+# Who watches the review: business, executives, customers, team, or your own description.
+audience: {{audience}}
+
+# The language of the slides: English, Dutch, German, or a code like nl or de-DE.
+language: English
+
+sprint:
+  days: 14
+
+# Your brand. The logo can be PNG, JPG, SVG or WebP.
+brand:
+  color: "#4f46e5"
+  # logo: ./logo.png
+
+# Folders with product code. Commits that only touch other files (tests, CI, docs) can only go
+# under the hood. Leave empty to treat every commit as product work.
+productPaths:
+  # - src/
+  # - app/
+
+# Commits whose subject matches one of these patterns are skipped entirely.
+ignore:
+  - "^chore\\(release\\)"
+  - "^Merge "
+
+# Words the AI tends to get wrong, with the word your team uses.
+# replace:
+#   customer: client
+
+# Extra writing rules, in your own words.
+# rules:
+#   - Call the mobile app "the app", never "the mobile client".
+
+# Before and after screenshots (optional). See docs/screenshots.md.
+# screenshots:
+#   source: git                          # git, folder or none
+#   dir: e2e/__screenshots__             # where your visual test pictures live
+#   names:
+#     dashboard: Dashboard
+#     customer-page: Customer page
+#   ignore: { left: 240, top: 64 }       # side menu and top bar, in pixels
+
+# Milestones: lines like "- [x] Online booking" in this file become the roadmap slide.
+roadmap: ROADMAP.md
+
+# Usage numbers (optional): a JSON file you produce, like
+# [{ "label": "orders placed", "value": 312, "previous": 268 }]
+# usage: ./usage.json
+
+model:
+  name: claude-opus-5-5
+  fallback: claude-sonnet-5-5

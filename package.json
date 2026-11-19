@@ -1,0 +1,59 @@
+{
+  "name": "@guuskeunen/sprint-review",
+  "publishConfig": {
+    "access": "public"
+  },
+  "version": "0.1.0",
+  "description": "Turn a sprint's git history into a sprint review deck that non-technical colleagues can follow. AI writes the words, code checks every claim.",
+  "license": "MIT",
+  "author": "Guus Keunen",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/guuskeunen/sprint-review.git"
+  },
+  "type": "module",
+  "bin": {
+    "sprint-review": "dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "assets",
+    "action.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test test/*.test.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "sharp": "^0.34.0",
+    "yaml": "^2.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  },
+  "keywords": [
+    "sprint-review",
+    "scrum",
+    "changelog",
+    "presentation",
+    "git",
+    "ai",
+    "claude"
+  ]
+}

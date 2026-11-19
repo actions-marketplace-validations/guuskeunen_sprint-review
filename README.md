@@ -1,2 +1,170 @@
-# sprint-review
-Swiftly and easily generate sprint reviews
+<p align="center">
+  <img src="docs/assets/logo.svg" alt="sprint-review" width="420">
+</p>
+
+<p align="center">
+  <b>Turn a sprint's git history into a review deck anyone can follow.</b><br>
+  AI writes the words. Code checks every claim. You click publish.
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/@guuskeunen/sprint-review"><img src="https://img.shields.io/npm/v/@guuskeunen/sprint-review?color=ea580c&label=npm" alt="npm"></a>
+  <a href="https://github.com/marketplace/actions/sprint-review-deck"><img src="https://img.shields.io/badge/GitHub%20Action-ready-0f172a" alt="GitHub Action"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-0f172a" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/node-%E2%89%A520-0f172a" alt="Node 20 or newer">
+</p>
+
+<p align="center">
+  <a href="https://guuskeunen.github.io/sprint-review/demo/"><b>See a live demo deck →</b></a>
+</p>
+
+<p align="center">
+  <img src="docs/assets/demo.gif" alt="A generated sprint review deck: cover, what the sprint brings, usage, themes, before and after screenshots, roadmap" width="860">
+</p>
+
+---
+
+Every sprint, someone spends half a day turning commit messages like `refactor(planner): optimize status count queries` into slides that marketing, sales and management actually understand. **sprint-review does that in about a minute**, and builds a polished deck with the before and after screenshots, the roadmap and the speaker notes.
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+npx @guuskeunen/sprint-review
+```
+
+That's all you need to start: no config, no account, nothing to host. You get a single HTML deck that opens anywhere.
+
+## Why it's different
+
+Most AI summary tools hand your history to a model and hope for the best. sprint-review treats the model as a writer, not a source of truth:
+
+- **Every point has to name a real commit.** A point that points nowhere is dropped. That's how invented features stay off the slides.
+- **Code does everything that can be checked.** Word limits, no ticket numbers or hashes, no exclamation marks, the numbers, the pictures, the page itself. The model never writes HTML or counts anything.
+- **A second AI reads it like your audience would.** It sees only the slide text and flags whatever someone outside the team wouldn't understand.
+- **Tooling never becomes a theme.** CI, test and dependency changes go under the hood automatically.
+- **Real screenshots, no customer data.** It reuses the pictures your visual tests already take, finds the screens that actually changed, and crops to the change.
+- **Nothing is published on its own.** You get a draft, the check log and an editable `review.json`.
+
+## What you get
+
+| File | What it is |
+|---|---|
+| `deck.html` | The presentation. One self-contained file: arrow keys, presenter window with notes and timer, full screen, prints to PDF. |
+| `review.json` | Everything on the slides. Edit it, then `sprint-review render` rebuilds the deck. |
+| `review.md` | A Markdown summary for a pull request, Slack or an email. |
+| `checks.md` | What the checks corrected, moved or dropped, and what the second reader flagged. |
+
+The deck has a cover with your logo and color, *What we gain* grouped by value, usage numbers, a summary, one slide per theme (with a screenshot when one fits), before and after slides, the roadmap, *Under the hood* and a closing slide.
+
+## Quick start
+
+```bash
+# 1. In your repository
+npx @guuskeunen/sprint-review init      # writes sprint-review.config.yml
+
+# 2. See what it will read, for free
+npx @guuskeunen/sprint-review --dry-run
+
+# 3. Write the review
+export ANTHROPIC_API_KEY=sk-ant-...
+npx @guuskeunen/sprint-review
+open sprint-reviews/*/deck.html
+```
+
+More options:
+
+```bash
+sprint-review --since 2026-11-03 --until 2026-11-16   # a date range
+sprint-review --from v1.4.0 --to v1.5.0              # between two tags
+sprint-review render sprint-reviews/2026-11-16/review.json
+sprint-review doctor                                  # check the setup
+```
+
+→ **[Getting started guide](docs/getting-started.md)**
+
+## Run it every sprint with GitHub Actions
+
+```yaml
+name: Sprint review
+on:
+  schedule:
+    - cron: '0 7 * * 2'   # Tuesday morning, before the review
+  workflow_dispatch:
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0            # the full history is needed
+      - uses: guuskeunen/sprint-review@v0
+        id: review
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sprint-review
+          path: ${{ steps.review.outputs.dir }}
+```
+
+The review also lands in the job summary. Want a pull request to review and a shareable link on GitHub Pages instead? → **[GitHub Action guide](docs/github-action.md)**
+
+## Configuration at a glance
+
+```yaml
+product:
+  name: Spoke
+  description: the planning and customer app of a chain of bike repair shops
+organization: Northside Cycles
+audience: business          # business, executives, customers, team, or your own words
+language: English           # or Dutch, German, nl, de-DE …
+sprint: { days: 14 }
+brand: { color: "#ea580c", logo: ./logo.png }
+productPaths: [src/]
+screenshots:
+  source: git
+  dir: e2e/__screenshots__
+  ignore: { left: 240, top: 64 }
+```
+
+→ **[Full configuration reference](docs/configuration.md)**
+
+## Documentation
+
+- [Getting started](docs/getting-started.md): from zero to your first deck in five minutes
+- [Configuration](docs/configuration.md): every option, with defaults
+- [Screenshots](docs/screenshots.md): before and after slides from your visual tests or a folder
+- [GitHub Action](docs/github-action.md): scheduled reviews, pull requests, GitHub Pages
+- [Editing and presenting](docs/editing.md): change a draft, present it, export to PDF
+- [How it works](docs/how-it-works.md): the pipeline and every check
+- [Using it as a library](docs/library.md): the Node API
+- [Troubleshooting](docs/troubleshooting.md) and [FAQ](docs/faq.md)
+
+## Privacy and cost
+
+- **What leaves your machine:** commit subjects, bodies and file names of the sprint, plus your product description, sent to Anthropic's API with your own key. **Never source code, never screenshots.** Pictures are compared and placed locally.
+- **What it costs:** two API calls per review, billed to your own Anthropic account. `--dry-run` shows how many tokens a review will use before you spend anything. Pick a smaller model in the config if you want it cheaper.
+
+## Roadmap
+
+- [x] CLI, GitHub Action, deck, Markdown summary, check log
+- [x] Before and after screenshots from git or a folder
+- [x] English and Dutch slide labels, any language for the content
+- [ ] Pull request descriptions and linked issues as extra context
+- [ ] One automatic revision pass for lines the second reader flags
+- [ ] Brand from an existing deck: colors, fonts and logo from a `.pptx`
+- [ ] Export into your own PowerPoint template
+- [ ] Screenshots taken by the tool itself from a staging URL
+- [ ] Local editor (`sprint-review edit`)
+- [ ] GitLab CI template, Slack posting, more AI providers
+- [ ] Claude Code skill and MCP server
+
+Ideas and bugs: [open an issue](https://github.com/guuskeunen/sprint-review/issues).
+
+## Contributing
+
+PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). `npm test` runs the whole pipeline against a fake repo and a fake model, so you don't need an API key.
+
+## License
+
+[MIT](LICENSE) © Guus Keunen. Icons from [Lucide](https://lucide.dev) (ISC).
