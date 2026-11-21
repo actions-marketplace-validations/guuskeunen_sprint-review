@@ -25,6 +25,14 @@ export interface ModelClient {
 export class ModelError extends Error {}
 
 /**
+ * The answer stopped at the token limit before it held the slides. Thinking models count their
+ * thinking against the same limit, so a long sprint can use it up before a word is written.
+ */
+export function cutOff(maxTokens: number): ModelError {
+  return new ModelError(`The model's answer was cut off at ${maxTokens} tokens, before it was complete. Raise model.maxTokens in the config (thinking models count their thinking too), or review a shorter range.`);
+}
+
+/**
  * The answer as JSON when a model wrote it as text instead of through the tool: the whole text,
  * a fenced block, or the outermost object in it. Whatever comes out still goes through every check.
  */
@@ -101,11 +109,13 @@ export class AnthropicClient implements ModelClient {
           }
           throw err;
         }
-        const data = JSON.parse(text) as { content?: { type: string; name?: string; input?: unknown }[]; model?: string; usage?: { input_tokens?: number; output_tokens?: number } };
+        const data = JSON.parse(text) as { content?: { type: string; name?: string; input?: unknown }[]; stop_reason?: string; model?: string; usage?: { input_tokens?: number; output_tokens?: number } };
         const block = data.content?.find((b) => b.type === 'tool_use' && b.name === request.tool.name);
         const answerText = data.content?.filter((b) => b.type === 'text').map((b) => (b as { text?: string }).text ?? '').join('\n') ?? '';
+        const toolInput = block && typeof block.input === 'object' && block.input !== null ? (block.input as Record<string, unknown>) : extractJson(answerText);
+        if (!toolInput && data.stop_reason === 'max_tokens') throw cutOff(request.maxTokens);
         return {
-          toolInput: block && typeof block.input === 'object' && block.input !== null ? (block.input as Record<string, unknown>) : extractJson(answerText),
+          toolInput,
           model: data.model ?? model,
           usage: { input: data.usage?.input_tokens ?? 0, output: data.usage?.output_tokens ?? 0 },
         };
@@ -132,6 +142,8 @@ export interface CompatibleOptions {
   keyHeader?: 'bearer' | 'api-key';
   /** A key is not needed for local servers. */
   keyRequired?: boolean;
+  /** How hard a thinking model thinks (reasoning_effort), for services whose thinking eats the answer's tokens. */
+  reasoningEffort?: 'low' | 'medium' | 'high' | null;
   /** Name in error messages. */
   label?: string;
   /** The environment variable for the key, for the error message. */
@@ -169,6 +181,7 @@ export class OpenAIClient implements ModelClient {
       label: options.label ?? 'OpenAI',
       keyEnv: options.keyEnv ?? 'OPENAI_API_KEY',
       timeoutMs: options.timeoutMs ?? TIMEOUT_MS,
+      reasoningEffort: options.reasoningEffort ?? null,
     };
     if (!apiKey && this.options.keyRequired) throw new ModelError(`${this.options.keyEnv} is not set. Set it as an environment variable with your ${this.options.label} API key.`);
   }
@@ -183,7 +196,8 @@ export class OpenAIClient implements ModelClient {
   }
 
   private body(model: string, request: ModelRequest): string {
-    const { mode, toolChoice } = this.options;
+    const { mode, toolChoice, reasoningEffort } = this.options;
+    const effort = reasoningEffort ? { reasoning_effort: reasoningEffort } : {};
     if (mode === 'json') {
       // No tools: the schema goes in the prompt and, for servers that support it, in response_format.
       return JSON.stringify({
@@ -194,6 +208,7 @@ export class OpenAIClient implements ModelClient {
           { role: 'user', content: request.messages.join('\n\n') },
         ],
         response_format: { type: 'json_schema', json_schema: { name: request.tool.name, schema: request.tool.input_schema, strict: false } },
+        ...effort,
       });
     }
     return JSON.stringify({
@@ -205,6 +220,7 @@ export class OpenAIClient implements ModelClient {
       ],
       tools: [{ type: 'function', function: { name: request.tool.name, description: request.tool.description, parameters: request.tool.input_schema } }],
       tool_choice: toolChoice === 'function' ? { type: 'function', function: { name: request.tool.name } } : toolChoice,
+      ...effort,
     });
   }
 
@@ -231,14 +247,18 @@ export class OpenAIClient implements ModelClient {
           throw err;
         }
         const data = JSON.parse(text) as {
-          choices?: { message?: { content?: string | null; tool_calls?: { function?: { name?: string; arguments?: string } }[] } }[];
+          choices?: { finish_reason?: string; message?: { content?: string | null; tool_calls?: { function?: { name?: string; arguments?: string } }[] } }[];
           model?: string;
-          usage?: { prompt_tokens?: number; completion_tokens?: number };
+          usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
         };
         const message = data.choices?.[0]?.message;
         const call = message?.tool_calls?.find((t) => t.function?.name === request.tool.name) ?? message?.tool_calls?.[0];
         const input = extractJson(call?.function?.arguments) ?? extractJson(message?.content);
-        return { toolInput: input, model: data.model ?? model, usage: { input: data.usage?.prompt_tokens ?? 0, output: data.usage?.completion_tokens ?? 0 } };
+        if (!input && data.choices?.[0]?.finish_reason === 'length') throw cutOff(request.maxTokens);
+        // Gemini leaves its thinking out of completion_tokens but bills it as output: total minus prompt has it.
+        const prompt = data.usage?.prompt_tokens ?? 0;
+        const output = Math.max(data.usage?.completion_tokens ?? 0, (data.usage?.total_tokens ?? 0) - prompt);
+        return { toolInput: input, model: data.model ?? model, usage: { input: prompt, output } };
       } catch (e) {
         if (e instanceof ModelError && !new RegExp(`${label} API (429|5\\d\\d)`).test(e.message)) throw e;
         if (e instanceof Error && e.name === 'TypeError' && /fetch failed/.test(e.message)) {
