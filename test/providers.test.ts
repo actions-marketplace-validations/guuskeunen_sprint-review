@@ -139,7 +139,7 @@ test('Bedrock: Converse with a forced tool, signed with a key or an API token', 
   assert.deepEqual(answer.usage, { input: 7, output: 4 });
   const call = r.calls[0]!;
   assert.equal(call.url, 'https://bedrock-runtime.eu-west-1.amazonaws.com/model/us.anthropic.claude-opus-5-5-v1%3A0/converse');
-  assert.deepEqual(call.body.toolConfig.toolChoice, { tool: { name: 'presentation' } });
+  assert.deepEqual(call.body.toolConfig.toolChoice, { auto: {} });
   const headers = call.init.headers as Record<string, string>;
   assert.match(headers.authorization!, /^AWS4-HMAC-SHA256 Credential=AKID\/\d{8}\/eu-west-1\/bedrock\/aws4_request, SignedHeaders=host;x-amz-date;x-amz-security-token, Signature=[0-9a-f]{64}$/);
   assert.equal(headers['x-amz-security-token'], 'session');
@@ -164,4 +164,23 @@ test('doctor checks the key per provider and whether a local server answers', as
   const down = (async () => { throw new TypeError('fetch failed'); }) as unknown as typeof fetch;
   const bad = await doctorChecks(normalize({ model: { provider: 'ollama', name: 'qwen3:32b' } }, dir), dir, {}, down);
   assert.ok(bad.some((l) => !l.ok && /ollama serve/.test(l.fix ?? '')));
+});
+
+test('a model that refuses tool calls is asked again in JSON mode, once', async () => {
+  const bodies: any[] = [];
+  const impl = (async (_url: string, init: RequestInit) => {
+    const body = JSON.parse(String(init.body));
+    bodies.push(body);
+    if (body.tools) {
+      return new Response(JSON.stringify({ error: { message: "Function tools with reasoning_effort are not supported for gpt-x in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'.", type: 'invalid_request_error' } }), { status: 400 });
+    }
+    return new Response(JSON.stringify(chat({ content: '{"summary":[]}' })), { status: 200 });
+  }) as unknown as typeof fetch;
+  const client = clientFor({ provider: 'openai', name: 'gpt-x', fallback: null }, { OPENAI_API_KEY: 'k' }, impl);
+  assert.deepEqual((await client.ask(request)).toolInput, { summary: [] });
+  assert.ok(bodies[1].response_format, 'the second request is in JSON mode');
+  assert.equal(bodies[1].max_completion_tokens, 100, 'hosted APIs get max_completion_tokens');
+  assert.equal(bodies[1].max_tokens, undefined);
+  await client.ask(request);
+  assert.equal(bodies.length, 3, 'later calls go straight to JSON mode');
 });
