@@ -1096,6 +1096,12 @@ npx @guuskeunen/sprint-review render sprint-reviews/2026-11-16/review.json
 
 Some teams present from PowerPoint or Keynote, or want to add a slide by hand. Add `--pptx` (or set `output.pptx: true`) and `deck.pptx` is written next to the deck: the same slides, editable, with the speaker notes in the notes pane. It needs `pptxgenjs` (`npm i -D pptxgenjs`). `render` and the editor rebuild it too when `output.pptx` is on.
 
+`npm audit` may then report `image-size`: `pptxgenjs` lists it as a dependency but never calls it, so the advisory doesn't reach sprint-review, and only a `pptxgenjs` release can remove it. To clear the report, add this to your `package.json`:
+
+```json
+"overrides": { "image-size": "^2.1.0" }
+```
+
 The HTML deck stays the richer one: animations, the presenter window and before-and-after wipes don't exist in PowerPoint.
 
 ## Presenting
@@ -1466,7 +1472,7 @@ The deck is a single file with no outside requests: no fonts, scripts, images or
 
 ## Dependencies
 
-Two runtime dependencies, `sharp` (image comparison) and `yaml` (the config), plus `pptxgenjs` as an optional one for PowerPoint export. Playwright is only needed if you use `capture`, and you install it yourself. HTTP calls use Node's built-in `fetch`. Releases are published to npm with [provenance](https://docs.npmjs.com/generating-provenance-statements), so you can verify a package was built from this repository.
+Two runtime dependencies, `sharp` (image comparison) and `yaml` (the config), plus `pptxgenjs` as an optional one for PowerPoint export, which you install yourself. A plain install has no known vulnerabilities; with `pptxgenjs`, `npm audit` reports `image-size`, which `pptxgenjs` lists but never calls ([how to clear it](editing.md#powerpoint)). Playwright is only needed if you use `capture`, and you install it yourself. HTTP calls use Node's built-in `fetch`. Releases are published to npm with [provenance](https://docs.npmjs.com/generating-provenance-statements), so you can verify a package was built from this repository.
 
 ## Reporting a vulnerability
 
