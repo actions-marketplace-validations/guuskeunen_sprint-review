@@ -28,7 +28,7 @@ Yes. Set `productPaths` to the folders that hold product code, such as `apps/web
 Yes: `--from v1.4.0 --to v1.5.0`. `review.md` works well as release notes.
 
 ### Which languages?
-The AI writes the content in any language. Slide labels ship in English and Dutch; override them for others.
+The AI writes the content in any language. Slide labels ship in English, Dutch, German, French and Spanish; override them for others.
 
 ### Can I use my company's slide template?
 Partly. Point `brand.from` at your PowerPoint and the deck takes its accent color, fonts and logo. The layout stays sprint-review's own; exporting into your own slide layouts is on the roadmap.

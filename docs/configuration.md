@@ -109,7 +109,7 @@ audience: Store managers who use Spoke every day but never see the code.
 Who presents. The speaker notes are written for them. Default: a technical presenter who knows the product and gives a short demo per theme.
 
 ### `language`
-The language of the slide content, as a name (`English`, `Dutch`, `German`) or a code (`nl`, `de-DE`). The AI writes in any language. The fixed labels ("Under the hood", "Before", "After"…) ship in English and Dutch. Other languages fall back to English labels; override them with [`labels`](#labels). Dates follow the language too: `November 16, 2026` in English, `16 november 2026` in Dutch.
+The language of the slide content, as a name (`English`, `Dutch`, `German`) or a code (`nl`, `de-DE`). The AI writes in any language. The fixed labels ("Under the hood", "Before", "After"…) ship in English, Dutch, German, French and Spanish. Other languages fall back to English labels; override them with [`labels`](#labels). Dates follow the language too: `November 16, 2026` in English, `16 november 2026` in Dutch.
 
 ### `goal`
 The sprint goal. Shown on the cover, and the AI puts the work that served it first. Default none.
@@ -121,17 +121,19 @@ How many days a review covers when you don't pass `--since` or `--from`. Both en
 
 | Key | Description |
 |---|---|
-| `color` | Accent color as `#rrggbb`. Lighter and darker shades are mixed from it. Default indigo `#4f46e5`. |
+| `color` | Accent color as `#rrggbb`. Lighter and darker shades are mixed from it. Default indigo `#4f46e5`. A color too light for a light deck or too dark for a dark one is darkened or lightened just enough to read (WCAG 3:1, as for large text and icons); a color that reads keeps its exact value. |
 | `logo` | Path to a PNG, JPG, SVG, WebP or GIF, or a `data:image/...` URI. Shown on the cover, on a white plate. |
-| `from` | Path to a `.pptx` or `.potx`: its theme's first accent color, its heading and body fonts and the logo on its slide master fill in whatever you didn't set here. Only the look is taken, not the layout. |
+| `from` | A website (`https://...`) or the path to a `.pptx` or `.potx`. From a website: its brand color (a `--brand` or `--primary` color in its stylesheet, or its `theme-color`; grays are skipped), its heading and body fonts (`--font-heading`/`--font-display`, `--font-sans`/`--font-body`) and its logo (a logo image or SVG on the page, else its largest icon). From a presentation: its theme's first accent color, fonts and the logo on its slide master. Either way it fills in only what you didn't set here, and only the look is taken, not the layout. `sprint-review doctor` shows what it found. |
 | `theme` | `light` (default) or `dark`: near-black with warm ivory text and a champagne accent. |
 | `fonts.heading`, `fonts.body` | Font families for headings and text. Fonts aren't embedded, so pick ones installed where the deck is shown; the theme's own fonts are the fallback. |
 
 ```yaml
 brand:
-  from: templates/company-template.pptx   # color, fonts and logo from our own template
+  from: https://www.example.com            # color, fonts and logo from our website
   color: "#0b7a75"                         # ...but this color wins
 ```
+
+The website is read once per run. When it can't be reached the run stops with a clear error; set `color` and `logo` yourself to not depend on it.
 
 ### `productPaths`
 Folders (path prefixes) that hold product code. A commit that only touches files outside them can't carry a theme or a summary point; whatever the AI writes about it moves under the hood. Default: empty, meaning every commit counts. Strongly recommended for monorepos.
@@ -243,11 +245,12 @@ labels:
 | `provider` | `anthropic` | `anthropic`, `bedrock`, `openai`, `azure`, `openrouter`, `gemini`, `mistral`, `ollama` or `lmstudio`. See [models and providers](models.md). |
 | `name` | `claude-opus-5-5` | The model for every call. Required for every provider but `anthropic`. |
 | `fallback` | `claude-sonnet-5-5` | Used when the first model fails after retries. `null` to turn off. Default none for other providers. |
-| `maxTokens` | `8000` | Room for the writer's answer. |
+| `maxTokens` | `8000` | Room for the writer's answer. Thinking models count their thinking against it too; when it runs out, the error says so. |
 | `baseUrl` | per provider | The endpoint, for `azure` (required), a gateway or a local server on another port. |
 | `mode` | `tools` | `json` asks for JSON matching the schema instead of forcing a tool call. Default `json` for `ollama` and `lmstudio`. |
 | `maxInputChars` | `120000` | How much of the commit log the model gets. `24000` for local models. |
 | `region` | `AWS_REGION` | `bedrock` only. |
+| `price` | list price | `{ input, output }`: US dollars per million tokens, for the cost of each run. Built in for Claude on the Anthropic API and for Gemini; set it for Bedrock, Azure, OpenRouter, a gateway, or a model the list doesn't know. |
 
 The key always comes from the environment, never from the config, so the config can be committed: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `AZURE_OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `MISTRAL_API_KEY`, or `AWS_BEARER_TOKEN_BEDROCK` (or AWS access keys) for Bedrock. Local models need none.
 
@@ -265,3 +268,5 @@ model:
 | `dir` | `sprint-reviews` | Each review goes in `<dir>/<last day of the sprint>/`. `--out` overrides the whole path. |
 | `markdown` | `true` | Also write `review.md`. |
 | `pptx` | `false` | Also write `deck.pptx`, an editable PowerPoint with speaker notes. Needs `pptxgenjs` installed (`npm i -D pptxgenjs`). `--pptx` does the same for one run. |
+
+Every run also adds a line to `<dir>/costs.csv`: the dates, the models that answered, the tokens and the estimated cost in US dollars. The CLI prints the run's cost and the total so far.

@@ -44,7 +44,7 @@ Your `productPaths` probably don't match. They're path prefixes from the reposit
 - Every screen looks changed because of the menu? Set `ignore.left` and `ignore.top`.
 
 ### The labels are in English but my content isn't
-The fixed labels ship in English and Dutch. For other languages, override them with `labels`. See [configuration](configuration.md#labels).
+The fixed labels ship in English, Dutch, German, French and Spanish. For other languages, override them with `labels`. See [configuration](configuration.md#labels).
 
 ### The logo doesn't show
 `brand.logo` must point to a PNG, JPG, SVG, WebP or GIF, relative to the config file. `doctor` checks that it exists.

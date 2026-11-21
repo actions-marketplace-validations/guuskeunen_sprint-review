@@ -16,7 +16,7 @@ sprint-review works with any model that can answer in a fixed JSON shape. Claude
 
 What "tested" means here, honestly:
 
-- **Verified:** run end to end against the real service with this version. Nothing is marked verified yet: this table fills in as real runs come in.
+- **Verified:** run end to end against the real service with this version.
 - **Code tested:** the request and answer handling are covered by the test suite against recorded or fake responses, but not yet run against the live service. These should work; please [report how it went](https://github.com/guuskeunen/sprint-review/issues/new?title=Model%20report:%20).
 
 | Provider | Model | Status | Quality of the slides |
@@ -26,7 +26,8 @@ What "tested" means here, honestly:
 | `bedrock` | Claude through Bedrock | Code tested; request signing checked against AWS's official test vector | Same as Claude directly |
 | `openai`, `azure` | Your GPT model | Code tested | Expected good |
 | `openrouter` | Any | Code tested | Depends on the model |
-| `gemini` | Gemini models | Code tested | Expected good |
+| `gemini` | `gemini-3.6-flash` | Verified: live runs and the benchmark (93/100) | Good, and the cheapest: about $0.02 a review |
+| `gemini` | Other Gemini models | Code tested | Expected good |
 | `mistral` | Mistral models | Code tested | Expected decent |
 | `ollama`, `lmstudio` | Qwen, Llama, Mistral and others, 30B+ recommended | Code tested | Works, but plainer: fewer and flatter themes |
 
@@ -98,8 +99,10 @@ export OPENROUTER_API_KEY=sk-or-...
 ### Google Gemini
 
 ```yaml
-model: { provider: gemini, name: gemini-3-pro }
+model: { provider: gemini, name: gemini-3.6-flash }
 ```
+
+Gemini is asked to think at low effort: its thinking counts against `maxTokens`, and at its default effort it could use up the room before it wrote the slides.
 
 ```bash
 export GEMINI_API_KEY=...

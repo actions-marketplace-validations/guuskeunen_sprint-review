@@ -12,7 +12,11 @@ The deck is a draft, but it's written to be presented as it is. Read it through 
 npx @guuskeunen/sprint-review edit sprint-reviews/2026-11-16/review.json
 ```
 
-This opens a local editor in your browser: the content on the left, the live deck on the right. Click into a theme and the preview jumps to its slide. Word counts show the same limits the checks use. **Save and rebuild** (or Ctrl/⌘ + S) writes `review.json` and rebuilds `deck.html` next to it. Ctrl+C in the terminal stops the editor.
+This opens a local editor in your browser: the content on the left, the live deck on the right. Every change shows in the deck as you type, before you save. Click into a theme and the preview jumps to its slide. Word counts show the same limits the checks use. **Save and rebuild** (or Ctrl/⌘ + S) writes `review.json` and rebuilds `deck.html` next to it. Ctrl+C in the terminal stops the editor.
+
+**Open live view** shows the deck on its own in a new window, for a second screen or a call: it follows every edit as you type and the slide you're working on.
+
+**From the deck:** a deck opened from your disk has an **Edit** button in the top right corner. It opens the editor when it's running; when it isn't, it shows the command that starts it for this deck, ready to copy. Published and shared decks don't show the button.
 
 The editor only listens on `127.0.0.1`, and only the page it opened can talk to it. `--port` picks another port (default 4321).
 
