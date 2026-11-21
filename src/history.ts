@@ -41,7 +41,13 @@ export class History {
 
   /** Throws a readable error when the folder is no git repository or has a shallow history. */
   assertUsable(): void {
-    this.git(['rev-parse', '--git-dir']);
+    try {
+      this.git(['rev-parse', '--git-dir']);
+    } catch (e) {
+      if (!/not a git repository/i.test((e as Error).message)) throw e;
+      // Usually a config file kept outside the repository: the repository is taken from where the config is.
+      throw new GitError(`${this.repo} is not a git repository. Run sprint-review inside the repository, or set repo: in the config to its folder.`);
+    }
     if (this.git(['rev-parse', '--is-shallow-repository']).trim() === 'true') {
       throw new GitError('This checkout has a shallow history, so older commits are missing. In GitHub Actions, use actions/checkout with fetch-depth: 0.');
     }
