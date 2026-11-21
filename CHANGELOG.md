@@ -2,6 +2,22 @@
 
 All notable changes are listed here, written per release from the commit messages ([Conventional Commits](https://www.conventionalcommits.org)). Versions follow [Semantic Versioning](https://semver.org).
 
+## [0.2.1](https://github.com/guuskeunen/sprint-review/compare/sprint-review-v0.2.0...sprint-review-v0.2.1) (2026-11-21)
+
+
+### Fixed
+
+* Claude Opus and Sonnet 5.5 work again; strict tools; JSON mode when a model refuses tools ([3ac2059](https://github.com/guuskeunen/sprint-review/commit/3ac2059c49fc7948388a8a4db39b19555266f12b))
+* no empty decks from a malformed answer; more room for thinking models ([cad3314](https://github.com/guuskeunen/sprint-review/commit/cad33147bc6d7c4cabb2f8b8d107ba32729c0679))
+* the default Claude models work again; reliable tool calls across Claude, GPT and Gemini ([64adaa0](https://github.com/guuskeunen/sprint-review/commit/64adaa0e33238b6453fb5eb60181031e14e1537c))
+
+
+### Docs
+
+* how to clear the image-size audit report that pptxgenjs brings ([09d6134](https://github.com/guuskeunen/sprint-review/commit/09d61346e8d7f9265b216f729acb4a7b225e8132))
+* how to clear the image-size audit report that pptxgenjs brings ([2444b01](https://github.com/guuskeunen/sprint-review/commit/2444b017024d19bf6fefae3cf3426a72179e0aa2))
+* verified models and benchmark results for Claude, GPT and Gemini ([426f270](https://github.com/guuskeunen/sprint-review/commit/426f27090074d1473d34e44254a99eab1cbc37e8))
+
 ## [0.2.0](https://github.com/guuskeunen/sprint-review/compare/sprint-review-v0.1.0...sprint-review-v0.2.0) (2026-11-21)
 
 
