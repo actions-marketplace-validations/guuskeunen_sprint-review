@@ -1,0 +1,67 @@
+import { test } from 'node:test';
+import sharp from 'sharp';
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync, existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { normalize } from '../../src/config.ts';
+import { renderDeck } from '../../src/deck/render.ts';
+import { readZip } from '../../src/brand/zip.ts';
+import { renderPptx } from '../../src/deck/pptx.ts';
+import { writeOutputs } from '../../src/review/output.ts';
+import { sample } from '../helpers.ts';
+
+test('the review exports to an editable PowerPoint with speaker notes', async () => {
+  const review = sample();
+  const buf = await renderPptx(review, { color: '#ea580c' });
+  const entries = readZip(buf);
+  const slides = [...entries.keys()].filter((k) => /^ppt\/slides\/slide\d+\.xml$/.test(k));
+  assert.equal(slides.length, 15);
+  const all = slides.map((k) => entries.get(k)!().toString('utf8')).join('');
+  for (const t of review.themes) assert.ok(all.includes(t.title.replace(/&/g, '&amp;')), t.title);
+  const notes = [...entries.keys()].filter((k) => /notesSlide\d+\.xml$/.test(k)).map((k) => entries.get(k)!().toString('utf8')).join('');
+  assert.ok(notes.includes(review.themes[0]!.notes!.slice(0, 30)));
+});
+
+test('a brand font falls back to a sans-serif stack, never to a variable that points at itself', () => {
+  const html = renderDeck(sample(), { fonts: { heading: 'Space Grotesk', body: 'Inter' } });
+  const body = /--font-body: ([^;]+);/.exec(html.slice(html.indexOf('html[data-theme] {')))![1]!;
+  assert.ok(body.startsWith('"Inter", '));
+  assert.doesNotMatch(body, /var\(--font-body/);
+  assert.match(body, /sans-serif$/);
+});
+
+test('the deck has an Edit button, shown only when opened from disk, in the deck\'s language', () => {
+  const html = renderDeck(sample(), {});
+  assert.match(html, /<button class="edit-button" type="button" hidden>Edit<\/button>/);
+  assert.match(html, /location\.protocol === 'file:' && window\.parent === window/);
+  assert.match(renderDeck({ ...sample(), language: 'Dutch' }, {}), />Bewerken<\/button>/);
+  for (const script of html.match(/<script>([\s\S]*?)<\/script>/g) ?? []) assert.doesNotThrow(() => new Function(script.slice(8, -9)), 'the deck script compiles');
+});
+
+test('a square logo stays square on the PowerPoint cover', async () => {
+  const square = await sharp({ create: { width: 64, height: 64, channels: 4, background: '#123456' } }).png().toBuffer();
+  const buf = await renderPptx(sample(), { logo: `data:image/png;base64,${square.toString('base64')}` });
+  const cover = readZip(buf).get('ppt/slides/slide1.xml')!().toString('utf8');
+  const ext = /<p:pic>[\s\S]*?<a:ext cx="(\d+)" cy="(\d+)"/.exec(cover)!;
+  assert.equal(ext[1], ext[2]);
+});
+
+test('render --pptx rebuilds the PowerPoint too', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'rerender-'));
+  writeFileSync(join(dir, 'review.json'), JSON.stringify(sample()));
+  const cli = new URL('../../src/cli.ts', import.meta.url).pathname;
+  const out = execFileSync('node', [cli, 'render', join(dir, 'review.json'), '--pptx'], { cwd: dir }).toString();
+  assert.ok(existsSync(join(dir, 'deck.pptx')), out);
+  assert.match(out, /deck\.pptx/);
+});
+
+test('writeOutputs writes the .pptx only when asked', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'out-'));
+  const c = normalize({}, dir);
+  const a = await writeOutputs(sample(), c, join(dir, 'a'));
+  assert.equal(a.pptx, null);
+  const b = await writeOutputs(sample(), c, join(dir, 'b'), { pptx: true });
+  assert.ok(b.pptx && existsSync(b.pptx));
+});

@@ -4,8 +4,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { normalize } from '../src/config.ts';
-import { generate } from '../src/generate.ts';
-import { renderChecks } from '../src/markdown.ts';
+import { generate } from '../src/review/generate.ts';
+import { renderChecks } from '../src/deck/markdown.ts';
 import { demoRepo, FakeModel } from '../test/helpers.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');

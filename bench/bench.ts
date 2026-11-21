@@ -9,8 +9,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { normalize } from '../src/config.ts';
-import { generate } from '../src/generate.ts';
-import type { ModelAnswer, ModelClient, ModelRequest } from '../src/model.ts';
+import { generate } from '../src/review/generate.ts';
+import type { ModelAnswer, ModelClient, ModelRequest } from '../src/ai/model.ts';
 import type { Review } from '../src/types.ts';
 
 export interface Expected {
