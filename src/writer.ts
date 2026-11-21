@@ -303,8 +303,9 @@ function named(hashes: unknown, commits: Commit[]): Commit[] {
   if (!Array.isArray(hashes)) return [];
   const out = new Map<string, Commit>();
   for (const h of hashes) {
-    if (typeof h !== 'string' || h.trim().length < 7) continue;
+    if (typeof h !== 'string') continue;
     const hash = h.trim().toLowerCase();
+    if (!/^[0-9a-f]{7,40}$/.test(hash)) continue;
     for (const c of commits) if (c.hash.startsWith(hash) || hash.startsWith(c.hash)) out.set(c.hash, c);
   }
   return [...out.values()];

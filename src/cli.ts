@@ -10,7 +10,7 @@ import { ModelError } from './model.ts';
 import { clientFor } from './providers.ts';
 import { writeOutputs } from './output.ts';
 import { doctorChecks } from './doctor.ts';
-import { startEditor } from './editor.ts';
+import { startEditor, validReview } from './editor.ts';
 import { serveMcp } from './mcp.ts';
 import { capture, CaptureError } from './capture.ts';
 import { postToSlack } from './slack.ts';
@@ -208,9 +208,11 @@ async function rerender(file: string | undefined, configPath: string | undefined
     return 2;
   }
   const path = resolve(file);
-  const review = JSON.parse(readFileSync(path, 'utf8')) as Review;
-  if (review.version !== 1) {
-    err(`${file} is not a review.json made by sprint-review.`);
+  let review: Review;
+  try {
+    review = validReview(JSON.parse(readFileSync(path, 'utf8')));
+  } catch (e) {
+    err(`${file}: ${(e as Error).message}`);
     return 2;
   }
   const config = await withWebsiteBrand(configOrDefaults(configPath));
