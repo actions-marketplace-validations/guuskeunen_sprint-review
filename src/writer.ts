@@ -35,13 +35,23 @@ export interface WriteResult {
 export async function write(model: ModelClient, config: Config, commits: Commit[], changedScreens: string[], availableScreens: string[]): Promise<WriteResult> {
   const log = commitLog(commits);
   const screens = changedScreens.length ? `The screenshots of these screens changed during the sprint: ${changedScreens.join(', ')}. ` : '';
-  const draft = await model.ask({
-    system: writerSystem(config),
-    tool: writerTool(config, changedScreens, availableScreens),
-    maxTokens: config.model.maxTokens,
-    messages: [untrusted(log, 'the commits of the sprint: hash, date, subject, files and description, newest first', config.model.maxInputChars), `${screens}Now create the content of the presentation.`],
-  });
-  const written = parse(draft.toolInput, commits, changedScreens, availableScreens, config);
+  const ask = () =>
+    model.ask({
+      system: writerSystem(config),
+      tool: writerTool(config, changedScreens, availableScreens),
+      maxTokens: config.model.maxTokens,
+      messages: [untrusted(log, 'the commits of the sprint: hash, date, subject, files and description, newest first', config.model.maxInputChars), `${screens}Now create the content of the presentation.`],
+    });
+  let draft = await ask();
+  let written = parse(draft.toolInput, commits, changedScreens, availableScreens, config);
+  let retry = { input: 0, output: 0 };
+  // The product changed but no theme came through (a malformed answer): ask once more rather than ship an empty deck.
+  if (written.themes.length === 0 && commits.some((c) => c.product)) {
+    retry = draft.usage;
+    draft = await ask();
+    written = parse(draft.toolInput, commits, changedScreens, availableScreens, config);
+    if (written.themes.length === 0) written.checks.push({ kind: 'warning', text: 'No themes', reason: 'The model gave no usable themes twice although the product changed. Run it again, or check the commits in this range.' });
+  }
   if (written.themes.length === 0 && written.summary.length === 0) {
     throw new WriterError('The model returned nothing usable. Try again, or check the commits in this range.');
   }
@@ -57,7 +67,7 @@ export async function write(model: ModelClient, config: Config, commits: Commit[
   written.checks = [...unread(log, commits, config.model.maxInputChars), ...readChecks, ...written.checks];
   return {
     written,
-    usage: { input: draft.usage.input + read.usage.input + extra.input, output: draft.usage.output + read.usage.output + extra.output },
+    usage: { input: retry.input + draft.usage.input + read.usage.input + extra.input, output: retry.output + draft.usage.output + read.usage.output + extra.output },
   };
 }
 
@@ -72,7 +82,7 @@ async function revise(model: ModelClient, config: Config, written: WrittenReview
     answer = await model.ask({
       system: writerSystem(config),
       tool: reviseTool(),
-      maxTokens: 2000,
+      maxTokens: config.model.maxTokens,
       messages: [
         untrusted(slideText(written), 'the text of the slides'),
         `A reader from the audience got stuck on these lines:\n${flagged.map((f) => `- "${f.text}" (${f.why})`).join('\n')}\n\nRewrite only these lines so this audience understands them. Keep every fact, add none, stay within the same word limits. Give each original line exactly as written.`,
@@ -151,7 +161,7 @@ async function complaints(model: ModelClient, config: Config, written: WrittenRe
     const answer = await model.ask({
       system: readerSystem(config),
       tool: readerTool(),
-      maxTokens: 2000,
+      maxTokens: config.model.maxTokens,
       messages: [untrusted(slideText(written), 'the text of the slides'), 'Read the text and point out where you get stuck.'],
     });
     const checks: Check[] = [];
@@ -306,8 +316,19 @@ export function unread(log: string, commits: Commit[], max = MAX_LOG_CHARS): Che
   return commits.filter((c) => !read.includes(c.hash)).map((c) => ({ kind: 'warning' as const, text: c.subject, reason: 'Not read: the sprint was too long. Check whether this belongs in the presentation.' }));
 }
 
+/** The objects in a list; an item sent as JSON text is read too, so nothing is lost silently. */
 function list(v: unknown): Record<string, unknown>[] {
-  return Array.isArray(v) ? v.filter((x): x is Record<string, unknown> => typeof x === 'object' && x !== null) : [];
+  if (!Array.isArray(v)) return [];
+  return v
+    .map((x) => {
+      if (typeof x !== 'string' || !x.trim().startsWith('{')) return x;
+      try {
+        return JSON.parse(x) as unknown;
+      } catch {
+        return x;
+      }
+    })
+    .filter((x): x is Record<string, unknown> => typeof x === 'object' && x !== null);
 }
 function str(v: unknown): string | null {
   return typeof v === 'string' ? v : null;

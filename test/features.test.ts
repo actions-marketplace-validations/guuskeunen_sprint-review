@@ -380,3 +380,16 @@ test('captured screenshots are compared between the last day before the sprint a
   assert.equal(changed[0]!.device, 'desktop');
   assert.throws(() => normalize({ screenshots: { source: 'capture' } }, dir), /screenshots.pages is required/);
 });
+
+test('an unknown option is a short message with a pointer to --help, not a stack trace', () => {
+  const cli = new URL('../src/cli.ts', import.meta.url).pathname;
+  let out = '';
+  try {
+    execFileSync('node', [cli, '--sinse', '2026-06-01'], { stdio: 'pipe' });
+  } catch (e) {
+    out = String((e as { stderr: Buffer }).stderr);
+  }
+  assert.match(out, /Unknown option '--sinse'/);
+  assert.match(out, /sprint-review --help/);
+  assert.doesNotMatch(out, /\n\s+at /);
+});
