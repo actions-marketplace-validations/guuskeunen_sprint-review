@@ -57,6 +57,8 @@ npm test
 
 Keep them focused, explain the why in the description, and make sure `npm test`, `npm run typecheck` and `npm run lint` pass. CI also runs `npm audit` on what users install.
 
+GitHub deletes a branch when its pull request is merged. Delete your local copy too (`git branch -D <name>` after checking the PR is merged, since squash merges don't look merged to `git branch -d`), so only branches with open work are left.
+
 ## Releasing (maintainers)
 
 1. Update `CHANGELOG.md` and the version in `package.json`.
