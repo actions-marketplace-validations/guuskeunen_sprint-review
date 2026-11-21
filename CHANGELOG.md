@@ -2,6 +2,22 @@
 
 All notable changes are listed here, written per release from the commit messages ([Conventional Commits](https://www.conventionalcommits.org)). Versions follow [Semantic Versioning](https://semver.org).
 
+## [0.2.2](https://github.com/guuskeunen/sprint-review/compare/sprint-review-v0.2.1...sprint-review-v0.2.2) (2026-11-21)
+
+
+### Fixed
+
+* **security:** a git ref can no longer act as a git option; clear errors before any model call ([be3122a](https://github.com/guuskeunen/sprint-review/commit/be3122a4a7d0fefa5260eb1924767ce35329fbd4))
+* **security:** git option injection, script through review.json, key leaks, and hostile inputs ([3e56edb](https://github.com/guuskeunen/sprint-review/commit/3e56edb8359dab6dc921316e63836fb0bff88ee8))
+* **security:** keys stay on https and this machine; bounded downloads, parsing and unzipping; MCP stays in the project ([1d66f25](https://github.com/guuskeunen/sprint-review/commit/1d66f25ac755d7b837d66747c9e11db5c992922e))
+* **security:** no script through review.json, labels or Markdown; real hashes only ([657b362](https://github.com/guuskeunen/sprint-review/commit/657b362ad289a55b77c7c9b1b34f264d6aecf57f))
+
+
+### Docs
+
+* delete branches once their pull request is merged ([88a0ab9](https://github.com/guuskeunen/sprint-review/commit/88a0ab9fdd8b016c528e800e583ddfceb2dca77a))
+* what the security fixes guarantee ([2029c0b](https://github.com/guuskeunen/sprint-review/commit/2029c0b2bf41c4409b848590d063b8a41a8c76a8))
+
 ## [0.2.1](https://github.com/guuskeunen/sprint-review/compare/sprint-review-v0.2.0...sprint-review-v0.2.1) (2026-11-21)
 
 
