@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { loadConfig, normalize, type Config } from './config.ts';
@@ -67,9 +67,25 @@ function rangeOf(a: Args, config: Config): Range {
   return sprintRange(config.sprint.days, s('until'));
 }
 
+/** The folder, when it is a project: it has a sprint-review config or is a git repository. */
+function project(dir: string): string {
+  const marks = ['.git', 'sprint-review.config.yml', 'sprint-review.config.yaml', 'sprint-review.config.json'];
+  if (!marks.some((m) => existsSync(join(dir, m)))) throw new Error(`${dir} is not inside the project: give the project folder, with a sprint-review config or a git repository.`);
+  return dir;
+}
+
+/** The path, when it lies inside root (the project); anything else is refused. */
+function inside(root: string, path: string): string {
+  const rel = relative(root, path);
+  if (rel.startsWith('..') || isAbsolute(rel)) throw new Error(`${path} is not inside the project (${root}): the MCP server only reads and writes there.`);
+  return path;
+}
+
 /** Runs one tool call. Exported for tests. */
 export async function callTool(name: string, a: Args, cwd = process.cwd()): Promise<string> {
-  const dir = resolve(cwd, typeof a.directory === 'string' ? a.directory : '.');
+  // An assistant chooses these arguments, and text it read can steer it: the folder must be a
+  // project (a config or a git repository), and files are read and written only inside it.
+  const dir = project(resolve(cwd, typeof a.directory === 'string' ? a.directory : '.'));
   if (name === 'check_sprint_review_setup') {
     const lines = await doctorChecks(configIn(dir), dir);
     return lines.map((l) => `${l.ok ? '✓' : '✗'} ${l.text}${l.fix ? `\n  fix: ${l.fix}` : ''}`).join('\n');
@@ -84,7 +100,7 @@ export async function callTool(name: string, a: Args, cwd = process.cwd()): Prom
   }
   if (name === 'render_sprint_review') {
     if (typeof a.file !== 'string') throw new Error('file is required.');
-    const file = resolve(dir, a.file);
+    const file = inside(dir, resolve(dir, a.file));
     const review = validReview(JSON.parse(readFileSync(file, 'utf8')) as Review);
     const out = await writeOutputs(review, await withWebsiteBrand(configIn(dir)), dirname(file));
     return `Rebuilt ${out.deck}`;
@@ -92,7 +108,7 @@ export async function callTool(name: string, a: Args, cwd = process.cwd()): Prom
   if (name === 'generate_sprint_review') {
     const config = await withWebsiteBrand(configIn(dir));
     const result = await generate(config, { model: clientFor(config.model), range: rangeOf(a, config) });
-    const outDir = resolve(config.root, typeof a.out === 'string' ? a.out : join(config.output.dir, result.review.until));
+    const outDir = inside(dir, resolve(config.root, typeof a.out === 'string' ? a.out : join(config.output.dir, result.review.until)));
     const files = await writeOutputs(result.review, config, outDir, { pptx: a.pptx === true ? true : undefined });
     const ledger = recordRun(config, result);
     const checks = result.review.checks.map((c) => `- ${c.kind}: ${c.text}${c.reason ? ` (${c.reason})` : ''}`).join('\n') || '- none';

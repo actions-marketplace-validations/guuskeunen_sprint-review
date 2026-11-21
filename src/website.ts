@@ -5,6 +5,7 @@ import type { Config } from './config.ts';
 const TIMEOUT_MS = 15_000;
 const MAX_BYTES = 3_000_000;
 const MAX_SHEETS = 5;
+const MAX_PARSE = 500_000;
 const USER_AGENT = 'Mozilla/5.0 (compatible; sprint-review; +https://github.com/guuskeunen/sprint-review)';
 const GENERIC_FONTS = /^(ui-[\w-]+|system-ui|-apple-system|BlinkMacSystemFont|sans-serif|serif|monospace|cursive|fantasy|inherit|initial|var\(.*)$/i;
 
@@ -46,12 +47,14 @@ export async function withWebsiteBrand(config: Config, fetchImpl: typeof fetch =
 export async function brandFromWebsite(url: string, fetchImpl: typeof fetch = fetch): Promise<Brand> {
   const page = await get(url, fetchImpl);
   if (!page) throw new Error(`brand.from: could not read the website ${url}. Check the address, or set brand.color and brand.logo yourself.`);
-  const html = page.body.toString('utf8');
+  // Parse at most the first 500 KB: the brand is in the head and header, and hostile HTML can make
+  // regular expressions slow (quadratic) on megabytes.
+  const html = page.body.subarray(0, MAX_PARSE).toString('utf8');
   const base = page.url;
-  const css = [...matches(html, /<style[^>]*>([\s\S]*?)<\/style>/gi).map((m) => m[1] ?? '')];
+  const css = elements(html, 'style').map((e) => e.inner);
   for (const href of stylesheets(html, base).slice(0, MAX_SHEETS)) {
     const sheet = await get(href, fetchImpl);
-    if (sheet) css.push(sheet.body.toString('utf8'));
+    if (sheet) css.push(sheet.body.subarray(0, MAX_PARSE).toString('utf8'));
   }
   const styles = css.join('\n');
   return { color: brandColor(html, styles), fonts: { heading: font(styles, ['heading', 'display']), body: font(styles, ['body', 'sans']) }, logo: await logo(html, base, fetchImpl) };
@@ -122,7 +125,7 @@ async function logo(html: string, base: string, fetchImpl: typeof fetch): Promis
   const src = img ? attr(img, 'src') : null;
   const candidates: string[] = src ? [src] : [];
   if (!src) {
-    const svg = matches(html, /<svg\b[^>]*>[\s\S]*?<\/svg>/gi).map((m) => m[0]).find((s) => /logo/i.test(s.slice(0, s.indexOf('>'))));
+    const svg = elements(html, 'svg').find((e) => /logo/i.test(e.open))?.whole;
     if (svg) return `data:image/svg+xml;base64,${Buffer.from(svg.includes('xmlns=') ? svg : svg.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"')).toString('base64')}`;
   }
   const icons = tags(html, 'link')
@@ -184,8 +187,35 @@ function stylesheets(html: string, base: string): string[] {
     .map((h) => absolute(h, base));
 }
 
+/** The opening tags of an element, found with indexOf: linear, so hostile HTML can't stall it. */
 function tags(html: string, name: string): string[] {
-  return matches(html, new RegExp(`<${name}\\b[^>]*>`, 'gi')).map((m) => m[0]);
+  const lower = html.toLowerCase();
+  const out: string[] = [];
+  for (let at = lower.indexOf(`<${name}`); at !== -1; at = lower.indexOf(`<${name}`, at + 1)) {
+    if (/[a-z0-9-]/.test(lower[at + name.length + 1] ?? '')) continue;
+    const end = lower.indexOf('>', at);
+    if (end === -1) break;
+    out.push(html.slice(at, end + 1));
+  }
+  return out;
+}
+
+/** Whole elements with their content (style, svg), in linear time; an unclosed one ends the search. */
+function elements(html: string, name: string): { open: string; inner: string; whole: string }[] {
+  const lower = html.toLowerCase();
+  const out: { open: string; inner: string; whole: string }[] = [];
+  let at = lower.indexOf(`<${name}`);
+  while (at !== -1) {
+    const openEnd = lower.indexOf('>', at);
+    if (openEnd === -1) break;
+    const close = lower.indexOf(`</${name}>`, openEnd);
+    if (close === -1) break;
+    if (!/[a-z0-9-]/.test(lower[at + name.length + 1] ?? '')) {
+      out.push({ open: html.slice(at, openEnd + 1), inner: html.slice(openEnd + 1, close), whole: html.slice(at, close + name.length + 3) });
+    }
+    at = lower.indexOf(`<${name}`, close);
+  }
+  return out;
 }
 
 function attr(tag: string, name: string): string | null {
@@ -205,9 +235,19 @@ async function get(url: string, fetchImpl: typeof fetch): Promise<{ url: string;
   if (!/^https?:\/\//i.test(url)) return null;
   try {
     const res = await fetchImpl(url, { headers: { 'user-agent': USER_AGENT }, redirect: 'follow', signal: AbortSignal.timeout(TIMEOUT_MS) });
-    if (!res.ok) return null;
-    const body = Buffer.from(await res.arrayBuffer());
-    return body.length > MAX_BYTES ? null : { url: res.url || url, body };
+    if (!res.ok || !res.body) return null;
+    // Read in chunks and stop at the limit: a hostile site could send gigabytes (or a gzip bomb).
+    const chunks: Buffer[] = [];
+    let size = 0;
+    for await (const chunk of res.body as unknown as AsyncIterable<Uint8Array>) {
+      size += chunk.length;
+      if (size > MAX_BYTES) {
+        await res.body.cancel().catch(() => {});
+        return null;
+      }
+      chunks.push(Buffer.from(chunk));
+    }
+    return { url: res.url || url, body: Buffer.concat(chunks) };
   } catch {
     return null;
   }
