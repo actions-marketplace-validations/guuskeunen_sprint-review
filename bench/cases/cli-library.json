@@ -28,8 +28,8 @@
       { "name": "symlink safety", "any": ["symlink", "loop"] }
     ],
     "hood": [
-      { "name": "arm64 builds", "any": ["arm64", "arm"] },
-      { "name": "lint fixes", "any": ["clippy", "lint"] }
+      { "name": "arm64 builds", "any": ["arm64", "arm"], "effect": ["processor", "apple silicon", "raspberry"] },
+      { "name": "lint fixes", "any": ["clippy", "lint"], "effect": ["code quality", "code cleanup", "tidied"] }
     ],
     "never": []
   }

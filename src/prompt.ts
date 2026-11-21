@@ -84,11 +84,13 @@ export function writerSystem(c: Config): string {
 - A commit subject can name several changes, separated by a comma or "and": each part counts.
 - A bug in a feature that is new in this same sprint was never noticed by anyone: don't mention it, describe the feature.
 - The team's own tooling and dependency updates are no theme, even when they sound important. A commit marked [no product code] changed nothing in the software: it belongs under the hood, one line per subject.
+- A change in what the product does for its users, however small, is never under the hood: a new rule, limit, check, setting or default is a theme or a point. Under the hood is only for work no user can notice.
 - Every point belongs to its theme. A change on another screen or device belongs there.
 
 Rules:
 - Every point names the hashes of its commits. A point without a commit is thrown away.
 - Only what is in the commits. Don't invent effects, numbers or customer reactions, and don't name an outcome when the commit only says what changed. A number from a test says nothing about real use.
+- The same goes for reasons: say why a change was made (faster, safer, for compatibility) only when a commit says why, and then in its words.
 - At most ${POINT_WORDS} words per point. Start with what changes, not with "Now" or "You can now".
 - Write about the effect, not about how it was built, the way you would say it to a colleague outside the team. Not "Filtering is server-side" but "The list stays quick, even when it is long"; not "Fixed the request error" but "The overview loads again". The same goes for under the hood: "Errors are caught earlier, before they go live".
 - File names, commits, hashes, PR numbers and ticket numbers never appear in a text.
@@ -109,7 +111,7 @@ export function readerSystem(c: Config): string {
     `Read every sentence and point out where you get stuck:
 - unclear: you would not say this to a colleague, or you could not retell what changes for a user.
 - promise: the sentence promises an outcome, such as better or less work, without saying what actually happens.`,
-    `Names of parts of ${c.product.name} are fine. Don't suggest better text: the presenter does that. Only point out where you really get stuck.`,
+    `Names of parts of ${c.product.name} are fine. Lines that start with "Under the hood" are for the curious: a tool or version named there is fine, only point one out when you can't tell what was done. Don't suggest better text: the presenter does that. Only point out where you really get stuck.`,
     UNTRUSTED_RULE,
   ].join('\n\n');
 }

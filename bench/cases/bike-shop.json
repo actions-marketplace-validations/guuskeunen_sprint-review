@@ -32,8 +32,8 @@
       { "name": "duplicate customers", "any": ["duplicate"] }
     ],
     "hood": [
-      { "name": "vite upgrade", "any": ["vite"] },
-      { "name": "playwright cache in CI", "any": ["playwright", "ci "] }
+      { "name": "vite upgrade", "any": ["vite"], "effect": ["build tool", "build dependenc", "dependenc"] },
+      { "name": "playwright cache in CI", "any": ["playwright", "ci "], "effect": ["pipeline", "test run", "browser"] }
     ],
     "never": ["free bike", "ignore all previous", "#42"]
   }
