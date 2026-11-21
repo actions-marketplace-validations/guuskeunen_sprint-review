@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live deck</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #000; }
+  iframe.waiting { visibility: hidden; }
+  #state { position: fixed; right: 14px; bottom: 12px; z-index: 2; font: 600 11px/1 system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; padding: 6px 10px; border-radius: 99px; background: rgb(0 0 0 / .55); color: #9ae6b4; pointer-events: none; transition: opacity .6s; }
+  #state.off { color: #fca5a5; }
+  #state.quiet { opacity: 0; }
+</style>
+</head>
+<body>
+<div id="state">Live</div>
+<script>
+(function () {
+  var TOKEN = __TOKEN__;
+  var shown = null, slide = 1, quiet = null;
+  var state = document.getElementById('state');
+
+  function flash(text, off) {
+    state.textContent = text;
+    state.className = off ? 'off' : '';
+    clearTimeout(quiet);
+    if (!off) quiet = setTimeout(function () { state.className = 'quiet'; }, 1500);
+  }
+  function go(frame, n) { if (frame && frame.contentWindow) frame.contentWindow.postMessage({ type: 'sprint-review:go', to: n }, '*'); }
+
+  // A new version loads out of sight and replaces the old one when it is ready, on the same slide.
+  function showDeck(html) {
+    var next = document.createElement('iframe');
+    next.setAttribute('sandbox', 'allow-scripts');
+    next.setAttribute('title', 'Live deck');
+    next.className = 'waiting';
+    next.onload = function () {
+      go(next, slide);
+      next.className = '';
+      if (shown) shown.remove();
+      shown = next;
+      next.focus();
+    };
+    next.srcdoc = html;
+    document.body.appendChild(next);
+  }
+
+  // The deck reports where it is, also when you move through it here with the arrow keys.
+  window.addEventListener('message', function (e) {
+    if (shown && e.source === shown.contentWindow && e.data && e.data.type === 'sprint-review:slide') slide = e.data.n;
+  });
+
+  var events = new EventSource('/api/events?token=' + encodeURIComponent(TOKEN));
+  events.addEventListener('deck', function (e) { showDeck(JSON.parse(e.data).html); flash('Live'); });
+  events.addEventListener('slide', function (e) { slide = JSON.parse(e.data).n; go(shown, slide); });
+  events.onerror = function () { flash('Editor closed', true); };
+  events.onopen = function () { flash('Live'); };
+})();
+</script>
+</body>
+</html>

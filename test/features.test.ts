@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import sharp from 'sharp';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
@@ -218,6 +219,39 @@ test('the review exports to an editable PowerPoint with speaker notes', async ()
   assert.ok(notes.includes(review.themes[0]!.notes!.slice(0, 30)));
 });
 
+test('a brand font falls back to a sans-serif stack, never to a variable that points at itself', () => {
+  const html = renderDeck(sample(), { fonts: { heading: 'Space Grotesk', body: 'Inter' } });
+  const body = /--font-body: ([^;]+);/.exec(html.slice(html.indexOf('html[data-theme] {')))![1]!;
+  assert.ok(body.startsWith('"Inter", '));
+  assert.doesNotMatch(body, /var\(--font-body/);
+  assert.match(body, /sans-serif$/);
+});
+
+test('the deck has an Edit button, shown only when opened from disk, in the deck\'s language', () => {
+  const html = renderDeck(sample(), {});
+  assert.match(html, /<button class="edit-button" type="button" hidden>Edit<\/button>/);
+  assert.match(html, /location\.protocol === 'file:' && window\.parent === window/);
+  assert.match(renderDeck({ ...sample(), language: 'Dutch' }, {}), />Bewerken<\/button>/);
+  for (const script of html.match(/<script>([\s\S]*?)<\/script>/g) ?? []) assert.doesNotThrow(() => new Function(script.slice(8, -9)), 'the deck script compiles');
+});
+
+test('a square logo stays square on the PowerPoint cover', async () => {
+  const square = await sharp({ create: { width: 64, height: 64, channels: 4, background: '#123456' } }).png().toBuffer();
+  const buf = await renderPptx(sample(), { logo: `data:image/png;base64,${square.toString('base64')}` });
+  const cover = readZip(buf).get('ppt/slides/slide1.xml')!().toString('utf8');
+  const ext = /<p:pic>[\s\S]*?<a:ext cx="(\d+)" cy="(\d+)"/.exec(cover)!;
+  assert.equal(ext[1], ext[2]);
+});
+
+test('render --pptx rebuilds the PowerPoint too', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'rerender-'));
+  writeFileSync(join(dir, 'review.json'), JSON.stringify(sample()));
+  const cli = new URL('../src/cli.ts', import.meta.url).pathname;
+  const out = execFileSync('node', [cli, 'render', join(dir, 'review.json'), '--pptx'], { cwd: dir }).toString();
+  assert.ok(existsSync(join(dir, 'deck.pptx')), out);
+  assert.match(out, /deck\.pptx/);
+});
+
 test('writeOutputs writes the .pptx only when asked', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'out-'));
   const c = normalize({}, dir);
@@ -251,6 +285,40 @@ test('the editor serves the form, previews, saves and rebuilds, and refuses requ
     const bad = await fetch(`${editor.url}api/review`, { method: 'PUT', headers, body: '{"version":2}' });
     assert.equal(bad.status, 400);
   } finally {
+    await editor.close();
+  }
+});
+
+test('the live view shows each edit and the slide being edited, before anything is saved', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'live-'));
+  const file = join(dir, 'review.json');
+  writeFileSync(file, JSON.stringify(sample()));
+  const editor = await startEditor(file, normalize({}, dir), 0);
+  const stop = new AbortController();
+  try {
+    const token = /"token":"([^"]+)"/.exec(await (await fetch(editor.url)).text())![1]!;
+    assert.equal((await fetch(`${editor.url}live`)).status, 403);
+    assert.match(await (await fetch(`${editor.url}live?token=${token}`)).text(), /EventSource/);
+    assert.equal((await fetch(`${editor.url}api/events`)).status, 403);
+
+    const events = await fetch(`${editor.url}api/events?token=${token}`, { signal: stop.signal });
+    assert.match(events.headers.get('content-type') ?? '', /text\/event-stream/);
+    const reader = events.body!.getReader();
+    let seen = '';
+    const until = async (re: RegExp) => {
+      while (!re.test(seen)) seen += new TextDecoder().decode((await reader.read()).value);
+    };
+    await until(/event: deck/);
+    const headers = { 'x-sprint-review-token': token, 'content-type': 'application/json' };
+    const review = sample();
+    review.themes[0]!.title = 'Typed just now';
+    await fetch(`${editor.url}api/preview`, { method: 'POST', headers, body: JSON.stringify(review) });
+    await until(/Typed just now/);
+    await fetch(`${editor.url}api/slide`, { method: 'POST', headers, body: JSON.stringify({ n: 4 }) });
+    await until(/event: slide\ndata: \{"n":4\}/);
+    assert.notEqual((JSON.parse(readFileSync(file, 'utf8')) as Review).themes[0]!.title, 'Typed just now', 'nothing is saved');
+  } finally {
+    stop.abort();
     await editor.close();
   }
 });

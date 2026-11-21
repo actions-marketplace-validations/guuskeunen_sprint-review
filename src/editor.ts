@@ -1,4 +1,4 @@
-import { createServer, type IncomingMessage, type Server } from 'node:http';
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -13,6 +13,7 @@ import { labelsFor } from './i18n.ts';
 import { EFFECT_WORDS_MAX, NOTES_WORDS_MAX, POINT_WORDS_MAX, TITLE_WORDS_MAX } from './writer.ts';
 
 const PAGE = readFileSync(fileURLToPath(new URL('../assets/editor.html', import.meta.url)), 'utf8');
+const LIVE = readFileSync(fileURLToPath(new URL('../assets/live.html', import.meta.url)), 'utf8');
 const MAX_BODY = 60 * 1024 * 1024;
 
 export interface EditorServer {
@@ -25,6 +26,9 @@ export interface EditorServer {
  * A small editor for review.json on this computer: a form beside the live deck. It listens on
  * 127.0.0.1 only and every API call must carry a random token that only the opened page knows,
  * so other websites in the same browser can't read or change the review.
+ *
+ * The live view (/live) is the deck on its own, for a second screen or a shared window: every
+ * edit and the slide being edited reach it as they happen, before anything is saved.
  */
 export async function startEditor(file: string, config: Config, port = 4321): Promise<EditorServer> {
   const token = randomBytes(18).toString('base64url');
@@ -39,6 +43,13 @@ export async function startEditor(file: string, config: Config, port = 4321): Pr
     limits: { point: POINT_WORDS_MAX, effect: EFFECT_WORDS_MAX, notes: NOTES_WORDS_MAX, title: TITLE_WORDS_MAX },
   };
   const page = PAGE.replace('__BOOT__', JSON.stringify(boot).replace(/</g, '\\u003c'));
+  const livePage = LIVE.replace('__TOKEN__', JSON.stringify(token).replace(/</g, '\\u003c'));
+
+  // What the live view shows: the deck as last previewed (the saved one until the first edit) and the slide.
+  const live = { html: null as string | null, slide: 1 };
+  const watchers = new Set<ServerResponse>();
+  const tell = (res: ServerResponse, event: string, data: unknown) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  const broadcast = (event: string, data: unknown) => watchers.forEach((w) => tell(w, event, data));
 
   const server = createServer(async (req, res) => {
     const send = (status: number, type: string, body: string) => {
@@ -56,13 +67,35 @@ export async function startEditor(file: string, config: Config, port = 4321): Pr
       if (url.pathname === '/' && req.method === 'GET') {
         return send(200, 'text/html; charset=utf-8', page);
       }
+      // The live view can't send headers (a link, an EventSource), so it carries the token in the address.
+      const queryToken = url.searchParams.get('token') === token;
+      if (url.pathname === '/live' && req.method === 'GET') return queryToken ? send(200, 'text/html; charset=utf-8', livePage) : send(403, 'text/plain', 'Missing token.');
+      if (url.pathname === '/api/events' && req.method === 'GET') {
+        if (!queryToken) return send(403, 'text/plain', 'Missing token.');
+        res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive', 'x-content-type-options': 'nosniff' });
+        live.html ??= render(read(), config).html;
+        tell(res, 'deck', { html: live.html });
+        tell(res, 'slide', { n: live.slide });
+        watchers.add(res);
+        req.on('close', () => watchers.delete(res));
+        return;
+      }
       if (!url.pathname.startsWith('/api/')) return send(404, 'text/plain', 'Not found.');
       if (req.headers['x-sprint-review-token'] !== token) return send(403, 'text/plain', 'Missing token.');
 
       if (url.pathname === '/api/review' && req.method === 'GET') return send(200, 'application/json', JSON.stringify(read()));
       if (url.pathname === '/api/preview' && req.method === 'POST') {
         const review = validReview(await body(req));
-        return send(200, 'text/html; charset=utf-8', render(review, config).html);
+        live.html = render(review, config).html;
+        broadcast('deck', { html: live.html });
+        return send(200, 'text/html; charset=utf-8', live.html);
+      }
+      if (url.pathname === '/api/slide' && req.method === 'POST') {
+        const n = Number((await body(req) as { n?: unknown })?.n);
+        if (!Number.isInteger(n) || n < 1) return send(400, 'text/plain', 'n must be a slide number.');
+        if (n !== live.slide) broadcast('slide', { n });
+        live.slide = n;
+        return send(200, 'application/json', '{"ok":true}');
       }
       if (url.pathname === '/api/review' && req.method === 'PUT') {
         const review = validReview(await body(req));
@@ -80,7 +113,7 @@ export async function startEditor(file: string, config: Config, port = 4321): Pr
   });
   const address = server.address();
   const actual = typeof address === 'object' && address ? address.port : port;
-  return { url: `http://127.0.0.1:${actual}/`, server, close: () => new Promise((ok) => server.close(() => ok())) };
+  return { url: `http://127.0.0.1:${actual}/`, server, close: () => new Promise((ok) => { watchers.forEach((w) => w.end()); server.close(() => ok()); server.closeAllConnections(); }) };
 }
 
 function body(req: IncomingMessage): Promise<unknown> {

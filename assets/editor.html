@@ -64,7 +64,8 @@
   .check b { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); padding-top: 2px; }
   .check.warning b { color: var(--gold); }
   kbd { font: 11px var(--sans); padding: 1px 6px; border: 1px solid var(--line-2); border-radius: 5px; color: var(--soft); }
-  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } #preview { display: none; } }
+  /* Narrow windows: the preview stays in view above the form instead of disappearing. */
+  @media (max-width: 1000px) { html, body { height: auto; } main { grid-template-columns: 1fr; } #preview { order: -1; position: sticky; top: 0; z-index: 5; } .stage { padding: 10px; } .nav { padding-bottom: 8px; } #form { overflow: visible; border-right: 0; } }
 </style>
 </head>
 <body>
@@ -74,6 +75,7 @@
   <span class="file" id="file"></span>
   <span class="spacer"></span>
   <span class="status" id="status">Saved</span>
+  <button class="ghost" id="live" title="The deck in its own window, for a second screen: it shows every edit as you type">Open live view</button>
   <button class="primary" id="save" title="Ctrl/⌘ + S">Save and rebuild</button>
 </header>
 <main>
@@ -230,9 +232,11 @@
   window.addEventListener('message', function (e) {
     if (e.source !== deck.contentWindow || !e.data || e.data.type !== 'sprint-review:slide') return;
     slide = e.data.n; total = e.data.total;
+    api('POST', '/api/slide', { n: slide }).catch(function () {});
     document.getElementById('where').textContent = slide + ' / ' + total;
   });
   document.getElementById('save').onclick = save;
+  document.getElementById('live').onclick = function () { window.open('/live?token=' + encodeURIComponent(TOKEN), 'sprint-review-live'); };
   document.getElementById('prev').onclick = function () { deck.contentWindow.postMessage({ type: 'sprint-review:go', to: 'prev' }, '*'); };
   document.getElementById('next').onclick = function () { deck.contentWindow.postMessage({ type: 'sprint-review:go', to: 'next' }, '*'); };
   document.addEventListener('keydown', function (e) { if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); save(); } });
