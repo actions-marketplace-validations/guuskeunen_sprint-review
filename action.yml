@@ -127,7 +127,10 @@ runs:
         [ "$SR_PPTX" = "true" ] && args+=(--pptx)
         [ "$SR_SLACK" = "true" ] && args+=(--slack)
         [ -n "$SR_DECK_URL" ] && args+=(--deck-url "$SR_DECK_URL")
-        result="$(npx --yes "@guuskeunen/sprint-review@${SR_VERSION}" "${args[@]}")"
+        # PowerPoint export needs pptxgenjs next to the package: an optional peer, not installed by default.
+        pkgs=(-p "@guuskeunen/sprint-review@${SR_VERSION}")
+        [ "$SR_PPTX" = "true" ] && pkgs+=(-p "pptxgenjs@^4.0.1")
+        result="$(npx --yes "${pkgs[@]}" sprint-review "${args[@]}")"
         echo "$result"
         node -e '
           const r = JSON.parse(process.argv[1]);

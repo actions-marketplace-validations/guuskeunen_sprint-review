@@ -19,6 +19,7 @@ npm test
 |---|---|
 | `npm test` | All tests. |
 | `npm run typecheck` | Type checks the code, the tests and the scripts. |
+| `npm run lint` | ESLint with the recommended JavaScript and TypeScript rules. |
 | `npm run bench` | The [quality benchmark](docs/benchmark.md) against a real model. `-- --echo` checks the harness without one. |
 | `npm run build` | Builds `dist/`. |
 | `node src/cli.ts --dry-run` | Runs the CLI from source in any repository. |
@@ -54,7 +55,7 @@ npm test
 
 ## Pull requests
 
-Keep them focused, explain the why in the description, and make sure `npm test` and `npm run typecheck` pass.
+Keep them focused, explain the why in the description, and make sure `npm test`, `npm run typecheck` and `npm run lint` pass. CI also runs `npm audit` on what users install.
 
 ## Releasing (maintainers)
 
