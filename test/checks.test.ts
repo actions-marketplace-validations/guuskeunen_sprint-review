@@ -102,3 +102,14 @@ test('conventional commit types are read from the subject', () => {
   assert.equal(commitType('CI: cache'), 'ci');
   assert.equal(commitType('Add a timeline'), null);
 });
+
+test('themes and points the model sent as JSON text are read, not silently lost', () => {
+  const theme = { title: 'Customer page', icon: 'users', screen: 'none', value: null, effect: 'One page for every customer.', points: [{ text: 'One list for all purchases', commits: ['abc12345'] }] };
+  const w = parse({ themes: [JSON.stringify(theme)], summary: [], under_the_hood: [] }, commits, [], [], config);
+  assert.equal(w.themes.length, 1);
+  assert.equal(w.themes[0]!.title, 'Customer page');
+});
+
+test('the default room for an answer fits models that think first', () => {
+  assert.equal(normalize({}, '/tmp').model.maxTokens, 16000);
+});

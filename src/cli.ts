@@ -332,8 +332,10 @@ function err(s: string): void {
 main(process.argv.slice(2)).then(
   (code) => process.exit(code),
   (e: unknown) => {
-    const known = e instanceof ConfigError || e instanceof GitError || e instanceof ModelError || e instanceof WriterError || e instanceof NothingToReview || e instanceof CaptureError || e instanceof PptxError;
-    err(e instanceof Error ? e.message : String(e));
+    // A mistyped option is the user's to fix, not a crash: no stack trace, a pointer to the options.
+    const badOption = e instanceof Error && 'code' in e && String(e.code).startsWith('ERR_PARSE_ARGS');
+    const known = badOption || e instanceof ConfigError || e instanceof GitError || e instanceof ModelError || e instanceof WriterError || e instanceof NothingToReview || e instanceof CaptureError || e instanceof PptxError;
+    err(badOption ? `${(e as Error).message.split('. ')[0]}. Run sprint-review --help to see the options.` : e instanceof Error ? e.message : String(e));
     if (!known && e instanceof Error && e.stack) process.stderr.write(dim(e.stack) + '\n');
     process.exit(1);
   },

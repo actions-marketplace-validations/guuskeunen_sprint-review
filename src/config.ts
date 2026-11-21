@@ -297,7 +297,7 @@ function modelConfig(model: Record<string, unknown>): ModelConfig {
     provider,
     name,
     fallback,
-    maxTokens: int(model.maxTokens, 'model.maxTokens', 8000, 1000, 64000),
+    maxTokens: int(model.maxTokens, 'model.maxTokens', 16000, 1000, 64000),
     baseUrl,
     mode,
     maxInputChars: int(model.maxInputChars, 'model.maxInputChars', local ? 24_000 : 120_000, 4_000, 400_000),

@@ -101,3 +101,25 @@ test('a folder that is not a git repository says how to point at the repository'
     (e: Error) => e.message.includes(`${dir} is not a git repository`) && /set repo: in the config/.test(e.message),
   );
 });
+
+test('the reader and the rewrite get the same room as the writer, for models that think first', async () => {
+  const { readFileSync: read } = await import('node:fs');
+  const src = read(new URL('../src/writer.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(src, /maxTokens: \d/);
+});
+
+test('when no theme survives although the product changed, the writer is asked once more', async () => {
+  const dir = demoRepo();
+  const fake = new FakeModel();
+  let writerCalls = 0;
+  const model = {
+    async ask(request: Parameters<FakeModel['ask']>[0]) {
+      const answer = await fake.ask(request);
+      if (request.tool.name === 'presentation' && ++writerCalls === 1) return { ...answer, toolInput: { ...answer.toolInput, themes: 'not a list', under_the_hood: [] } };
+      return answer;
+    },
+  };
+  const { review } = await generate(demoConfig(dir), { model, range });
+  assert.equal(writerCalls, 2);
+  assert.ok(review.themes.length > 0);
+});

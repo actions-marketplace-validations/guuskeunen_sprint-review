@@ -25,6 +25,14 @@ export interface ModelClient {
 export class ModelError extends Error {}
 
 /**
+ * The system prompt with the one tool named, for models that can't be forced to use it. An
+ * answer in plain text still works: the JSON is taken from it.
+ */
+export function withToolInstruction(request: ModelRequest): string {
+  return `${request.system}\n\nAnswer by calling the ${request.tool.name} tool once, with the complete answer. Write nothing else.`;
+}
+
+/**
  * The answer stopped at the token limit before it held the slides. Thinking models count their
  * thinking against the same limit, so a long sprint can use it up before a word is written.
  */
@@ -36,6 +44,26 @@ export function cutOff(maxTokens: number): ModelError {
  * The answer as JSON when a model wrote it as text instead of through the tool: the whole text,
  * a fenced block, or the outermost object in it. Whatever comes out still goes through every check.
  */
+/**
+ * A tool answer with any top-level list or object that came as JSON text unpacked: models that
+ * aren't forced to use the tool sometimes send "themes": "[...]". Plain text stays text.
+ */
+export function unpackStrings(input: Record<string, unknown> | null): Record<string, unknown> | null {
+  if (!input) return input;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(input)) {
+    if (typeof v === 'string' && /^\s*[[{]/.test(v)) {
+      try {
+        const parsed = JSON.parse(v) as unknown;
+        out[k] = parsed !== null && typeof parsed === 'object' ? parsed : v;
+        continue;
+      } catch {}
+    }
+    out[k] = v;
+  }
+  return out;
+}
+
 export function extractJson(text: string | null | undefined): Record<string, unknown> | null {
   if (!text) return null;
   const tries = [text.trim()];
@@ -57,7 +85,7 @@ const API = 'https://api.anthropic.com/v1/messages';
 const TIMEOUT_MS = 180_000;
 const RETRIES = 3;
 
-/** The Anthropic Messages API, forced to answer through one tool, with retries and a fallback model. */
+/** The Anthropic Messages API, asked to answer through one tool, with retries and a fallback model. */
 export class AnthropicClient implements ModelClient {
   private readonly apiKey: string;
   private readonly model: string;
@@ -85,10 +113,13 @@ export class AnthropicClient implements ModelClient {
     const body = JSON.stringify({
       model,
       max_tokens: request.maxTokens,
-      system: request.system,
+      system: withToolInstruction(request),
       messages: [{ role: 'user', content: request.messages.map((text) => ({ type: 'text', text })) }],
-      tools: [request.tool],
-      tool_choice: { type: 'tool', name: request.tool.name },
+      // Strict: the arguments always match the schema. Without it, a large answer sometimes came
+      // back with a list as broken JSON text.
+      tools: [{ ...request.tool, strict: true }],
+      // Claude Opus 5.5, Sonnet 5.5 and later refuse a forced tool (400), so the prompt asks for it.
+      tool_choice: { type: 'auto' },
     });
     let last: unknown;
     for (let attempt = 0; attempt < RETRIES; attempt++) {
@@ -113,9 +144,10 @@ export class AnthropicClient implements ModelClient {
         const block = data.content?.find((b) => b.type === 'tool_use' && b.name === request.tool.name);
         const answerText = data.content?.filter((b) => b.type === 'text').map((b) => (b as { text?: string }).text ?? '').join('\n') ?? '';
         const toolInput = block && typeof block.input === 'object' && block.input !== null ? (block.input as Record<string, unknown>) : extractJson(answerText);
-        if (!toolInput && data.stop_reason === 'max_tokens') throw cutOff(request.maxTokens);
+        // A half-written tool call is no answer: report it, so the fallback model can take over.
+        if (data.stop_reason === 'max_tokens') throw cutOff(request.maxTokens);
         return {
-          toolInput,
+          toolInput: unpackStrings(toolInput),
           model: data.model ?? model,
           usage: { input: data.usage?.input_tokens ?? 0, output: data.usage?.output_tokens ?? 0 },
         };
@@ -188,10 +220,24 @@ export class OpenAIClient implements ModelClient {
 
   async ask(request: ModelRequest): Promise<ModelAnswer> {
     try {
-      return await this.call(this.model, request);
+      return await this.callWithJsonFallback(this.model, request);
     } catch (e) {
       if (!this.fallback || this.fallback === this.model || (e instanceof ModelError && / API (401|403)/.test(e.message))) throw e;
-      return this.call(this.fallback, request);
+      return this.callWithJsonFallback(this.fallback, request);
+    }
+  }
+
+  /**
+   * Some models refuse tool calls on this endpoint (a reasoning model on Chat Completions, a
+   * server without tools). Then the client switches to JSON mode, once and for the rest of the run.
+   */
+  private async callWithJsonFallback(model: string, request: ModelRequest): Promise<ModelAnswer> {
+    try {
+      return await this.call(model, request);
+    } catch (e) {
+      if (this.options.mode !== 'tools' || !(e instanceof ModelError) || !refusesTools(e.message)) throw e;
+      this.options.mode = 'json';
+      return this.call(model, request);
     }
   }
 
@@ -202,7 +248,8 @@ export class OpenAIClient implements ModelClient {
       // No tools: the schema goes in the prompt and, for servers that support it, in response_format.
       return JSON.stringify({
         model,
-        max_tokens: request.maxTokens,
+        // Hosted APIs (OpenAI's newer models) take only max_completion_tokens; local servers take max_tokens.
+        ...(this.options.keyRequired ? { max_completion_tokens: request.maxTokens } : { max_tokens: request.maxTokens }),
         messages: [
           { role: 'system', content: `${request.system}\n\n${request.tool.description}\nAnswer with one JSON object and nothing else. It must match this JSON schema:\n${JSON.stringify(request.tool.input_schema)}` },
           { role: 'user', content: request.messages.join('\n\n') },
@@ -254,11 +301,11 @@ export class OpenAIClient implements ModelClient {
         const message = data.choices?.[0]?.message;
         const call = message?.tool_calls?.find((t) => t.function?.name === request.tool.name) ?? message?.tool_calls?.[0];
         const input = extractJson(call?.function?.arguments) ?? extractJson(message?.content);
-        if (!input && data.choices?.[0]?.finish_reason === 'length') throw cutOff(request.maxTokens);
+        if (data.choices?.[0]?.finish_reason === 'length') throw cutOff(request.maxTokens);
         // Gemini leaves its thinking out of completion_tokens but bills it as output: total minus prompt has it.
         const prompt = data.usage?.prompt_tokens ?? 0;
         const output = Math.max(data.usage?.completion_tokens ?? 0, (data.usage?.total_tokens ?? 0) - prompt);
-        return { toolInput: input, model: data.model ?? model, usage: { input: prompt, output } };
+        return { toolInput: unpackStrings(input), model: data.model ?? model, usage: { input: prompt, output } };
       } catch (e) {
         if (e instanceof ModelError && !new RegExp(`${label} API (429|5\\d\\d)`).test(e.message)) throw e;
         if (e instanceof Error && e.name === 'TypeError' && /fetch failed/.test(e.message)) {
@@ -269,6 +316,11 @@ export class OpenAIClient implements ModelClient {
     }
     throw last instanceof Error ? last : new ModelError(String(last));
   }
+}
+
+/** A 400 that says the endpoint or model takes no tool calls (or not with its settings). */
+function refusesTools(message: string): boolean {
+  return / API 400/.test(message) && /\btools?\b|function|tool_choice/i.test(message) && /not supported|unsupported|does not support/i.test(message);
 }
 
 function retryAfter(res: Response): number | null {

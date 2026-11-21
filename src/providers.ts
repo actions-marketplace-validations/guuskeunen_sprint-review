@@ -1,5 +1,5 @@
 import { createHash, createHmac } from 'node:crypto';
-import { AnthropicClient, cutOff, extractJson, ModelError, OpenAIClient, sleep, type CompatibleOptions, type ModelAnswer, type ModelClient, type ModelRequest } from './model.ts';
+import { AnthropicClient, cutOff, extractJson, unpackStrings, withToolInstruction, ModelError, OpenAIClient, sleep, type CompatibleOptions, type ModelAnswer, type ModelClient, type ModelRequest } from './model.ts';
 
 export type ProviderName = 'anthropic' | 'openai' | 'openrouter' | 'gemini' | 'mistral' | 'azure' | 'ollama' | 'lmstudio' | 'bedrock';
 
@@ -72,8 +72,8 @@ export function bedrockAuth(env: NodeJS.ProcessEnv): BedrockAuth {
 const RETRIES = 3;
 
 /**
- * Amazon Bedrock's Converse API: Claude (and other models) through an AWS account. The tool is
- * forced with toolChoice, like with Anthropic directly. Signs with a Bedrock API key, or with
+ * Amazon Bedrock's Converse API: Claude (and other models) through an AWS account. The prompt
+ * asks for the tool, like with Anthropic directly: current Claude models refuse a forced one. Signs with a Bedrock API key, or with
  * AWS Signature Version 4 from access keys.
  */
 export class BedrockClient implements ModelClient {
@@ -106,12 +106,12 @@ export class BedrockClient implements ModelClient {
     const host = `bedrock-runtime.${this.region}.amazonaws.com`;
     const path = `/model/${encodeURIComponent(model)}/converse`;
     const body = JSON.stringify({
-      system: [{ text: request.system }],
+      system: [{ text: withToolInstruction(request) }],
       messages: [{ role: 'user', content: request.messages.map((text) => ({ text })) }],
       inferenceConfig: { maxTokens: request.maxTokens },
       toolConfig: {
         tools: [{ toolSpec: { name: request.tool.name, description: request.tool.description, inputSchema: { json: request.tool.input_schema } } }],
-        toolChoice: { tool: { name: request.tool.name } },
+        toolChoice: { auto: {} },
       },
     });
     let last: unknown;
@@ -139,8 +139,8 @@ export class BedrockClient implements ModelClient {
         const content = data.output?.message?.content ?? [];
         const use = content.find((c) => c.toolUse?.name === request.tool.name)?.toolUse;
         const input = use && typeof use.input === 'object' && use.input !== null ? (use.input as Record<string, unknown>) : extractJson(content.map((c) => c.text ?? '').join('\n'));
-        if (!input && data.stopReason === 'max_tokens') throw cutOff(request.maxTokens);
-        return { toolInput: input, model, usage: { input: data.usage?.inputTokens ?? 0, output: data.usage?.outputTokens ?? 0 } };
+        if (data.stopReason === 'max_tokens') throw cutOff(request.maxTokens);
+        return { toolInput: unpackStrings(input), model, usage: { input: data.usage?.inputTokens ?? 0, output: data.usage?.outputTokens ?? 0 } };
       } catch (e) {
         if (e instanceof ModelError && !/Bedrock API (429|5\d\d)/.test(e.message)) throw e;
         last = e;

@@ -21,12 +21,14 @@ What "tested" means here, honestly:
 
 | Provider | Model | Status | Quality of the slides |
 |---|---|---|---|
-| `anthropic` | `claude-opus-5-5` | The default: the prompts were developed on it | Best: clear themes, good effect sentences |
-| `anthropic` | `claude-sonnet-5-5` | The fallback | Very good, cheaper and faster |
+| `anthropic` | `claude-opus-5-5` | The default. Verified: benchmark 100/100, live runs on 80 and 294 commits | Best: clear themes, good effect sentences. About $0.30 a review |
+| `anthropic` | `claude-sonnet-5-5` | The fallback. Verified: benchmark 100/100, live runs on 80 and 294 commits | Very good. About $0.20 a review |
 | `bedrock` | Claude through Bedrock | Code tested; request signing checked against AWS's official test vector | Same as Claude directly |
-| `openai`, `azure` | Your GPT model | Code tested | Expected good |
+| `openai` | `gpt-6.2-sol` | Verified: benchmark 97/100, live runs on 80 and 294 commits (in JSON mode: it takes no tools with reasoning on Chat Completions) | Very good |
+| `openai` | `gpt-5.4-mini` | Verified: benchmark 87/100, live runs | Plainer: fewer themes, more lines the reader flags. Fast |
+| `openai`, `azure` | Other GPT models | Code tested | Expected good |
 | `openrouter` | Any | Code tested | Depends on the model |
-| `gemini` | `gemini-3.6-flash` | Verified: live runs and the benchmark (93/100) | Good, and the cheapest: about $0.02 a review |
+| `gemini` | `gemini-3.6-flash` | Verified: benchmark 100/100, live runs on 80 and 294 commits | Good, and the cheapest: about $0.02 a review. Thinner on long ranges |
 | `gemini` | Other Gemini models | Code tested | Expected good |
 | `mistral` | Mistral models | Code tested | Expected decent |
 | `ollama`, `lmstudio` | Qwen, Llama, Mistral and others, 30B+ recommended | Code tested | Works, but plainer: fewer and flatter themes |
@@ -156,7 +158,7 @@ model:
 |---|---|
 | `model.mode: json` | Ask for JSON matching the schema instead of forcing a tool call. The default for Ollama and LM Studio; try it for any server whose tool calling is unreliable. |
 | `model.maxInputChars` | How much of the commit log the model gets. Default 120,000 characters, 24,000 for local models. Commits past it are listed in `checks.md`. |
-| `model.maxTokens` | Room for the answer. Default 8,000. |
+| `model.maxTokens` | Room for the answer, thinking included. Default 16,000. |
 | `model.fallback` | A second model when the first fails. Default Sonnet for Anthropic, none for others. |
 
 If a model answers in text instead of through the tool, sprint-review looks for the JSON in its answer and checks it like any other. Local models are slow: a run can take several minutes.
