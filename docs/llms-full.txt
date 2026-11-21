@@ -444,7 +444,7 @@ limits:
 model:
   name: claude-opus-5-5
   fallback: claude-sonnet-5-5
-  maxTokens: 8000
+  maxTokens: 16000
 
 output:
   dir: sprint-reviews
@@ -496,7 +496,7 @@ How many days a review covers when you don't pass `--since` or `--from`. Both en
 
 | Key | Description |
 |---|---|
-| `color` | Accent color as `#rrggbb`. Lighter and darker shades are mixed from it. Default indigo `#4f46e5`. A color too light for a light deck or too dark for a dark one is darkened or lightened just enough that text in it reads (WCAG 4.5:1). |
+| `color` | Accent color as `#rrggbb`. Lighter and darker shades are mixed from it. Default indigo `#4f46e5`. A color too light for a light deck or too dark for a dark one is darkened or lightened just enough to read (WCAG 3:1, as for large text and icons); a color that reads keeps its exact value. |
 | `logo` | Path to a PNG, JPG, SVG, WebP or GIF, or a `data:image/...` URI. Shown on the cover, on a white plate. |
 | `from` | A website (`https://...`) or the path to a `.pptx` or `.potx`. From a website: its brand color (a `--brand` or `--primary` color in its stylesheet, or its `theme-color`; grays are skipped), its heading and body fonts (`--font-heading`/`--font-display`, `--font-sans`/`--font-body`) and its logo (a logo image or SVG on the page, else its largest icon). From a presentation: its theme's first accent color, fonts and the logo on its slide master. Either way it fills in only what you didn't set here, and only the look is taken, not the layout. `sprint-review doctor` shows what it found. |
 | `theme` | `light` (default) or `dark`: near-black with warm ivory text and a champagne accent. |
@@ -620,7 +620,7 @@ labels:
 | `provider` | `anthropic` | `anthropic`, `bedrock`, `openai`, `azure`, `openrouter`, `gemini`, `mistral`, `ollama` or `lmstudio`. See [models and providers](models.md). |
 | `name` | `claude-opus-5-5` | The model for every call. Required for every provider but `anthropic`. |
 | `fallback` | `claude-sonnet-5-5` | Used when the first model fails after retries. `null` to turn off. Default none for other providers. |
-| `maxTokens` | `8000` | Room for the writer's answer. Thinking models count their thinking against it too; when it runs out, the error says so. |
+| `maxTokens` | `16000` | Room for each answer. Thinking models count their thinking against it too; when it runs out, the error says so. |
 | `baseUrl` | per provider | The endpoint, for `azure` (required), a gateway or a local server on another port. |
 | `mode` | `tools` | `json` asks for JSON matching the schema instead of forcing a tool call. Default `json` for `ollama` and `lmstudio`. |
 | `maxInputChars` | `120000` | How much of the commit log the model gets. `24000` for local models. |
@@ -1241,12 +1241,14 @@ What "tested" means here, honestly:
 
 | Provider | Model | Status | Quality of the slides |
 |---|---|---|---|
-| `anthropic` | `claude-opus-5-5` | The default: the prompts were developed on it | Best: clear themes, good effect sentences |
-| `anthropic` | `claude-sonnet-5-5` | The fallback | Very good, cheaper and faster |
+| `anthropic` | `claude-opus-5-5` | The default. Verified: benchmark 100/100, live runs on 80 and 294 commits | Best: clear themes, good effect sentences. About $0.30 a review |
+| `anthropic` | `claude-sonnet-5-5` | The fallback. Verified: benchmark 100/100, live runs on 80 and 294 commits | Very good. About $0.20 a review |
 | `bedrock` | Claude through Bedrock | Code tested; request signing checked against AWS's official test vector | Same as Claude directly |
-| `openai`, `azure` | Your GPT model | Code tested | Expected good |
+| `openai` | `gpt-6.2-sol` | Verified: benchmark 97/100, live runs on 80 and 294 commits (in JSON mode: it takes no tools with reasoning on Chat Completions) | Very good |
+| `openai` | `gpt-5.4-mini` | Verified: benchmark 87/100, live runs | Plainer: fewer themes, more lines the reader flags. Fast |
+| `openai`, `azure` | Other GPT models | Code tested | Expected good |
 | `openrouter` | Any | Code tested | Depends on the model |
-| `gemini` | `gemini-3.6-flash` | Verified: live runs and the benchmark (93/100) | Good, and the cheapest: about $0.02 a review |
+| `gemini` | `gemini-3.6-flash` | Verified: benchmark 100/100, live runs on 80 and 294 commits | Good, and the cheapest: about $0.02 a review. Thinner on long ranges |
 | `gemini` | Other Gemini models | Code tested | Expected good |
 | `mistral` | Mistral models | Code tested | Expected decent |
 | `ollama`, `lmstudio` | Qwen, Llama, Mistral and others, 30B+ recommended | Code tested | Works, but plainer: fewer and flatter themes |
@@ -1376,7 +1378,7 @@ model:
 |---|---|
 | `model.mode: json` | Ask for JSON matching the schema instead of forcing a tool call. The default for Ollama and LM Studio; try it for any server whose tool calling is unreliable. |
 | `model.maxInputChars` | How much of the commit log the model gets. Default 120,000 characters, 24,000 for local models. Commits past it are listed in `checks.md`. |
-| `model.maxTokens` | Room for the answer. Default 8,000. |
+| `model.maxTokens` | Room for the answer, thinking included. Default 16,000. |
 | `model.fallback` | A second model when the first fails. Default Sonnet for Anthropic, none for others. |
 
 If a model answers in text instead of through the tool, sprint-review looks for the JSON in its answer and checks it like any other. Local models are slow: a run can take several minutes.

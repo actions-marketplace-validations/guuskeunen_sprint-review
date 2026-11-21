@@ -69,7 +69,7 @@ limits:
 model:
   name: claude-opus-5-5
   fallback: claude-sonnet-5-5
-  maxTokens: 8000
+  maxTokens: 16000
 
 output:
   dir: sprint-reviews
@@ -245,7 +245,7 @@ labels:
 | `provider` | `anthropic` | `anthropic`, `bedrock`, `openai`, `azure`, `openrouter`, `gemini`, `mistral`, `ollama` or `lmstudio`. See [models and providers](models.md). |
 | `name` | `claude-opus-5-5` | The model for every call. Required for every provider but `anthropic`. |
 | `fallback` | `claude-sonnet-5-5` | Used when the first model fails after retries. `null` to turn off. Default none for other providers. |
-| `maxTokens` | `8000` | Room for the writer's answer. Thinking models count their thinking against it too; when it runs out, the error says so. |
+| `maxTokens` | `16000` | Room for each answer. Thinking models count their thinking against it too; when it runs out, the error says so. |
 | `baseUrl` | per provider | The endpoint, for `azure` (required), a gateway or a local server on another port. |
 | `mode` | `tools` | `json` asks for JSON matching the schema instead of forcing a tool call. Default `json` for `ollama` and `lmstudio`. |
 | `maxInputChars` | `120000` | How much of the commit log the model gets. `24000` for local models. |
