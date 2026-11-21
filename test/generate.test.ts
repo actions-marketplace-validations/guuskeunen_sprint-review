@@ -123,3 +123,34 @@ test('when no theme survives although the product changed, the writer is asked o
   assert.equal(writerCalls, 2);
   assert.ok(review.themes.length > 0);
 });
+
+test('a ref that looks like a git option is refused, never passed to git', async () => {
+  const { mkdtempSync, existsSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const dir = demoRepo();
+  const target = join(mkdtempSync(join(tmpdir(), 'inject-')), 'written');
+  for (const range of [{ kind: 'refs' as const, from: `--output=${target}`, to: 'HEAD' }, { kind: 'refs' as const, from: 'HEAD~1', to: `--output=${target}` }]) {
+    await assert.rejects(generate(demoConfig(dir), { model: new FakeModel(), range }), /not a valid git ref/);
+  }
+  assert.equal(existsSync(target), false, 'git wrote nothing');
+});
+
+test('clear messages, before any model call, for an empty repository, an unknown ref and no product commits', async () => {
+  const { mkdtempSync, writeFileSync: write } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { execFileSync: git } = await import('node:child_process');
+  const env = { ...process.env, GIT_AUTHOR_NAME: 'T', GIT_AUTHOR_EMAIL: 't@example.test', GIT_COMMITTER_NAME: 'T', GIT_COMMITTER_EMAIL: 't@example.test', GIT_AUTHOR_DATE: '2026-11-10T10:00:00Z', GIT_COMMITTER_DATE: '2026-11-10T10:00:00Z' };
+  const empty = mkdtempSync(join(tmpdir(), 'empty-'));
+  git('git', ['init', '-q', empty]);
+  const model = new FakeModel();
+  await assert.rejects(generate(normalize({}, empty), { model, range }), /no commits yet/);
+  const dir = demoRepo();
+  await assert.rejects(generate(demoConfig(dir), { model, range: { kind: 'refs', from: 'no-such-tag', to: 'HEAD' } }), /No tag, branch or commit called "no-such-tag"/);
+  const docsOnly = mkdtempSync(join(tmpdir(), 'docs-'));
+  git('git', ['init', '-q', docsOnly]);
+  write(join(docsOnly, 'README.md'), 'x');
+  git('git', ['add', '-A'], { cwd: docsOnly });
+  git('git', ['commit', '-q', '-m', 'docs: readme'], { cwd: docsOnly, env });
+  await assert.rejects(generate(normalize({ productPaths: ['src/'] }, docsOnly), { model, range }), /None of the 1 commit.*src\//);
+  assert.equal(model.requests.length, 0, 'no model call was paid for');
+});

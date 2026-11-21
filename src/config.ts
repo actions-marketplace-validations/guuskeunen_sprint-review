@@ -280,6 +280,8 @@ function modelConfig(model: Record<string, unknown>): ModelConfig {
   const fallback = model.fallback === null ? null : (str(model.fallback, 'model.fallback') ?? (provider === 'anthropic' ? 'claude-sonnet-5-5' : null));
   const baseUrl = str(model.baseUrl, 'model.baseUrl');
   if (baseUrl !== null && !/^https?:\/\//.test(baseUrl)) throw new ConfigError('model.baseUrl must start with http:// or https://.');
+  // The API key goes along: plain http only to this machine.
+  if (baseUrl !== null && baseUrl.startsWith('http://') && !isLoopback(baseUrl)) throw new ConfigError('model.baseUrl must use https:// unless it is on this machine (localhost): the API key is sent with every request.');
   if ((provider === 'anthropic' || provider === 'bedrock') && baseUrl !== null) throw new ConfigError(`model.baseUrl is not used for ${provider}.`);
   if (provider === 'azure' && baseUrl === null) throw new ConfigError('model.baseUrl is required for azure: https://<resource>.openai.azure.com/openai/v1');
   const mode = str(model.mode, 'model.mode') ?? (local ? 'json' : 'tools');
@@ -334,4 +336,14 @@ function strMap(v: unknown, at: string): Record<string, string> {
   const o = obj(v, at);
   for (const [k, x] of Object.entries(o)) if (typeof x !== 'string') throw new ConfigError(`${at}.${k} must be text.`);
   return o as Record<string, string>;
+}
+
+/** localhost, 127.x or ::1: a server on this machine. */
+export function isLoopback(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.replace(/^\[|\]$/g, '');
+    return host === 'localhost' || host === '::1' || /^127\./.test(host);
+  } catch {
+    return false;
+  }
 }

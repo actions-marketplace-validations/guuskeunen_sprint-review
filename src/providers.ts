@@ -1,4 +1,5 @@
 import { createHash, createHmac } from 'node:crypto';
+import { isLoopback } from './config.ts';
 import { AnthropicClient, cutOff, extractJson, unpackStrings, withToolInstruction, ModelError, OpenAIClient, sleep, type CompatibleOptions, type ModelAnswer, type ModelClient, type ModelRequest } from './model.ts';
 
 export type ProviderName = 'anthropic' | 'openai' | 'openrouter' | 'gemini' | 'mistral' | 'azure' | 'ollama' | 'lmstudio' | 'bedrock';
@@ -51,7 +52,8 @@ export function clientFor(config: ClientConfig, env: NodeJS.ProcessEnv = process
   const preset = PRESETS[config.provider];
   const baseUrl = config.baseUrl ?? (config.provider === 'openai' ? env.OPENAI_BASE_URL : undefined) ?? preset.baseUrl;
   if (!baseUrl) throw new ModelError(`model.baseUrl is required for ${preset.label}: your endpoint, such as https://my-resource.openai.azure.com/openai/v1.`);
-  const key = (preset.keyEnv ? env[preset.keyEnv] : undefined) ?? (preset.local ? env.OPENAI_API_KEY : undefined) ?? '';
+  // A local server borrows OPENAI_API_KEY (some need one) only when it really is on this machine.
+  const key = (preset.keyEnv ? env[preset.keyEnv] : undefined) ?? (preset.local && isLoopback(baseUrl) ? env.OPENAI_API_KEY : undefined) ?? '';
   return new OpenAIClient(key, config.name, config.fallback, fetchImpl, baseUrl, { ...preset, ...(config.mode ? { mode: config.mode } : {}) });
 }
 

@@ -31,6 +31,10 @@ function fontStack(name: string): string {
   return clean ? `"${clean}", ${SANS}` : 'inherit';
 }
 
+/** A picture for an img src: only an image data URI passes (review.json can be edited by hand). */
+export const IMAGE_DATA_URI = /^data:image\/(png|jpeg|webp|gif|svg\+xml);base64,[A-Za-z0-9+/=]+$/;
+const picture = (uri: unknown) => (typeof uri === 'string' && IMAGE_DATA_URI.test(uri) ? uri : '');
+
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 /**
@@ -125,7 +129,7 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
       <ul class="points">${th.points.map((p, j) => `\n        <li class="rise"${rise(j + 4)}>${esc(p)}</li>`).join('')}
       </ul>
     </div>
-    ${th.screen ? `<figure class="screen ${onPhone ? 'phone ' : ''}rise"${rise(3)}><img src="${th.screen.image}" alt="${esc(onPhone ? fill(t.onPhone, { name: th.screen.name }) : th.screen.name)}"></figure>` : ''}
+    ${th.screen ? `<figure class="screen ${onPhone ? 'phone ' : ''}rise"${rise(3)}><img src="${picture(th.screen.image)}" alt="${esc(onPhone ? fill(t.onPhone, { name: th.screen.name }) : th.screen.name)}"></figure>` : ''}
   </div>
   ${th.notes ? `<aside class="notes">${esc(th.notes)}</aside>` : ''}
 </section>`);
@@ -139,11 +143,11 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
   <div class="compare ${s.device === 'phone' ? 'phone' : ''}">
     <figure class="rise"${rise(2)}>
       <figcaption>${esc(t.before)}</figcaption>
-      <img src="${s.before}" alt="${esc(fill(t.beforeAlt, { name: s.name }))}">
+      <img src="${picture(s.before)}" alt="${esc(fill(t.beforeAlt, { name: s.name }))}">
     </figure>
     <figure class="after rise"${rise(3)}>
       <figcaption>${esc(t.after)}</figcaption>
-      <img src="${s.after}" alt="${esc(fill(t.afterAlt, { name: s.name }))}">
+      <img src="${picture(s.after)}" alt="${esc(fill(t.afterAlt, { name: s.name }))}">
     </figure>
   </div>
 </section>`);
@@ -212,7 +216,7 @@ ${CSS}
 ${theme === 'dark' ? DARK_CSS : ''}
   ${brandCss}
   ${fontCss ? `html[data-theme] { ${fontCss} }` : ''}
-  :root { --notes-label: "${t.notesLabel.replace(/["\\]/g, '')}"; }
+  :root { --notes-label: "${t.notesLabel.replace(/["\\<>\r\n]/g, '')}"; }
 </style>
 </head>
 <body>
@@ -369,7 +373,9 @@ function script(t: Labels, lang: string): string {
   }
   function openPresenter() {
     if (presenter && !presenter.closed) { presenter.focus(); return; }
-    var page = '<!doctype html><html><head><meta charset="utf-8"><title>' + L.presenter + '</title><style>'
+    // Labels come from the config: escaped before they go into the presenter window's HTML.
+    var h = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+    var page = '<!doctype html><html><head><meta charset="utf-8"><title>' + h(L.presenter) + '</title><style>'
       + 'body{margin:0;font-family:ui-sans-serif,system-ui,sans-serif;background:#0f172a;color:#e2e8f0;display:grid;grid-template-rows:auto 1fr auto;height:100vh}'
       + 'header,footer{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;font-size:14px;color:#94a3b8}'
       + 'main{padding:8px 24px;overflow:auto}h1{font-size:28px;margin:0 0 16px;color:#fff}#notes{font-size:22px;line-height:1.5;white-space:pre-line}'
@@ -377,7 +383,7 @@ function script(t: Labels, lang: string): string {
       + 'button{font:inherit;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:8px;padding:8px 16px;cursor:pointer}button:hover{background:#334155}'
       + '</style></head><body><header><span id="place"></span><span id="time">0:00</span></header>'
       + '<main><h1 id="title"></h1><p id="notes"></p></main>'
-      + '<footer><button id="prev">' + L.prev + '</button><span id="next"></span><button id="forward">' + L.next + '</button></footer>'
+      + '<footer><button id="prev">' + h(L.prev) + '</button><span id="next"></span><button id="forward">' + h(L.next) + '</button></footer>'
       + '<script>var since=null,empty=' + JSON.stringify(L.noNotes) + ';'
       + 'function go(to){opener&&opener.postMessage({type:"go",to:to},"*")}'
       + 'document.getElementById("prev").onclick=function(){go("prev")};document.getElementById("forward").onclick=function(){go("next")};'

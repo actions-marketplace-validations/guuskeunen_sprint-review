@@ -46,7 +46,8 @@ export async function withPullRequests(
         continue;
       }
       const list = (await res.json()) as { number?: number; title?: string; body?: string | null; merged_at?: string | null }[];
-      const pr = Array.isArray(list) ? (list.find((p) => p.merged_at) ?? list[0]) : undefined;
+      // Merged pull requests only: an open one (maybe from a fork) is text anyone could write.
+      const pr = Array.isArray(list) ? list.find((p) => p.merged_at) : undefined;
       if (pr && typeof pr.number === 'number' && typeof pr.title === 'string') {
         const seen = byNumber.get(pr.number);
         // The description goes with the first commit of a pull request only, to keep the log short.

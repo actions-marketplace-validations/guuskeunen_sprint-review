@@ -6,6 +6,9 @@ import { fileURLToPath } from 'node:url';
 import type { Config } from './config.ts';
 import type { Review } from './types.ts';
 import { render } from './generate.ts';
+import { validReview } from './review.ts';
+
+export { validReview };
 import { writeOutputs } from './output.ts';
 import { ICONS } from './icons-data.ts';
 import { VALUE_KEYS } from './icons.ts';
@@ -53,7 +56,8 @@ export async function startEditor(file: string, config: Config, port = 4321): Pr
 
   const server = createServer(async (req, res) => {
     const send = (status: number, type: string, body: string) => {
-      res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
+      // No framing by other sites (clickjacking: tricking clicks on Save) and no Referer with the token.
+      res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY', 'content-security-policy': "frame-ancestors 'none'", 'referrer-policy': 'no-referrer' });
       res.end(body);
     };
     try {
@@ -138,20 +142,3 @@ function body(req: IncomingMessage): Promise<unknown> {
   });
 }
 
-/** Enough of a check that a broken edit can't produce a broken deck. */
-export function validReview(v: unknown): Review {
-  const r = v as Review;
-  const strings = (a: unknown) => Array.isArray(a) && a.every((x) => typeof x === 'string');
-  if (!r || r.version !== 1) throw new Error('Not a review made by sprint-review.');
-  if (typeof r.title !== 'string' || typeof r.period !== 'string') throw new Error('The review needs a title and a period.');
-  if (!Array.isArray(r.summary) || !r.summary.every((p) => typeof p?.text === 'string')) throw new Error('Every summary point needs text.');
-  if (!Array.isArray(r.themes) || !r.themes.every((t) => typeof t?.title === 'string' && strings(t.points))) throw new Error('Every theme needs a title and a list of points.');
-  if (!strings(r.underTheHood)) throw new Error('Under the hood must be a list of lines.');
-  for (const k of ['screens', 'milestones', 'usage', 'checks'] as const) if (!Array.isArray(r[k])) throw new Error(`${k} must be a list.`);
-  return {
-    ...r,
-    summary: r.summary.filter((p) => p.text.trim()),
-    themes: r.themes.map((t) => ({ ...t, points: t.points.filter((p) => p.trim()) })),
-    underTheHood: r.underTheHood.filter((p) => p.trim()),
-  };
-}

@@ -43,6 +43,7 @@ export class History {
   assertUsable(): void {
     try {
       this.git(['rev-parse', '--git-dir']);
+      if (!this.git(['rev-parse', '--verify', '--quiet', 'HEAD'], true).trim()) throw new GitError(`${this.repo} has no commits yet: there is nothing to review.`);
     } catch (e) {
       if (!/not a git repository/i.test((e as Error).message)) throw e;
       // Usually a config file kept outside the repository: the repository is taken from where the config is.
@@ -55,9 +56,9 @@ export class History {
 
   /** The commits of the range, newest first, without merges. */
   commits(range: Range, productPaths: string[], ignore: string[], max: number, nonProductTypes: string[] = NON_PRODUCT_TYPES): Commit[] {
+    if (range.kind === 'refs') for (const ref of [range.from, range.to]) if (!this.resolve(ref)) throw new GitError(`No tag, branch or commit called "${ref}" in ${this.repo}.`);
     const args = ['log', '--no-merges', '--date=short', `--max-count=${max}`, '--name-only', '--format=%x1d%h%x1f%ad%x1f%s%x1f%b%x1e'];
-    if (range.kind === 'dates') args.push(`--since=${range.from} 00:00:00`, `--until=${range.until} 23:59:59`);
-    else args.push(`${range.from}..${range.to}`);
+    args.push(...rangeArgs(range));
     const patterns = ignore.map((p) => new RegExp(p, 'i'));
 
     const commits: Commit[] = [];
@@ -88,8 +89,7 @@ export class History {
   /** The files that changed in the range under a folder. */
   changedPaths(range: Range, dir: string): string[] {
     const args = ['log', '--format=', '--name-only'];
-    if (range.kind === 'dates') args.push(`--since=${range.from} 00:00:00`, `--until=${range.until} 23:59:59`);
-    else args.push(`${range.from}..${range.to}`);
+    args.push(...rangeArgs(range));
     args.push('--', `:(top)${dir}`);
     return [...new Set(this.git(args).split('\n').map((l) => l.trim()).filter(Boolean))];
   }
@@ -97,8 +97,7 @@ export class History {
   /** The first version of a file added inside the range: the only "before" a new picture has. */
   oldestInRange(range: Range, path: string): Buffer | null {
     const args = ['log', '--reverse', '--format=%H'];
-    if (range.kind === 'dates') args.push(`--since=${range.from} 00:00:00`, `--until=${range.until} 23:59:59`);
-    else args.push(`${range.from}..${range.to}`);
+    args.push(...rangeArgs(range));
     args.push('--', `:(top)${path}`);
     const first = this.git(args, true).split('\n')[0]?.trim();
     return first ? this.show(first, path) : null;
@@ -132,9 +131,24 @@ export class History {
   }
 
   private resolve(ref: string): string | null {
-    const hash = this.git(['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], true).trim();
+    const hash = this.git(['rev-parse', '--verify', '--quiet', '--end-of-options', `${safeRef(ref)}^{commit}`], true).trim();
     return hash === '' ? null : hash;
   }
+}
+
+/**
+ * The git arguments for a range. Refs come from the CLI, the GitHub Action's inputs and the MCP
+ * server's tool arguments, so one that starts with "-" is refused: git would read it as an
+ * option (--output=<file> writes anywhere). --end-of-options guards the rest.
+ */
+function rangeArgs(range: Range): string[] {
+  if (range.kind === 'dates') return [`--since=${range.from} 00:00:00`, `--until=${range.until} 23:59:59`];
+  return ['--end-of-options', `${safeRef(range.from)}..${safeRef(range.to)}`];
+}
+
+function safeRef(ref: string): string {
+  if (!ref || ref.startsWith('-') || /[\s\0]/.test(ref)) throw new GitError(`"${ref}" is not a valid git ref: use a tag, branch or commit.`);
+  return ref;
 }
 
 /** Conventional Commit types that never change the product a user sees. `chore(deps)` counts as `chore`. */

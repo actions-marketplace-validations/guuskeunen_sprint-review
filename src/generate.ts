@@ -9,6 +9,7 @@ import { githubRepo, withPullRequests } from './github.ts';
 import type { ModelClient } from './model.ts';
 import { fill, labelsFor, longDate, shortDate } from './i18n.ts';
 import { renderDeck } from './render.ts';
+import { validReview } from './review.ts';
 import { renderMarkdown } from './markdown.ts';
 import { brandFromPptx, type Brand } from './brand.ts';
 import { isWebsite, withWebsiteBrand } from './website.ts';
@@ -58,6 +59,10 @@ export async function generate(config: Config, options: GenerateOptions): Promis
   step('Reading the git history');
   let commits = history.commits(range, config.productPaths, config.ignore, config.limits.commits, config.nonProductTypes);
   if (!commits.length) throw new NothingToReview(`No commits found ${describe(range)}.`);
+  // Nothing a user would notice: say so before paying for a model call.
+  if (config.productPaths.length && !commits.some((c) => c.product)) {
+    throw new NothingToReview(`None of the ${commits.length} commit${commits.length === 1 ? '' : 's'} ${describe(range)} touch the product code (productPaths: ${config.productPaths.join(', ')}). Check productPaths in the config, or pick another range.`);
+  }
   step(`Found ${commits.length} commit${commits.length === 1 ? '' : 's'} ${describe(range)}`);
 
   const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || null;
@@ -113,6 +118,8 @@ export async function generate(config: Config, options: GenerateOptions): Promis
 
 /** Render a stored review again: after editing review.json, or after a brand change. */
 export function render(review: Review, config: Config): { html: string; markdown: string } {
+  // A stored review may have been edited by hand: check it here too, for library users.
+  review = validReview(review);
   const brand = resolvedBrand(config);
   return {
     html: renderDeck(review, { color: brand.color, logo: brand.logo, labels: config.labels, goal: config.goal, theme: config.brand.theme, fonts: brand.fonts }),

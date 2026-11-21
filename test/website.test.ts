@@ -81,3 +81,17 @@ test('what the config sets itself wins over the website', async () => {
 test('a website that cannot be read is a clear error', async () => {
   await assert.rejects(brandFromWebsite('https://down.test', site({}).impl), /could not read the website https:\/\/down.test/);
 });
+
+test('a hostile site can neither fill memory nor stall the parser', async () => {
+  let pulled = 0;
+  const huge = (async () => new Response(new ReadableStream({
+    pull(c) { pulled += 1_000_000; c.enqueue(new Uint8Array(1_000_000)); if (pulled > 50_000_000) c.close(); },
+  }))) as unknown as typeof fetch;
+  await assert.rejects(brandFromWebsite('https://huge.test', huge), /could not read/);
+  assert.ok(pulled <= 5_000_000, `stopped reading early (read ${pulled} bytes)`);
+
+  const slow = site({ '/': '<svg logo'.repeat(330_000) });
+  const t = Date.now();
+  await brandFromWebsite('https://slow.test', slow.impl);
+  assert.ok(Date.now() - t < 3000, `parsed in ${Date.now() - t} ms`);
+});
