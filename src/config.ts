@@ -87,6 +87,8 @@ export interface ModelConfig {
   maxInputChars: number;
   /** Bedrock: the AWS region. Default AWS_REGION. */
   region: string | null;
+  /** US dollars per million input and output tokens, for the cost of a run. Default: the provider's list price, when known. */
+  price: { input: number; output: number } | null;
 }
 
 export type ScreenshotConfig =
@@ -285,6 +287,12 @@ function modelConfig(model: Record<string, unknown>): ModelConfig {
   if ((provider === 'anthropic' || provider === 'bedrock') && mode === 'json') throw new ConfigError(`model.mode json is not used for ${provider}: it always forces the tool.`);
   const region = str(model.region, 'model.region');
   if (region !== null && provider !== 'bedrock') throw new ConfigError('model.region is only for bedrock.');
+  let price: ModelConfig['price'] = null;
+  if (model.price !== undefined && model.price !== null) {
+    const p = obj(model.price, 'model.price');
+    if (typeof p.input !== 'number' || typeof p.output !== 'number' || p.input < 0 || p.output < 0) throw new ConfigError('model.price must be { input, output }: US dollars per million tokens, such as { input: 3, output: 15 }.');
+    price = { input: p.input, output: p.output };
+  }
   return {
     provider,
     name,
@@ -294,6 +302,7 @@ function modelConfig(model: Record<string, unknown>): ModelConfig {
     mode,
     maxInputChars: int(model.maxInputChars, 'model.maxInputChars', local ? 24_000 : 120_000, 4_000, 400_000),
     region,
+    price,
   };
 }
 
