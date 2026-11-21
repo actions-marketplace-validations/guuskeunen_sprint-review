@@ -1454,21 +1454,24 @@ Data handling follows **your** agreement with the provider you pick. sprint-revi
 
 - Keys are read from **environment variables only**, never from the config file, so the config can be committed safely.
 - In CI, keep keys in your CI's secret store (GitHub: repository or organization secrets).
-- Keys are only sent to the provider they belong to, in an HTTP header. They're never written to a file or a log.
+- Keys are only sent to the provider they belong to, in an HTTP header. They're never written to a file or a log; the cost ledger (`costs.csv`) holds dates, models, tokens and dollars only.
+- `model.baseUrl` sends the key to the address you give, so a config you run with your keys is code you trust, like an npm script. Plain `http://` is refused except on this machine (`localhost`), and a local provider (`ollama`, `lmstudio`) only borrows `OPENAI_API_KEY` when it really runs on this machine.
 
 ## The outputs
 
 `deck.html`, `review.json`, `review.md` and `checks.md` (and `deck.pptx`) are written to a local folder. They contain what's on the slides, plus screenshots if you configured them. **Nothing is published on its own:** sharing the deck is a step you take (an artifact, GitHub Pages, Slack).
 
-The deck is a single file with no outside requests: no fonts, scripts, images or trackers are loaded from anywhere.
+The deck is a single file with no outside requests: no fonts, scripts, images or trackers are loaded from anywhere. Its Edit button, shown only when you open the deck from your own disk, checks `127.0.0.1:4321` for the local editor when you click it.
+
+Everything from commits, pull requests, the model and a hand-edited `review.json` is escaped: in the deck as HTML, in `review.md` and `checks.md` so it can't form links, images or HTML. Pictures in `review.json` must be image data URIs, and `render` refuses a review that doesn't hold up. Pull request text is read from merged pull requests only.
 
 ## The local editor
 
-`sprint-review edit` starts a web server on `127.0.0.1` only, so it can't be reached from other machines. Every request must carry a random token that only the page it opened knows, so other websites in your browser can't read or change the review. It stops when you press Ctrl+C.
+`sprint-review edit` starts a web server on `127.0.0.1` only, so it can't be reached from other machines. Every request must carry a random token that only the page it opened knows, so other websites in your browser can't read or change the review, and its pages can't be framed by another site. It stops when you press Ctrl+C.
 
 ## The MCP server
 
-`sprint-review mcp` talks over stdio with the client that started it (Claude Code, Cursor…). It doesn't open a network port. Its tools read the git history and write the outputs in the folder you point it at; the model call uses the same provider and key as the CLI.
+`sprint-review mcp` talks over stdio with the client that started it (Claude Code, Cursor…). It doesn't open a network port. Its tools read the git history and write the outputs in the folder you point it at; the model call uses the same provider and key as the CLI. An assistant picks the tool arguments, and text it read can steer it, so the folder must be a project (a git repository or a sprint-review config), files are read and written only inside it, and a ref that looks like a git option is refused.
 
 ## Dependencies
 
