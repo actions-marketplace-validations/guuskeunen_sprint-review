@@ -33,23 +33,28 @@
     "examples"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=20.9"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.check.json",
+    "lint": "eslint .",
     "test": "node --test test/*.test.ts",
     "prepublishOnly": "npm run build",
     "docs": "node scripts/build-demo.ts && node scripts/build-llms.ts",
     "bench": "node scripts/bench.ts"
   },
   "dependencies": {
-    "sharp": "^0.34.0",
+    "sharp": "^0.35.5",
     "yaml": "^2.5.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.0",
     "@types/node": "^22.0.0",
-    "typescript": "^5.7.0"
+    "eslint": "^10.15.0",
+    "pptxgenjs": "^4.0.1",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.73.0"
   },
   "keywords": [
     "agile",
@@ -74,16 +79,20 @@
     "stakeholder-update"
   ],
   "homepage": "https://guuskeunen.github.io/sprint-review/",
-  "optionalDependencies": {
-    "pptxgenjs": "^4.0.1"
-  },
   "peerDependencies": {
-    "playwright": ">=1.40"
+    "playwright": ">=1.40",
+    "pptxgenjs": ">=4.0.1"
   },
   "peerDependenciesMeta": {
     "playwright": {
       "optional": true
+    },
+    "pptxgenjs": {
+      "optional": true
     }
   },
-  "mcpName": "io.github.guuskeunen/sprint-review"
+  "mcpName": "io.github.guuskeunen/sprint-review",
+  "overrides": {
+    "image-size": "^2.1.0"
+  }
 }

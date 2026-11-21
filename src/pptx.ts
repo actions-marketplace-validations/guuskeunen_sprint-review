@@ -1,6 +1,11 @@
 import type { Review } from './types.ts';
 import { fill, labelsFor, localeOf, type Labels } from './i18n.ts';
+import sharp from 'sharp';
+// Types only: erased from the build, so pptxgenjs stays an optional peer.
+type PptxClass = (typeof import('pptxgenjs'))['default'];
+type Slide = ReturnType<InstanceType<PptxClass>['addSlide']>;
 import { VALUE_KEYS } from './icons.ts';
+import { readableOn } from './colors.ts';
 
 export class PptxError extends Error {}
 
@@ -33,7 +38,7 @@ function place(uri: string, box: { x: number; y: number; w: number; h: number },
   const ratio = size.w / size.h;
   if (mode === 'cover') {
     const h = Math.min(box.h, box.w / ratio);
-    return { data: uri, x: box.x, y: box.y, w: box.w, h: box.w / ratio, sizing: { type: 'crop', x: 0, y: 0, w: box.w, h } };
+    return { data: uri, x: box.x, y: box.y, w: box.w, h: box.w / ratio, sizing: { type: 'crop' as const, x: 0, y: 0, w: box.w, h } };
   }
   const w = Math.min(box.w, box.h * ratio);
   const h = w / ratio;
@@ -51,15 +56,15 @@ const PALETTES = {
  * HTML deck (no motion), but every word and picture is there.
  */
 export async function renderPptx(review: Review, options: PptxOptions = {}): Promise<Buffer> {
-  let PptxGenJS: new () => any;
+  let PptxGenJS: PptxClass;
   try {
-    PptxGenJS = ((await import('pptxgenjs' as string)) as { default: new () => any }).default;
+    PptxGenJS = ((await import('pptxgenjs' as string)) as { default: PptxClass }).default;
   } catch {
     throw new PptxError('PowerPoint export needs pptxgenjs: npm install --save-dev pptxgenjs');
   }
   const t = labelsFor(review.language, options.labels);
   const pal = { ...PALETTES[options.theme === 'dark' ? 'dark' : 'light'] };
-  if (options.color && /^#[0-9a-fA-F]{6}$/.test(options.color)) pal.accent = options.color.slice(1).toUpperCase();
+  if (options.color && /^#[0-9a-fA-F]{6}$/.test(options.color)) pal.accent = readableOn(options.color, `#${pal.bg}`).slice(1).toUpperCase();
   const heading = options.fonts?.heading ?? (options.theme === 'dark' ? 'Georgia' : 'Calibri');
   const body = options.fonts?.body ?? 'Calibri';
   const nf = new Intl.NumberFormat(localeOf(review.language));
@@ -67,7 +72,7 @@ export async function renderPptx(review: Review, options: PptxOptions = {}): Pro
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_WIDE'; // 13.33 x 7.5 in
   pptx.title = review.title;
-  pptx.company = review.organization || undefined;
+  if (review.organization) pptx.company = review.organization;
   pptx.theme = { headFontFace: heading, bodyFontFace: body };
 
   const W = 13.33;
@@ -78,10 +83,10 @@ export async function renderPptx(review: Review, options: PptxOptions = {}): Pro
     if (notes) s.addNotes(notes);
     return s;
   };
-  const label = (s: any, text: string, y = 0.9) =>
+  const label = (s: Slide, text: string, y = 0.9) =>
     s.addText(text.toUpperCase(), { x: X, y, w: W - 2 * X, h: 0.35, fontFace: body, fontSize: 11, bold: true, color: pal.accent, charSpacing: 4 });
-  const title = (s: any, text: string, y = 1.25, size = 34) => s.addText(text, { x: X, y, w: W - 2 * X, h: 0.9, fontFace: heading, fontSize: size, color: pal.ink });
-  const bullets = (s: any, items: string[], x: number, y: number, w: number, size = 18) =>
+  const title = (s: Slide, text: string, y = 1.25, size = 34) => s.addText(text, { x: X, y, w: W - 2 * X, h: 0.9, fontFace: heading, fontSize: size, color: pal.ink });
+  const bullets = (s: Slide, items: string[], x: number, y: number, w: number, size = 18) =>
     items.length &&
     s.addText(
       items.map((text) => ({ text, options: { bullet: { code: '2713' }, paraSpaceAfter: 8 } })),
@@ -91,7 +96,7 @@ export async function renderPptx(review: Review, options: PptxOptions = {}): Pro
   // Cover
   {
     const s = newSlide();
-    if (options.logo) s.addImage({ data: options.logo, x: X, y: 0.6, h: 0.7, w: 2.2, sizing: { type: 'contain', w: 2.2, h: 0.7 } });
+    if (options.logo) s.addImage({ data: options.logo, x: X, y: 0.6, ...(await logoBox(options.logo, 2.2, 0.7)) });
     label(s, `${t.sprintReview}${review.organization ? ` ${review.organization}` : ''}`, 2.1);
     s.addText(review.title, { x: X, y: 2.5, w: W - 2 * X, h: 1.9, fontFace: heading, fontSize: 44, color: pal.ink, valign: 'top', fit: 'shrink' });
     s.addText(review.period, { x: X, y: 4.5, w: W - 2 * X, h: 0.5, fontFace: body, fontSize: 18, color: pal.soft });
@@ -204,4 +209,14 @@ export async function renderPptx(review: Review, options: PptxOptions = {}): Pro
 
   const out = (await pptx.write({ outputType: 'nodebuffer' })) as Buffer | Uint8Array;
   return Buffer.from(out);
+}
+
+/** The logo's size within a box, in its own proportions: a square icon stays square. */
+async function logoBox(dataUri: string, maxW: number, maxH: number): Promise<{ w: number; h: number }> {
+  let ratio = maxW / maxH;
+  try {
+    const { width, height } = await sharp(Buffer.from(dataUri.slice(dataUri.indexOf(',') + 1), 'base64')).metadata();
+    if (width && height) ratio = width / height;
+  } catch {}
+  return ratio > maxW / maxH ? { w: maxW, h: maxW / ratio } : { w: maxH * ratio, h: maxH };
 }

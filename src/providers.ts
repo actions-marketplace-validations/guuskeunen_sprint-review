@@ -1,5 +1,5 @@
 import { createHash, createHmac } from 'node:crypto';
-import { AnthropicClient, extractJson, ModelError, OpenAIClient, sleep, type CompatibleOptions, type ModelAnswer, type ModelClient, type ModelRequest } from './model.ts';
+import { AnthropicClient, cutOff, extractJson, ModelError, OpenAIClient, sleep, type CompatibleOptions, type ModelAnswer, type ModelClient, type ModelRequest } from './model.ts';
 
 export type ProviderName = 'anthropic' | 'openai' | 'openrouter' | 'gemini' | 'mistral' | 'azure' | 'ollama' | 'lmstudio' | 'bedrock';
 
@@ -17,7 +17,7 @@ interface Preset extends CompatibleOptions {
 export const PRESETS: Record<Exclude<ProviderName, 'anthropic' | 'bedrock'>, Preset> = {
   openai: { label: 'OpenAI', keyEnv: 'OPENAI_API_KEY', baseUrl: 'https://api.openai.com/v1' },
   openrouter: { label: 'OpenRouter', keyEnv: 'OPENROUTER_API_KEY', baseUrl: 'https://openrouter.ai/api/v1' },
-  gemini: { label: 'Gemini', keyEnv: 'GEMINI_API_KEY', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', toolChoice: 'required' },
+  gemini: { label: 'Gemini', keyEnv: 'GEMINI_API_KEY', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', toolChoice: 'required', reasoningEffort: 'low' },
   mistral: { label: 'Mistral', keyEnv: 'MISTRAL_API_KEY', baseUrl: 'https://api.mistral.ai/v1', toolChoice: 'any' },
   azure: { label: 'Azure OpenAI', keyEnv: 'AZURE_OPENAI_API_KEY', keyHeader: 'api-key' },
   ollama: { label: 'Ollama', baseUrl: 'http://localhost:11434/v1', mode: 'json', keyRequired: false, local: true, timeoutMs: 900_000 },
@@ -133,11 +133,13 @@ export class BedrockClient implements ModelClient {
         }
         const data = JSON.parse(text) as {
           output?: { message?: { content?: { text?: string; toolUse?: { name?: string; input?: unknown } }[] } };
+          stopReason?: string;
           usage?: { inputTokens?: number; outputTokens?: number };
         };
         const content = data.output?.message?.content ?? [];
         const use = content.find((c) => c.toolUse?.name === request.tool.name)?.toolUse;
         const input = use && typeof use.input === 'object' && use.input !== null ? (use.input as Record<string, unknown>) : extractJson(content.map((c) => c.text ?? '').join('\n'));
+        if (!input && data.stopReason === 'max_tokens') throw cutOff(request.maxTokens);
         return { toolInput: input, model, usage: { input: data.usage?.inputTokens ?? 0, output: data.usage?.outputTokens ?? 0 } };
       } catch (e) {
         if (e instanceof ModelError && !/Bedrock API (429|5\d\d)/.test(e.message)) throw e;

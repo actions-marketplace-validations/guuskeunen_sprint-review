@@ -34,7 +34,8 @@ Quick start (Node 20+, inside a git repository):
 - Models: Anthropic by default (claude-opus-5-5, falling back to claude-sonnet-5-5). Also `model.provider`: bedrock, azure, openai, openrouter, gemini, mistral, ollama, lmstudio (local: nothing leaves the network).
 - Sends commit subjects, bodies, file names and (with GITHUB_TOKEN) pull request descriptions. Never source code.
 - Checks in code: each point must cite real commit hashes or it is dropped; ci/build/test/docs/chore commits only go under the hood; word limits; ticket and PR numbers stripped; a team word list applied; a second model call reads only the slides and flags unclear lines, which are rewritten once and checked again. All logged in checks.md.
-- Brand: `brand.color`, `brand.logo`, `brand.fonts`, or `brand.from: our-template.pptx` to take the theme color, fonts and logo from a PowerPoint. `brand.theme: light` (default) or `dark`.
+- Brand: `brand.color`, `brand.logo`, `brand.fonts`, or `brand.from` with a website (`https://...`) or a `.pptx` to take the color, fonts and logo from it. `brand.theme: light` (default) or `dark`.
+- Cost: every run prints its estimated LLM cost and adds it to `sprint-reviews/costs.csv`; `--dry-run` estimates it first. `model.price` sets the price for providers without a built-in one.
 - Languages: English and Dutch labels built in; any language for the text via `language`.
 
 ## Optional

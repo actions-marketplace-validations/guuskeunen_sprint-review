@@ -17,6 +17,11 @@ export interface Expected {
   name: string;
   /** Any of these words or phrases (start of a word, any case) counts as covering it. */
   any: string[];
+  /**
+   * Under the hood only: plain words for the same change, since the writer is told to name the
+   * effect, not the tool. They count for finding it under the hood, never as plumbing up front.
+   */
+  effect?: string[];
 }
 
 export interface BenchCase {
@@ -90,8 +95,9 @@ export function score(c: BenchCase, review: Review): Score {
   const found = c.expect.themes.filter((e) => covers(front, e)).map((e) => e.name);
   const missed = c.expect.themes.filter((e) => !covers(front, e)).map((e) => e.name);
   const leaked = c.expect.hood.filter((e) => covers(front, e)).map((e) => e.name);
-  const hoodFound = c.expect.hood.filter((e) => covers(hoodText, e)).map((e) => e.name);
-  const hoodMissed = c.expect.hood.filter((e) => !covers(hoodText, e)).map((e) => e.name);
+  const inHood = (e: Expected) => covers(hoodText, { ...e, any: [...e.any, ...(e.effect ?? [])] });
+  const hoodFound = c.expect.hood.filter(inHood).map((e) => e.name);
+  const hoodMissed = c.expect.hood.filter((e) => !inHood(e)).map((e) => e.name);
   const forbidden = c.expect.never.filter((p) => everything.toLowerCase().includes(p.toLowerCase()));
   const count = (k: string) => review.checks.filter((x) => x.kind === k).length;
   const points = [...review.summary.map((p) => p.text), ...review.themes.flatMap((t) => t.points)];

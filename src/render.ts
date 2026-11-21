@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { Review } from './types.ts';
 import { fill, labelsFor, localeOf, type Labels } from './i18n.ts';
+import { readableOn } from './colors.ts';
 import { hoodIcon, themeIcon, valueIcon, VALUE_KEYS } from './icons.ts';
 
 const CSS = readFileSync(fileURLToPath(new URL('../assets/deck.css', import.meta.url)), 'utf8');
@@ -21,9 +22,13 @@ export interface RenderOptions {
 }
 
 /** A font name from a config or a .pptx, quoted, with the theme's own fonts behind it. Anything odd is dropped. */
+const SANS = 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+
 function fontStack(name: string): string {
   const clean = name.replace(/[^\p{L}\p{N} ._-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 60);
-  return clean ? `"${clean}", var(--font-body, system-ui), sans-serif` : 'inherit';
+  // A fixed fallback: --font-body set to a stack that names var(--font-body) points at itself, and
+  // the browser then drops it and shows its default serif.
+  return clean ? `"${clean}", ${SANS}` : 'inherit';
 }
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -178,11 +183,13 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
 
   const hasNotes = !!review.summaryNotes || review.themes.some((th) => th.notes);
   const theme = options.theme === 'dark' ? 'dark' : 'light';
+  // The brand color as text and icons must read on the theme's background; readableOn shifts it only when it doesn't.
+  const accent = color ? readableOn(color, theme === 'dark' ? '#0a0a0d' : '#ffffff') : null;
   const brandCss = !color
     ? ''
     : theme === 'dark'
-      ? `html[data-theme="dark"] { --accent: ${color}; --accent-deep: color-mix(in srgb, ${color} 65%, #000); --accent-soft: color-mix(in srgb, ${color} 12%, transparent); --accent-glow: color-mix(in srgb, ${color} 24%, transparent); }`
-      : `:root { --accent: ${color}; --accent-deep: color-mix(in srgb, ${color} 70%, #0f172a); --accent-soft: color-mix(in srgb, ${color} 9%, #fff); }`;
+      ? `html[data-theme="dark"] { --accent: ${accent}; --accent-deep: color-mix(in srgb, ${accent} 65%, #000); --accent-soft: color-mix(in srgb, ${accent} 12%, transparent); --accent-glow: color-mix(in srgb, ${accent} 24%, transparent); }`
+      : `:root { --accent: ${accent}; --accent-deep: color-mix(in srgb, ${accent} 70%, #0f172a); --accent-soft: color-mix(in srgb, ${accent} 9%, #fff); }`;
   const fontCss = [
     options.fonts?.heading ? `--font-heading: ${fontStack(options.fonts.heading)};` : '',
     options.fonts?.body ? `--font-body: ${fontStack(options.fonts.body)};` : '',
@@ -214,6 +221,8 @@ ${slides.join('\n\n')}
 
 <div class="progress" aria-hidden="true"></div>
 <div class="counter" aria-live="polite"></div>
+<button class="edit-button" type="button" hidden>${esc(t.edit)}</button>
+<div class="edit-panel" role="dialog" hidden><p>${esc(t.editStart)}</p><code></code><button type="button">${esc(t.copy)}</button></div>
 <div class="hint" aria-hidden="true"><kbd>←</kbd> <kbd>→</kbd> ${esc(t.hintBrowse)} · <kbd>F</kbd> ${esc(t.hintFullscreen)} · <kbd>P</kbd> ${esc(t.hintPresenter)}${hasNotes ? ` · <kbd>N</kbd> ${esc(t.hintNotes)}` : ''}</div>
 
 <script>
@@ -234,6 +243,8 @@ function script(t: Labels, lang: string): string {
     noNotes: t.noNotes,
     upNext: t.upNext,
     last: t.lastSlide,
+    copy: t.copy,
+    copied: t.copied,
     lang,
   }).replace(/</g, '\\u003c');
   return `(function () {
@@ -283,12 +294,34 @@ function script(t: Labels, lang: string): string {
     else if (d.to === 'prev') show(current - 1);
     else if (typeof d.to === 'number') show(d.to - 1);
   });
+  // Edit: only on the deck opened from your own disk, never in a published deck or a preview.
+  // A file can't start the editor, so the button opens it when it runs and else shows how to start it.
+  var editButton = document.querySelector('.edit-button');
+  var editPanel = document.querySelector('.edit-panel');
+  var EDITOR = 'http://127.0.0.1:4321/';
+  if (location.protocol === 'file:' && window.parent === window && editButton && editPanel) {
+    var path = decodeURIComponent(location.pathname).replace(/^\\/([A-Za-z]:)/, '$1').replace(/[^\\/]*$/, 'review.json');
+    var command = 'npx @guuskeunen/sprint-review edit "' + path + '"';
+    editPanel.querySelector('code').textContent = command;
+    editButton.hidden = false;
+    editButton.addEventListener('click', function () {
+      fetch(EDITOR, { mode: 'no-cors', signal: AbortSignal.timeout ? AbortSignal.timeout(1500) : undefined })
+        .then(function () { editPanel.hidden = true; window.open(EDITOR, 'sprint-review-editor'); })
+        .catch(function () { editPanel.hidden = !editPanel.hidden; });
+    });
+    var copyButton = editPanel.querySelector('button');
+    copyButton.addEventListener('click', function () {
+      navigator.clipboard.writeText(command).then(function () { copyButton.textContent = L.copied; setTimeout(function () { copyButton.textContent = L.copy; }, 1500); });
+    });
+  }
+
   window.addEventListener('hashchange', function () {
     var n = parseInt((location.hash || '').slice(1), 10);
     if (n > 0 && n - 1 !== current) show(n - 1);
   });
 
   document.addEventListener('keydown', function (e) {
+    if (e.target && e.target.closest && e.target.closest('.edit-button, .edit-panel')) return;
     if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].indexOf(e.key) !== -1) { e.preventDefault(); show(current + 1); }
     else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].indexOf(e.key) !== -1) { e.preventDefault(); show(current - 1); }
     else if (e.key === 'Home') show(0);
@@ -364,7 +397,9 @@ function script(t: Labels, lang: string): string {
     if (e.data.type === 'ready') { if (startedAt === null) startedAt = Date.now(); tellPresenter(); }
     else if (e.data.type === 'go') show(current + (e.data.to === 'prev' ? -1 : 1));
   });
+  function onEdit(e) { return e.target && e.target.closest && e.target.closest('.edit-button, .edit-panel'); }
   document.addEventListener('click', function (e) {
+    if (onEdit(e)) return;
     show(e.clientX < window.innerWidth / 3 ? current - 1 : current + 1);
   });
   var touchX = null;

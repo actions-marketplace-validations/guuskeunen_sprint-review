@@ -12,6 +12,8 @@ export type * from './types.ts';
 export { writeOutputs, type Written } from './output.ts';
 export { renderPptx, PptxError, type PptxOptions } from './pptx.ts';
 export { brandFromPptx, type Brand } from './brand.ts';
+export { brandFromWebsite, withWebsiteBrand } from './website.ts';
+export { costOf, priceOf, metered, recordCost, type Cost, type Call, type Price } from './costs.ts';
 export { capture, CaptureError } from './capture.ts';
 export { startEditor, validReview, type EditorServer } from './editor.ts';
 export { withPullRequests, githubRepo } from './github.ts';

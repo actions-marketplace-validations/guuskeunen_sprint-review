@@ -11,6 +11,8 @@ import { fill, labelsFor, longDate, shortDate } from './i18n.ts';
 import { renderDeck } from './render.ts';
 import { renderMarkdown } from './markdown.ts';
 import { brandFromPptx, type Brand } from './brand.ts';
+import { isWebsite, withWebsiteBrand } from './website.ts';
+import { costOf, metered, type Cost } from './costs.ts';
 
 export class NothingToReview extends Error {}
 
@@ -29,6 +31,10 @@ export interface Generated {
   html: string;
   markdown: string;
   usage: { input: number; output: number };
+  /** The estimated price of the run, each call at the model that answered it. */
+  cost: Cost;
+  /** The models that answered: the fallback shows up here when it was needed. */
+  models: string[];
 }
 
 /** The sprint that ends on a day (default today): `days` days, both ends included. */
@@ -43,6 +49,7 @@ export function sprintRange(days: number, until = today()): Range {
  * number and icon in place itself, and renders the deck. Nothing is published.
  */
 export async function generate(config: Config, options: GenerateOptions): Promise<Generated> {
+  config = await withWebsiteBrand(config, options.fetch);
   const step = options.onStep ?? (() => {});
   const range = options.range ?? sprintRange(config.sprint.days);
   const history = new History(config.repo);
@@ -71,7 +78,10 @@ export async function generate(config: Config, options: GenerateOptions): Promis
   if (config.screenshots.source !== 'none') step(`${changed.length} screen${changed.length === 1 ? '' : 's'} changed, ${available.size} picture${available.size === 1 ? '' : 's'} available`);
 
   step(`Writing the slides with ${config.model.name}${config.model.provider === 'anthropic' ? '' : ` via ${config.model.provider}`}`);
-  const { written, usage } = await write(options.model, config, commits, changed.map((c) => c.name), [...available.keys()]);
+  const meter = metered(options.model);
+  const { written, usage } = await write(meter, config, commits, changed.map((c) => c.name), [...available.keys()]);
+  const cost = costOf(meter.calls, config.model, today());
+  const models = [...new Set(meter.calls.map((c) => c.model))];
 
   const reviewScreens = explained(changed, written.screenCaptions, config.limits.changedScreens);
   const themes = withScreens(written.themes, reviewScreens, available, shots, config.limits.themeScreens);
@@ -98,7 +108,7 @@ export async function generate(config: Config, options: GenerateOptions): Promis
     checks: written.checks,
   };
   step('Building the deck');
-  return { review, ...render(review, config), usage };
+  return { review, ...render(review, config), usage, cost, models };
 }
 
 /** Render a stored review again: after editing review.json, or after a brand change. */
@@ -110,10 +120,14 @@ export function render(review: Review, config: Config): { html: string; markdown
   };
 }
 
-/** The brand as set in the config, with anything missing taken from brand.from (a .pptx). */
+/**
+ * The brand as set in the config, with anything missing taken from brand.from (a .pptx). A website
+ * in brand.from is read before this, by withWebsiteBrand, because reading it takes a request.
+ */
 export function resolvedBrand(config: Config): Brand {
   const own = { color: config.brand.color, logo: logoDataUri(config), fonts: config.brand.fonts };
   if (!config.brand.from) return own;
+  if (isWebsite(config.brand.from)) throw new Error('brand.from is a website: read it first with withWebsiteBrand(config).');
   const file = resolve(config.root, config.brand.from);
   if (!existsSync(file)) throw new Error(`brand.from not found: ${file}`);
   const theirs = brandFromPptx(file);

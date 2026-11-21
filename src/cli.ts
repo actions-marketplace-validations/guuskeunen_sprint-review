@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { basename, dirname, join, relative, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { ConfigError, loadConfig, normalize, type Config } from './config.ts';
@@ -15,6 +15,8 @@ import { serveMcp } from './mcp.ts';
 import { capture, CaptureError } from './capture.ts';
 import { postToSlack } from './slack.ts';
 import { PptxError } from './pptx.ts';
+import { withWebsiteBrand } from './website.ts';
+import { costLine, dollars, priceOf, recordRun } from './costs.ts';
 import { commitLog, writerSystem } from './prompt.ts';
 import { ICONS } from './icons-data.ts';
 import { WriterError } from './writer.ts';
@@ -105,7 +107,7 @@ async function main(argv: string[]): Promise<number> {
     case 'doctor':
       return doctor(values.config);
     case 'render':
-      return rerender(positionals[1], values.config);
+      return rerender(positionals[1], values.config, values.pptx);
     case 'edit':
       return edit(positionals[1], values.config, values.port);
     case 'capture':
@@ -124,7 +126,7 @@ async function main(argv: string[]): Promise<number> {
 type Flags = { since?: string; until?: string; from?: string; to?: string; out?: string; config?: string; 'dry-run'?: boolean; quiet?: boolean; json?: boolean; pptx?: boolean; slack?: boolean; 'deck-url'?: string };
 
 async function run(flags: Flags): Promise<number> {
-  const config = configOrDefaults(flags.config);
+  const config = await withWebsiteBrand(configOrDefaults(flags.config));
   const range = rangeFrom(flags, config);
   const quiet = flags.quiet || flags.json;
 
@@ -153,23 +155,26 @@ async function run(flags: Flags): Promise<number> {
     }
   }
 
+  const ledger = recordRun(config, result);
+
   if (flags.json) {
-    out(JSON.stringify({ ...files, dir, themes: result.review.themes.length, checks: result.review.checks.length, usage: result.usage, ...(slack ? { slack } : {}) }, null, 2));
+    out(JSON.stringify({ ...files, dir, themes: result.review.themes.length, checks: result.review.checks.length, usage: result.usage, cost: { ...result.cost, models: result.models, ledger: ledger.file, totalUsd: ledger.usd, runs: ledger.runs }, ...(slack ? { slack } : {}) }, null, 2));
     return 0;
   }
   if (flags.quiet) {
     out(Object.values(files).join('\n'));
     return 0;
   }
-  const rel = (p: string) => relative(process.cwd(), p) || p;
+  const rel = shown;
   const warnings = result.review.checks.filter((x) => x.kind === 'warning').length;
-  out(`\n${green('✓')} ${bold(`${result.review.themes.length} themes`)}, ${result.review.screens.length} before-and-after slides, ${result.review.checks.length} checks ${dim(`(${((Date.now() - started) / 1000).toFixed(0)}s, ${result.usage.input + result.usage.output} tokens)`)}\n`);
+  out(`\n${green('✓')} ${bold(`${result.review.themes.length} themes`)}, ${result.review.screens.length} before-and-after slides, ${result.review.checks.length} checks ${dim(`(${((Date.now() - started) / 1000).toFixed(0)}s, ${(result.usage.input + result.usage.output).toLocaleString('en-US')} tokens)`)}\n`);
   out(`  ${bold('Deck')}     ${rel(files.deck!)}`);
   out(`  ${bold('Content')}  ${rel(files.review!)} ${dim('edit this, then run sprint-review render')}`);
   out(`  ${bold('Checks')}   ${rel(files.checks!)}${warnings ? yellow(` ${warnings} to look at`) : ''}`);
   if (files.markdown) out(`  ${bold('Summary')}  ${rel(files.markdown)}`);
   if (files.pptx) out(`  ${bold('PowerPoint')} ${rel(files.pptx)}`);
   if (slack) out(`  ${bold('Slack')}    ${slack === 'posted' ? green('posted') : yellow(slack)}`);
+  out(`  ${bold('Cost')}     ${costLine(result, ledger)} ${dim(rel(ledger.file))}`);
   out(`\n  ${dim('Change anything:')} sprint-review edit ${rel(files.review!)}`);
   out('');
   return 0;
@@ -186,13 +191,18 @@ function dryRun(config: Config, range: Range): number {
   out(`${bold('Range')}     ${range.kind === 'dates' ? `${range.from} to ${range.until}` : `${range.from}..${range.to}`}`);
   out(`${bold('Commits')}   ${commits.length} (${commits.filter((x) => x.product).length} touch product code)`);
   out(`${bold('Model')}     ${config.model.name} ${dim(`via ${config.model.provider}`)}${config.model.fallback ? dim(` (fallback ${config.model.fallback})`) : ''}`);
-  out(`${bold('Estimate')}  about ${tokens.toLocaleString('en-US')} input tokens for the writer and the reader\n`);
+  out(`${bold('Estimate')}  about ${tokens.toLocaleString('en-US')} input tokens for the writer and the reader`);
+  const price = priceOf(config.model, config.model.name, new Date().toISOString().slice(0, 10));
+  // Output is the guess: 3,000 to 15,000 tokens, most of it thinking on models that think.
+  if (price) out(`${bold('Cost')}      about ${dollars((tokens * price.input + 3000 * price.output) / 1e6)} to ${dollars((tokens * price.input + 15000 * price.output) / 1e6)} ${dim(price.source === 'config' ? '(model.price)' : '(list price)')}`);
+  else out(`${bold('Cost')}      ${dim('unknown for this provider: set model.price to see it')}`);
+  out('');
   for (const cm of commits.slice(0, 40)) out(`  ${dim(cm.hash)} ${cm.subject}${cm.product ? '' : dim(' [no product code]')}`);
   if (commits.length > 40) out(dim(`  … and ${commits.length - 40} more`));
   return 0;
 }
 
-async function rerender(file: string | undefined, configPath: string | undefined): Promise<number> {
+async function rerender(file: string | undefined, configPath: string | undefined, pptx: boolean | undefined): Promise<number> {
   if (!file) {
     err('Give the path of a review.json: sprint-review render sprint-reviews/2026-11-10/review.json');
     return 2;
@@ -203,9 +213,9 @@ async function rerender(file: string | undefined, configPath: string | undefined
     err(`${file} is not a review.json made by sprint-review.`);
     return 2;
   }
-  const config = configOrDefaults(configPath);
-  const written = await writeOutputs(review, config, dirname(path));
-  out(`${green('✓')} Rebuilt ${relative(process.cwd(), written.deck)}${written.pptx ? ` and ${relative(process.cwd(), written.pptx)}` : ''}`);
+  const config = await withWebsiteBrand(configOrDefaults(configPath));
+  const written = await writeOutputs(review, config, dirname(path), { pptx: pptx ? true : undefined });
+  out(`${green('✓')} Rebuilt ${shown(written.deck)}${written.pptx ? ` and ${shown(written.pptx)}` : ''}`);
   return 0;
 }
 
@@ -214,7 +224,7 @@ async function edit(file: string | undefined, configPath: string | undefined, po
     err('Give the path of a review.json: sprint-review edit sprint-reviews/2026-11-10/review.json');
     return 2;
   }
-  const config = configOrDefaults(configPath);
+  const config = await withWebsiteBrand(configOrDefaults(configPath));
   const editor = await startEditor(resolve(file), config, port ? Number(port) : 4321);
   out(`${orange('●')} ${bold('Editor')} running at ${bold(editor.url)}`);
   out(dim('  Save rebuilds deck.html next to the review. Ctrl+C stops the editor.'));
@@ -229,7 +239,7 @@ async function shoot(configPath: string | undefined): Promise<number> {
     return 2;
   }
   const files = await capture(config.screenshots.capture, config.root, undefined, (m) => out(`  ${dim('›')} ${m}`));
-  out(`${green('✓')} ${files.length} screenshot${files.length === 1 ? '' : 's'} in ${relative(process.cwd(), dirname(files[0] ?? config.screenshots.capture.dir)) || '.'}`);
+  out(`${green('✓')} ${files.length} screenshot${files.length === 1 ? '' : 's'} in ${shown(dirname(files[0] ?? config.screenshots.capture.dir)) || '.'}`);
   return 0;
 }
 
@@ -250,7 +260,7 @@ async function doctor(configPath: string | undefined): Promise<number> {
   let config: Config;
   try {
     config = configOrDefaults(configPath);
-    show(true, configPath || findConfig() ? `Config read from ${relative(process.cwd(), config.root) || '.'}` : 'No config file: using defaults');
+    show(true, configPath || findConfig() ? `Config read from ${shown(config.root) || '.'}` : 'No config file: using defaults');
   } catch (e) {
     show(false, (e as Error).message);
     return 1;
@@ -328,3 +338,9 @@ main(process.argv.slice(2)).then(
     process.exit(1);
   },
 );
+
+/** A path as the user can follow it: relative to where they are, absolute when it lies outside. */
+function shown(p: string): string {
+  const r = relative(process.cwd(), p);
+  return r === '' ? '.' : r.startsWith('..') || isAbsolute(r) ? p : r;
+}

@@ -3,6 +3,8 @@ import { dirname, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { loadConfig, normalize, type Config } from './config.ts';
+import { withWebsiteBrand } from './website.ts';
+import { costLine, recordRun } from './costs.ts';
 import { generate, sprintRange } from './generate.ts';
 import { History, type Range } from './history.ts';
 import { clientFor } from './providers.ts';
@@ -73,7 +75,7 @@ export async function callTool(name: string, a: Args, cwd = process.cwd()): Prom
     return lines.map((l) => `${l.ok ? '✓' : '✗'} ${l.text}${l.fix ? `\n  fix: ${l.fix}` : ''}`).join('\n');
   }
   if (name === 'preview_sprint_commits') {
-    const config = configIn(dir);
+    const config = await withWebsiteBrand(configIn(dir));
     const range = rangeOf(a, config);
     const history = new History(config.repo);
     history.assertUsable();
@@ -84,14 +86,15 @@ export async function callTool(name: string, a: Args, cwd = process.cwd()): Prom
     if (typeof a.file !== 'string') throw new Error('file is required.');
     const file = resolve(dir, a.file);
     const review = validReview(JSON.parse(readFileSync(file, 'utf8')) as Review);
-    const out = await writeOutputs(review, configIn(dir), dirname(file));
+    const out = await writeOutputs(review, await withWebsiteBrand(configIn(dir)), dirname(file));
     return `Rebuilt ${out.deck}`;
   }
   if (name === 'generate_sprint_review') {
-    const config = configIn(dir);
+    const config = await withWebsiteBrand(configIn(dir));
     const result = await generate(config, { model: clientFor(config.model), range: rangeOf(a, config) });
     const outDir = resolve(config.root, typeof a.out === 'string' ? a.out : join(config.output.dir, result.review.until));
     const files = await writeOutputs(result.review, config, outDir, { pptx: a.pptx === true ? true : undefined });
+    const ledger = recordRun(config, result);
     const checks = result.review.checks.map((c) => `- ${c.kind}: ${c.text}${c.reason ? ` (${c.reason})` : ''}`).join('\n') || '- none';
     return [
       `Wrote ${result.review.themes.length} themes and ${result.review.screens.length} before-and-after slides.`,
@@ -99,6 +102,7 @@ export async function callTool(name: string, a: Args, cwd = process.cwd()): Prom
       `Content (edit, then render): ${files.review}`,
       files.pptx ? `PowerPoint: ${files.pptx}` : '',
       `Checks: ${files.checks}`,
+      `Cost: ${costLine(result, ledger)} (${ledger.file})`,
       '',
       'Themes:',
       ...result.review.themes.map((t) => `- ${t.title}: ${t.effect ?? ''}`),

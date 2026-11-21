@@ -141,7 +141,7 @@ organization: Northside Cycles
 audience: business          # business, executives, customers, team, or your own words
 language: English           # or Dutch, German, nl, de-DE …
 sprint: { days: 14 }
-brand: { color: "#ea580c", logo: ./logo.png }   # or: brand: { from: our-template.pptx }
+brand: { color: "#ea580c", logo: ./logo.png }   # or: brand: { from: https://www.example.com } (or a .pptx)
 productPaths: [src/]
 screenshots:
   source: git
@@ -170,13 +170,13 @@ screenshots:
 ## Privacy and cost
 
 - **What leaves your machine:** commit subjects, bodies and file names of the sprint, pull request titles and descriptions when a GitHub token is set, plus your product description, sent to the AI provider you choose with your own key. **Never source code, never screenshots.** No sprint-review server, no telemetry. With a local model (Ollama, LM Studio) nothing leaves your network at all. → **[Security and privacy](docs/security.md)**
-- **What it costs:** two or three API calls per review, billed to your own account. `--dry-run` shows how many tokens a review will use before you spend anything. Pick a smaller model in the config if you want it cheaper.
+- **What it costs:** two or three API calls per review, billed to your own account: a few cents with Gemini Flash, more with Claude Opus. `--dry-run` estimates the cost before you spend anything, every run prints what it cost, and `sprint-reviews/costs.csv` keeps the total. Pick a smaller model in the config if you want it cheaper.
 
 ## Roadmap
 
 - [x] CLI, GitHub Action, deck, Markdown summary, check log
 - [x] Before and after screenshots from git, a folder, or captured from URLs
-- [x] English and Dutch slide labels, any language for the content
+- [x] Slide labels in English, Dutch, German, French and Spanish, any language for the content
 - [x] Pull request descriptions as extra context
 - [x] One automatic revision pass for lines the second reader flags
 - [x] Brand from an existing deck: color, fonts and logo from a `.pptx`

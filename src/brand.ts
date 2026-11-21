@@ -18,7 +18,7 @@ const FONT_FALLBACK = /^\+|^$/;
  * copied: the layout of the deck stays its own.
  */
 export function brandFromPptx(file: string): Brand {
-  if (extname(file).toLowerCase() !== '.pptx' && extname(file).toLowerCase() !== '.potx') throw new Error('brand.from must be a .pptx or .potx file.');
+  if (extname(file).toLowerCase() !== '.pptx' && extname(file).toLowerCase() !== '.potx') throw new Error('brand.from must be a .pptx or .potx file, or a website starting with https://.');
   const zip = readZip(readFileSync(file));
   const text = (name: string) => zip.get(name)?.().toString('utf8') ?? '';
 

@@ -29,3 +29,13 @@ test('the score notices missed themes, plumbing up front and forbidden text', ()
   assert.ok(s.total < 80);
   assert.match(report([s], 'test'), /Plumbing on the front slides: vite upgrade/);
 });
+
+test('under the hood counts the effect in plain words, but only tool names count as plumbing up front', () => {
+  const [bike] = loadCases(['bike-shop']);
+  const review = JSON.parse(readFileSync(new URL('../docs/demo/review.json', import.meta.url), 'utf8')) as Review;
+  review.underTheHood = ['Upgraded core build dependencies.', 'Accelerated automated testing pipeline setup.'];
+  review.themes[0]!.points.push('The planning pipeline shows every repair');
+  const s = score(bike!, review);
+  assert.deepEqual(s.hood.found.sort(), ['playwright cache in CI', 'vite upgrade']);
+  assert.deepEqual(s.leaked, [], 'an effect word on a front slide is not plumbing');
+});

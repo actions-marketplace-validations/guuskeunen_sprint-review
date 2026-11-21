@@ -31,8 +31,8 @@
       { "name": "QR code on invoices", "any": ["qr"] }
     ],
     "hood": [
-      { "name": "framework upgrade", "any": ["django"] },
-      { "name": "database move", "any": ["terraform", "eu-central"] }
+      { "name": "framework upgrade", "any": ["django"], "effect": ["framework", "web framework"] },
+      { "name": "database move", "any": ["terraform", "eu-central"], "effect": ["database", "data center", "datacenter", "frankfurt", "europe"] }
     ],
     "never": ["JIRA-881", "WIP", "Merge branch"]
   }

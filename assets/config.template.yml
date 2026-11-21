@@ -13,7 +13,8 @@ organization: ""
 # Who watches the review: business, executives, customers, team, or your own description.
 audience: {{audience}}
 
-# The language of the slides: English, Dutch, German, or a code like nl or de-DE.
+# The language of the slides: a name (English, Dutch, German, French, Spanish) or a code like nl or de-DE.
+# The AI writes in any language; slide labels ship in these five and fall back to English (see labels).
 language: English
 
 sprint:

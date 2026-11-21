@@ -71,6 +71,24 @@ test('each preset gets its address, key and way to force the tool', async () => 
   );
 });
 
+test('Gemini thinks at low effort, so its thinking leaves room for the answer', async () => {
+  const r = recorder(chat({ tool_calls: [{ function: { name: 'presentation', arguments: '{}' } }] }));
+  await clientFor({ provider: 'gemini', name: 'g', fallback: null }, { GEMINI_API_KEY: 'k' }, r.impl).ask(request);
+  assert.equal(r.calls[0]!.body.reasoning_effort, 'low');
+  const o = recorder(chat({ tool_calls: [{ function: { name: 'presentation', arguments: '{}' } }] }));
+  await clientFor({ provider: 'openai', name: 'g', fallback: null }, { OPENAI_API_KEY: 'k' }, o.impl).ask(request);
+  assert.equal(o.calls[0]!.body.reasoning_effort, undefined);
+});
+
+test('an answer cut off at maxTokens is a clear error, for every client', async () => {
+  const openai = recorder({ model: 'm', usage: { prompt_tokens: 3, completion_tokens: 2 }, choices: [{ finish_reason: 'length', message: { content: '' } }] });
+  await assert.rejects(clientFor({ provider: 'gemini', name: 'g', fallback: null }, { GEMINI_API_KEY: 'k' }, openai.impl).ask(request), /cut off.*maxTokens/);
+  const anthropic = recorder({ model: 'm', stop_reason: 'max_tokens', content: [{ type: 'text', text: '' }], usage: {} });
+  await assert.rejects(new AnthropicClient('k', 'm', null, anthropic.impl).ask(request), /cut off.*maxTokens/);
+  const bedrock = recorder({ stopReason: 'max_tokens', output: { message: { content: [] } }, usage: {} });
+  await assert.rejects(clientFor({ provider: 'bedrock', name: 'm', fallback: null }, { AWS_BEARER_TOKEN_BEDROCK: 't', AWS_REGION: 'us-east-1' }, bedrock.impl).ask(request), /cut off.*maxTokens/);
+});
+
 test('Azure uses the api-key header and needs a base URL', async () => {
   const r = recorder(chat({ tool_calls: [{ function: { name: 'presentation', arguments: '{}' } }] }));
   await clientFor({ provider: 'azure', name: 'my-deployment', fallback: null, baseUrl: 'https://acme.openai.azure.com/openai/v1' }, { AZURE_OPENAI_API_KEY: 'az' }, r.impl).ask(request);

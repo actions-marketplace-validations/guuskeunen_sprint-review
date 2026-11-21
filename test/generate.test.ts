@@ -91,3 +91,13 @@ test('commit messages go in as untrusted data', async () => {
   void readFileSync;
   void join;
 });
+
+test('a folder that is not a git repository says how to point at the repository', async () => {
+  const { mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const dir = mkdtempSync(join(tmpdir(), 'no-git-'));
+  await assert.rejects(
+    generate(normalize({}, dir), { model: new FakeModel() }),
+    (e: Error) => e.message.includes(`${dir} is not a git repository`) && /set repo: in the config/.test(e.message),
+  );
+});

@@ -1,0 +1,22 @@
+# Weekly update PRs for npm packages and GitHub Actions.
+# npm updates are "fix(deps)" so release-please ships them in the next patch release;
+# a security fix in sharp or pptxgenjs then reaches users without a manual release.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: fix(deps)
+      prefix-development: chore(deps-dev)
+    groups:
+      dev:
+        dependency-type: development
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore(ci)

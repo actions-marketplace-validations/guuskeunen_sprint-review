@@ -154,6 +154,13 @@
   /* The keys, at the start and again when the mouse moves; out of the way while presenting. */
   .hint { position: fixed; left: 2vw; bottom: 2vh; font-size: .75rem; color: var(--ink-faint); transition: opacity .6s; }
   .hint.quiet { opacity: 0; }
+  .edit-button { position: fixed; top: 2vh; right: 2vw; z-index: 10; font: 500 .8rem/1 var(--font-body, inherit); padding: .5em .9em; border-radius: 99px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-faint); cursor: pointer; opacity: .55; transition: opacity .2s, color .2s; }
+  .edit-button:hover, .edit-button:focus-visible { opacity: 1; color: var(--accent); }
+  .edit-button[hidden], .edit-panel[hidden] { display: none; }
+  .edit-panel { position: fixed; top: calc(2vh + 2.6rem); right: 2vw; z-index: 10; max-width: min(34rem, 90vw); padding: .9rem 1rem; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: .85rem; box-shadow: 0 20px 50px -20px rgb(0 0 0 / .35); }
+  .edit-panel p { margin: 0 0 .6rem; }
+  .edit-panel code { display: block; padding: .5rem .6rem; border-radius: 8px; background: var(--bg, transparent); border: 1px solid var(--line); font-size: .78rem; word-break: break-all; user-select: all; }
+  .edit-panel button { margin-top: .6rem; font: inherit; padding: .35em .8em; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--accent); cursor: pointer; }
   .hint kbd { font: inherit; padding: .05em .4em; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
 
   /* Saved as PDF: every slide is a page, nothing moves */
@@ -162,7 +169,7 @@
     html, body { overflow: visible; height: auto; }
     .slide { display: flex !important; opacity: 1 !important; visibility: visible !important; transform: none !important; transition: none !important; position: relative; inset: auto; width: 1440px; height: 810px; page-break-after: always; break-after: page; }
     .slide *, .slide.active * { animation: none !important; }
-    .progress, .counter, .hint, .notes { display: none !important; }
+    .progress, .counter, .hint, .notes, .edit-button, .edit-panel { display: none !important; }
     * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
 

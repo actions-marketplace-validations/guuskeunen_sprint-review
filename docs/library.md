@@ -30,13 +30,15 @@ await writeOutputs(review, config, 'sprint-reviews/2026-11-16', { pptx: true });
 |---|---|
 | `loadConfig(path?, cwd?)` | Reads and checks a config file, or finds the default one. |
 | `normalize(object, root)` | Builds a config from a plain object, with every default filled in. |
-| `generate(config, options)` | The whole pipeline. Returns `{ review, html, markdown, usage }`. |
+| `generate(config, options)` | The whole pipeline. Returns `{ review, html, markdown, usage, cost, models }`; `cost.usd` is `null` when a model has no known price. |
 | `render(review, config)` | Rebuilds `{ html, markdown }` from a stored review. |
 | `sprintRange(days, until?)` | The range of the sprint that ends on a day. |
 | `renderDeck(review, options)` | Just the deck, with `{ color, logo, labels, goal, theme, fonts }`. |
 | `writeOutputs(review, config, dir, { pptx? })` | Writes every output file into a folder. |
 | `renderPptx(review, options)` | The PowerPoint as a Buffer (needs `pptxgenjs`). |
 | `brandFromPptx(file)` | `{ color, fonts, logo }` from a presentation's theme and master. |
+| `brandFromWebsite(url)`, `withWebsiteBrand(config)` | `{ color, fonts, logo }` from a website; the config with a website in `brand.from` filled in. `render` needs the second first. |
+| `costOf(calls, config.model, date)`, `priceOf(...)`, `recordCost(config, entry)` | What a run cost, the price of a model, and the ledger in `costs.csv`. |
 | `capture(config.screenshots.capture, root)` | Takes today's screenshots (needs Playwright). |
 | `startEditor(file, config, port?)` | Starts the local editor; returns `{ url, close }`. |
 | `withPullRequests(commits, repo, token)` | Adds pull request titles and descriptions. |
