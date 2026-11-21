@@ -27,31 +27,43 @@ npm test
 
 ## Where things are
 
-| File | What it does |
+Every file has one obvious home: one folder per area, the entry points at the top.
+
+| Folder | What lives there |
 |---|---|
-| `src/history.ts` | Reads commits, files and the roadmap from git. |
-| `src/screenshots.ts`, `src/compare.ts` | Finds changed screenshots and compares them. |
-| `src/prompt.ts` | Everything the model is told, and the answer shapes. |
-| `src/writer.ts` | The model calls and every check on what comes back. |
-| `src/model.ts`, `src/providers.ts` | The Anthropic and OpenAI-compatible clients, the presets, Bedrock. |
-| `src/editor.ts`, `assets/editor.html` | The local editor. |
-| `src/mcp.ts` | The MCP server. |
-| `src/pptx.ts`, `src/brand.ts` | PowerPoint export, and the brand from a .pptx. |
-| `bench/` | The quality benchmark: cases and scoring. |
-| `src/generate.ts` | Puts it all together. |
-| `src/render.ts`, `assets/deck.css` | The deck. |
-| `src/i18n.ts` | Slide labels per language. |
-| `src/cli.ts` | The command line. |
+| `src/index.ts`, `src/cli.ts` | The library's public exports, and the command line. |
+| `src/config.ts`, `src/types.ts` | The config and its defaults; the shapes every area shares. |
+| `src/git/` | What is read from git and GitHub: commits, files, the roadmap, pull request text. |
+| `src/screens/` | Screenshots: finding them in git or a folder, comparing them, taking them with Playwright. |
+| `src/ai/` | The model: clients and provider presets, cost, the prompts, and every check on what comes back (`writer.ts`). |
+| `src/review/` | The pipeline that puts it together (`generate.ts`), and the check on a stored `review.json`. |
+| `src/deck/` | The outputs: the HTML deck, Markdown, PowerPoint, colors, labels per language, icons. |
+| `src/brand/` | The brand from a website or a `.pptx` (and the zip reader it needs). |
+| `src/surfaces/` | The other ways in: the local editor, the MCP server, `doctor`, Slack. |
+| `assets/` | Files the code loads at run time: deck CSS, the editor's pages, the config template. |
+| `test/` | Mirrors `src/`: `src/ai/writer.ts` is tested in `test/ai/`. Shared fakes and the demo review are in `test/helpers.ts`; `test/security.test.ts` holds the cross-cutting security checks. |
+| `bench/` | The quality benchmark: cases, scoring, and results per model. |
+| `scripts/` | Repo tasks: the benchmark runner, the demo and `llms-full.txt` builders. |
+| `docs/` | The user docs and the website. |
 | `action.yml` | The GitHub Action. |
+
+Keeping it that way:
+
+- **A new file goes in the folder of its area.** A new area gets a folder only when it has more than one file; otherwise find the area it belongs to.
+- **Name files after what they do** (`website.ts`, `costs.ts`), never `utils.ts` or `helpers.ts` in `src/`.
+- **Tests mirror the code:** a test for `src/<area>/x.ts` goes in `test/<area>/`. Reuse the fakes in `test/helpers.ts` instead of writing new ones.
+- **Keep files short.** Past about 400 lines, see whether a file does more than one job, and split it by job when you change it.
+- **Moves get their own commit,** made with `git mv` and without other changes, so history follows the files.
+- **Areas depend inward:** `surfaces/` and `cli.ts` may use every area, `review/` uses the areas it puts together, and `deck/`, `ai/`, `git/`, `screens/` and `brand/` don't import from `review/` or `surfaces/`.
 
 ## Guidelines
 
-- **Code checks, the model writes.** Anything that can be checked in code belongs in `writer.ts`, not in the prompt.
+- **Code checks, the model writes.** Anything that can be checked in code belongs in `src/ai/writer.ts`, not in the prompt.
 - **The prompt stays general.** No rules about one particular sprint or product.
 - **The deck stays self-contained.** No outside fonts, scripts or images.
 - **Errors are for people.** Say what went wrong and how to fix it.
 - **Add a test** for every check or fix.
-- **A new label** needs an entry in both English and Dutch in `src/i18n.ts`. Other languages are welcome as new label sets.
+- **A new label** needs an entry in every label set in `src/deck/i18n.ts` (English, Dutch, German, French, Spanish); the typecheck fails when one is missing. Other languages are welcome as new label sets.
 
 ## Pull requests
 
