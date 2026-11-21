@@ -14,6 +14,13 @@ updates:
     groups:
       dev:
         dependency-type: development
+    ignore:
+      # typescript-eslint supports TypeScript below 6.1: take a TypeScript major only when it does.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+      # Node types stay on 22, the oldest Node the tests run on, so code cannot use newer Node APIs.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
