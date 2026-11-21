@@ -3,6 +3,7 @@ import { relative, resolve } from 'node:path';
 import type { Config } from './config.ts';
 import { History } from './history.ts';
 import { bedrockAuth, isLocal, keyEnvFor, PRESETS } from './providers.ts';
+import { brandFromWebsite, isWebsite } from './website.ts';
 
 export interface DoctorLine {
   ok: boolean;
@@ -39,7 +40,14 @@ export async function doctorChecks(config: Config, cwd = process.cwd(), env = pr
     add(pptx, 'pptxgenjs is installed for PowerPoint export', 'npm install --save-dev pptxgenjs');
   }
   if (config.brand.logo && !config.brand.logo.startsWith('data:')) add(existsSync(resolve(config.root, config.brand.logo)), 'Logo file exists', `Check brand.logo: ${config.brand.logo}`);
-  if (config.brand.from) add(existsSync(resolve(config.root, config.brand.from)), 'Brand presentation exists', `Check brand.from: ${config.brand.from}`);
+  if (isWebsite(config.brand.from)) {
+    let found: string | null = null;
+    try {
+      const site = await brandFromWebsite(config.brand.from, fetchImpl);
+      found = [site.color && `color ${site.color}`, site.logo && 'logo', (site.fonts.heading || site.fonts.body) && `fonts ${[site.fonts.heading, site.fonts.body].filter(Boolean).join(', ')}`].filter(Boolean).join(', ') || 'nothing';
+    } catch {}
+    add(found !== null && found !== 'nothing', `Brand website read${found ? `: ${found}` : ''}`, `Check brand.from: ${config.brand.from}, or set brand.color and brand.logo yourself`);
+  } else if (config.brand.from) add(existsSync(resolve(config.root, config.brand.from)), 'Brand presentation exists', `Check brand.from: ${config.brand.from}`);
   const provider = config.model.provider;
   if (isLocal(provider)) {
     const base = config.model.baseUrl ?? PRESETS[provider as 'ollama' | 'lmstudio'].baseUrl!;
