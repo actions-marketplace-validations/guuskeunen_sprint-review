@@ -496,7 +496,7 @@ How many days a review covers when you don't pass `--since` or `--from`. Both en
 
 | Key | Description |
 |---|---|
-| `color` | Accent color as `#rrggbb`. Lighter and darker shades are mixed from it. Default indigo `#4f46e5`. A color too light for a light deck or too dark for a dark one is darkened or lightened just enough that text in it reads (WCAG 4.5:1). |
+| `color` | Accent color as `#rrggbb`. Lighter and darker shades are mixed from it. Default indigo `#4f46e5`. A color too light for a light deck or too dark for a dark one is darkened or lightened just enough to read (WCAG 3:1, as for large text and icons); a color that reads keeps its exact value. |
 | `logo` | Path to a PNG, JPG, SVG, WebP or GIF, or a `data:image/...` URI. Shown on the cover, on a white plate. |
 | `from` | A website (`https://...`) or the path to a `.pptx` or `.potx`. From a website: its brand color (a `--brand` or `--primary` color in its stylesheet, or its `theme-color`; grays are skipped), its heading and body fonts (`--font-heading`/`--font-display`, `--font-sans`/`--font-body`) and its logo (a logo image or SVG on the page, else its largest icon). From a presentation: its theme's first accent color, fonts and the logo on its slide master. Either way it fills in only what you didn't set here, and only the look is taken, not the layout. `sprint-review doctor` shows what it found. |
 | `theme` | `light` (default) or `dark`: near-black with warm ivory text and a champagne accent. |
@@ -1096,6 +1096,12 @@ npx @guuskeunen/sprint-review render sprint-reviews/2026-11-16/review.json
 
 Some teams present from PowerPoint or Keynote, or want to add a slide by hand. Add `--pptx` (or set `output.pptx: true`) and `deck.pptx` is written next to the deck: the same slides, editable, with the speaker notes in the notes pane. It needs `pptxgenjs` (`npm i -D pptxgenjs`). `render` and the editor rebuild it too when `output.pptx` is on.
 
+`npm audit` may then report `image-size`: `pptxgenjs` lists it as a dependency but never calls it, so the advisory doesn't reach sprint-review, and only a `pptxgenjs` release can remove it. To clear the report, add this to your `package.json`:
+
+```json
+"overrides": { "image-size": "^2.1.0" }
+```
+
 The HTML deck stays the richer one: animations, the presenter window and before-and-after wipes don't exist in PowerPoint.
 
 ## Presenting
@@ -1464,7 +1470,7 @@ The deck is a single file with no outside requests: no fonts, scripts, images or
 
 ## Dependencies
 
-Two runtime dependencies, `sharp` (image comparison) and `yaml` (the config), plus `pptxgenjs` as an optional one for PowerPoint export. Playwright is only needed if you use `capture`, and you install it yourself. HTTP calls use Node's built-in `fetch`. Releases are published to npm with [provenance](https://docs.npmjs.com/generating-provenance-statements), so you can verify a package was built from this repository.
+Two runtime dependencies, `sharp` (image comparison) and `yaml` (the config), plus `pptxgenjs` as an optional one for PowerPoint export, which you install yourself. A plain install has no known vulnerabilities; with `pptxgenjs`, `npm audit` reports `image-size`, which `pptxgenjs` lists but never calls ([how to clear it](editing.md#powerpoint)). Playwright is only needed if you use `capture`, and you install it yourself. HTTP calls use Node's built-in `fetch`. Releases are published to npm with [provenance](https://docs.npmjs.com/generating-provenance-statements), so you can verify a package was built from this repository.
 
 ## Reporting a vulnerability
 

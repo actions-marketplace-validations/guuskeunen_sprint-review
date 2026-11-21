@@ -72,6 +72,12 @@ npx @guuskeunen/sprint-review render sprint-reviews/2026-11-16/review.json
 
 Some teams present from PowerPoint or Keynote, or want to add a slide by hand. Add `--pptx` (or set `output.pptx: true`) and `deck.pptx` is written next to the deck: the same slides, editable, with the speaker notes in the notes pane. It needs `pptxgenjs` (`npm i -D pptxgenjs`). `render` and the editor rebuild it too when `output.pptx` is on.
 
+`npm audit` may then report `image-size`: `pptxgenjs` lists it as a dependency but never calls it, so the advisory doesn't reach sprint-review, and only a `pptxgenjs` release can remove it. To clear the report, add this to your `package.json`:
+
+```json
+"overrides": { "image-size": "^2.1.0" }
+```
+
 The HTML deck stays the richer one: animations, the presenter window and before-and-after wipes don't exist in PowerPoint.
 
 ## Presenting

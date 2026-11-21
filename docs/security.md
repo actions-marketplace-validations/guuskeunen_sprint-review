@@ -77,7 +77,7 @@ The deck is a single file with no outside requests: no fonts, scripts, images or
 
 ## Dependencies
 
-Two runtime dependencies, `sharp` (image comparison) and `yaml` (the config), plus `pptxgenjs` as an optional one for PowerPoint export. Playwright is only needed if you use `capture`, and you install it yourself. HTTP calls use Node's built-in `fetch`. Releases are published to npm with [provenance](https://docs.npmjs.com/generating-provenance-statements), so you can verify a package was built from this repository.
+Two runtime dependencies, `sharp` (image comparison) and `yaml` (the config), plus `pptxgenjs` as an optional one for PowerPoint export, which you install yourself. A plain install has no known vulnerabilities; with `pptxgenjs`, `npm audit` reports `image-size`, which `pptxgenjs` lists but never calls ([how to clear it](editing.md#powerpoint)). Playwright is only needed if you use `capture`, and you install it yourself. HTTP calls use Node's built-in `fetch`. Releases are published to npm with [provenance](https://docs.npmjs.com/generating-provenance-statements), so you can verify a package was built from this repository.
 
 ## Reporting a vulnerability
 
