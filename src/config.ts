@@ -74,6 +74,8 @@ export interface Config {
     /** light (default) or dark. */
     theme: 'dark' | 'light';
     fonts: { heading: string | null; body: string | null };
+    /** Font files to put inside the deck, by family: { Inter: [path/to/inter-400.woff2] }. */
+    fontFiles: Record<string, string[]>;
   };
   sprint: { days: number };
   /** Folders that hold product code. A commit outside them can only go under the hood. Empty: every commit counts. */
@@ -227,6 +229,7 @@ export function normalize(raw: unknown, root: string): Config {
         heading: str(obj(brand.fonts ?? {}, 'brand.fonts').heading, 'brand.fonts.heading'),
         body: str(obj(brand.fonts ?? {}, 'brand.fonts').body, 'brand.fonts.body'),
       },
+      fontFiles: Object.fromEntries(Object.entries(obj(brand.fontFiles ?? {}, 'brand.fontFiles')).map(([family, v]) => [family, strList(typeof v === 'string' ? [v] : v, `brand.fontFiles.${family}`)])),
     },
     sprint: { days: int(sprint.days, 'sprint.days', 14, 1, 120) },
     productPaths: strList(r.productPaths, 'productPaths'),

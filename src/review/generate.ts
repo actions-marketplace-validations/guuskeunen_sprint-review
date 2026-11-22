@@ -15,6 +15,7 @@ import { brandFromPptx, type Brand } from '../brand/brand.ts';
 import { isWebsite, withWebsiteBrand } from '../brand/website.ts';
 import { costOf, metered, type Cost } from '../ai/costs.ts';
 import { lastTime, previousReview } from './previous.ts';
+import { fontFaces } from '../brand/fonts.ts';
 
 export class NothingToReview extends Error {}
 
@@ -129,7 +130,7 @@ export function render(review: Review, config: Config): { html: string; markdown
   review = validReview(review);
   const brand = resolvedBrand(config);
   return {
-    html: renderDeck(review, { color: brand.color, logo: brand.logo, labels: config.labels, goal: config.goal, theme: config.brand.theme, fonts: brand.fonts, deck: config.deck }),
+    html: renderDeck(review, { color: brand.color, logo: brand.logo, labels: config.labels, goal: config.goal, theme: config.brand.theme, fonts: brand.fonts, deck: config.deck, fontFaces: fontFaces(config.brand.fontFiles, config.root, (m) => console.error(m)) }),
     markdown: renderMarkdown(review, config.labels),
   };
 }

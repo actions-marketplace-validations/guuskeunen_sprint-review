@@ -8,6 +8,7 @@ import { imageSize } from './images.ts';
 import { change, trendPoints } from './numbers.ts';
 import { numbers, planDeck } from './plan.ts';
 import type { DeckConfig } from '../config.ts';
+import { fontFaceCss, type FontFace } from '../brand/fonts.ts';
 type PlannedSlide = ReturnType<typeof planDeck>[number];
 
 const CSS = readFileSync(fileURLToPath(new URL('../../assets/deck.css', import.meta.url)), 'utf8');
@@ -26,6 +27,8 @@ export interface RenderOptions {
   fonts?: { heading?: string | null; body?: string | null };
   /** Which slides show and how dense they are; the config's deck section. */
   deck?: DeckConfig;
+  /** Font files inside the deck, so the brand fonts show on any laptop. */
+  fontFaces?: FontFace[];
 }
 
 /** A font name from a config or a .pptx, quoted, with the theme's own fonts behind it. Anything odd is dropped. */
@@ -264,6 +267,7 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
 <meta property="og:description" content="${esc(review.period)}">
 <script>document.documentElement.classList.add('js')</script>
 <style>
+${fontFaceCss(options.fontFaces ?? [])}
 ${CSS}
 ${theme === 'dark' ? DARK_CSS : ''}
   ${brandCss}

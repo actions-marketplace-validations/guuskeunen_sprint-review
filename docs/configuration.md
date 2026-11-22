@@ -127,7 +127,8 @@ How many days a review covers when you don't pass `--since` or `--from`. Both en
 | `logo` | Path to a PNG, JPG, SVG, WebP or GIF, or a `data:image/...` URI. Shown on the cover, on a white plate. |
 | `from` | A website (`https://...`) or the path to a `.pptx` or `.potx`. From a website: its brand color (a `--brand` or `--primary` color in its stylesheet, or its `theme-color`; grays are skipped), its heading and body fonts (`--font-heading`/`--font-display`, `--font-sans`/`--font-body`) and its logo (a logo image or SVG on the page, else its largest icon). From a presentation: its theme's first accent color, fonts and the logo on its slide master. Either way it fills in only what you didn't set here, and only the look is taken, not the layout. `sprint-review doctor` shows what it found. |
 | `theme` | `light` (default) or `dark`: near-black with warm ivory text and a champagne accent. |
-| `fonts.heading`, `fonts.body` | Font families for headings and text. Fonts aren't embedded, so pick ones installed where the deck is shown; the theme's own fonts are the fallback. |
+| `fonts.heading`, `fonts.body` | Font families for headings and text. The theme's own fonts are the fallback. |
+| `fontFiles` | Font files to put inside the deck, by family, so it looks the same on any laptop: `{ Inter: [fonts/inter-400.woff2, fonts/inter-700.woff2] }`. The weight comes from the file name (400, 700). Open fonts are on npm as `@fontsource/<name>`. Keep to a few weights: 2 MB at most. Without them, the fonts must be installed where the deck is shown. |
 
 ```yaml
 brand:
