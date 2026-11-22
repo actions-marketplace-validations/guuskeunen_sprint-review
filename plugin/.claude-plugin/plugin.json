@@ -1,0 +1,23 @@
+{
+  "name": "sprint-review",
+  "displayName": "Sprint Review",
+  "version": "0.4.2",
+  "description": "Write a sprint review deck from this repository's git history with the sprint-review tool: themes in business language, every line checked against the real commits, before-and-after screenshots.",
+  "author": {
+    "name": "Guus Keunen",
+    "url": "https://github.com/guuskeunen"
+  },
+  "homepage": "https://guuskeunen.github.io/sprint-review/",
+  "repository": "https://github.com/guuskeunen/sprint-review",
+  "license": "MIT",
+  "keywords": [
+    "sprint review",
+    "scrum",
+    "release notes",
+    "presentation",
+    "git"
+  ],
+  "icon": "./.claude-plugin/icon.png",
+  "documentationUrl": "https://github.com/guuskeunen/sprint-review/blob/main/docs/getting-started.md",
+  "supportUrl": "https://github.com/guuskeunen/sprint-review/issues"
+}

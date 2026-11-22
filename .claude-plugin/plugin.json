@@ -16,5 +16,6 @@
     "presentation",
     "git",
     "mcp"
-  ]
+  ],
+  "skills": "./plugin/skills/"
 }

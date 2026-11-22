@@ -52,7 +52,9 @@ Every tool takes `directory` (the project folder; default where the server start
 
 ## The Claude Code skill on its own
 
-[`skills/sprint-review/SKILL.md`](../skills/sprint-review/SKILL.md) teaches Claude Code the workflow: check, preview, generate, report the checks, edit. The plugin includes it; without the plugin, copy the folder into your project's `.claude/skills/` (or `~/.claude/skills/` for all projects).
+[`plugin/skills/sprint-review/SKILL.md`](../plugin/skills/sprint-review/SKILL.md) teaches Claude Code the workflow: check, preview, generate, report the checks, edit. The plugin includes it; without the plugin, copy the folder into your project's `.claude/skills/` (or `~/.claude/skills/` for all projects).
+
+[`plugin/`](../plugin/) is the same skill as a plugin of its own, without the MCP server: that is the version for Anthropic's plugin directory, which takes plugins with a local MCP server, a `package.json` or scripts only from verified organizations. It uses the `sprint-review` command, so install the tool first. The plugin at the repository root has the skill and the MCP server.
 
 ## Pull request descriptions
 
