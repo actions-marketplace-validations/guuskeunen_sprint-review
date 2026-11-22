@@ -38,8 +38,9 @@ test('generates a full review from a real git history', async () => {
   assert.equal(review.themes.length, 5, 'the theme without real commits is dropped');
   assert.ok(!review.themes[1]!.points.some((p) => p.includes('#42')), 'PR numbers are stripped');
   assert.ok(!review.themes[1]!.points.some((p) => p.includes('!')), 'exclamation marks are dropped');
-  assert.ok(review.underTheHood.includes('Caches playwright browsers in CI'), 'a tooling point moves under the hood');
-  assert.ok(!review.summary.some((s) => s.text.includes('Vite')), 'a tooling summary point is dropped');
+  assert.ok(review.underTheHood.some((x) => x.text === 'Caches playwright browsers in CI'), 'a tooling point moves under the hood');
+  assert.equal(review.headline, 'The front desk sees a whole customer on one page');
+  assert.deepEqual(review.questions, ['Which repairs would you still type in by hand?', 'What is missing on the customer page?'], 'a question with an exclamation mark is dropped');
   assert.ok(review.checks.some((c) => c.reason.startsWith('The reader got stuck')));
 
   // Pictures: changed screens with a caption get a before and after slide; a theme never repeats one.
@@ -52,7 +53,7 @@ test('generates a full review from a real git history', async () => {
 
   // The deck is self-contained and branded.
   assert.match(html, /--accent: #ea580c/);
-  assert.match(html, /What Northside Cycles gains/);
+  assert.match(html, /data-ref="headline"[\s\S]*The front desk sees a whole customer on one page/);
   assert.doesNotMatch(html, /<script src=|<link rel="stylesheet"|https?:\/\/fonts/);
   assert.match(markdown, /^# Sprint review November 16, 2026/);
 });
@@ -67,7 +68,7 @@ test('Dutch labels and a range by git refs', async () => {
   const dir = demoRepo();
   const { review, html } = await generate(demoConfig(dir, { language: 'Dutch' }), { model: new FakeModel(), range: { kind: 'refs', from: 'HEAD~9', to: 'HEAD' } });
   assert.match(review.title, /^Sprint review 14 november 2026$/);
-  assert.match(html, /Onder de motorkap/);
+  assert.match(html, /Ook opgeleverd/);
   assert.match(html, /lang="nl"/);
 });
 

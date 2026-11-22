@@ -29,33 +29,32 @@
   }
 
   html[data-theme="dark"] :is(h1, h2, h3) { font-family: var(--font-heading); font-weight: 500; letter-spacing: -0.015em; color: var(--ink); }
-  html[data-theme="dark"] h1 { font-size: clamp(2.4rem, 7vw, 5.6rem); line-height: 1; }
-  html[data-theme="dark"] h2 { font-size: clamp(1.8rem, 4.4vw, 3.4rem); }
-  html[data-theme="dark"] .label { color: var(--accent); font-weight: 600; letter-spacing: .28em; display: flex; align-items: center; gap: 1em; }
-  html[data-theme="dark"] .label::before { content: ""; width: 2.4em; height: 1px; background: linear-gradient(90deg, transparent, var(--accent)); }
+  html[data-theme="dark"] .eyebrow { color: var(--accent); font-weight: 600; letter-spacing: .22em; }
+  html[data-theme="dark"] .eyebrow::before { content: ""; width: 2.4em; height: 1px; background: linear-gradient(90deg, transparent, var(--accent)); }
+  html[data-theme="dark"] .chip { letter-spacing: .04em; }
 
   /* Cover and closing slide: black, a gold glow from below, gilded title */
   html[data-theme="dark"] .slide.cover { background: radial-gradient(70% 90% at 75% 110%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 60%), radial-gradient(50% 60% at 10% 0%, rgb(244 239 230 / .05), transparent 70%); }
   html[data-theme="dark"] .slide.cover h1 { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 12%, #fff) 10%, color-mix(in srgb, var(--accent) 70%, #fff) 55%, color-mix(in srgb, var(--accent) 80%, #000) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; padding-bottom: .08em; }
   html[data-theme="dark"] .slide.cover p { color: var(--ink-soft); }
-  html[data-theme="dark"] .slide.cover .label { color: var(--accent); }
+  html[data-theme="dark"] .slide.cover .eyebrow { color: var(--accent); }
+  html[data-theme="dark"] .slide.cover h2, html[data-theme="dark"] .questions li { color: var(--ink); }
+  html[data-theme="dark"] .questions li::before { color: var(--accent); }
   html[data-theme="dark"] .rings { border-color: color-mix(in srgb, var(--accent) 28%, transparent); box-shadow: 0 0 0 9vh color-mix(in srgb, var(--accent) 3.5%, transparent), 0 0 0 18vh color-mix(in srgb, var(--accent) 2.5%, transparent), 0 0 120px 10px color-mix(in srgb, var(--accent) 8%, transparent) inset; }
   html[data-theme="dark"] .brand-logo.plate { background: rgb(244 239 230 / .94); }
   html[data-theme="dark"] .goal { background: color-mix(in srgb, var(--accent) 7%, transparent); border-color: color-mix(in srgb, var(--accent) 30%, transparent); color: var(--ink); backdrop-filter: blur(6px); }
   html[data-theme="dark"] .goal b { color: var(--accent); }
 
   /* Glass cards with a lit top edge */
-  html[data-theme="dark"] :is(.card, .value, .tile-number) {
+  html[data-theme="dark"] .card {
     background: linear-gradient(180deg, rgb(244 239 230 / .055), rgb(244 239 230 / .015));
     border: 1px solid var(--line);
     box-shadow: inset 0 1px 0 rgb(244 239 230 / .07), 0 30px 60px -40px rgb(0 0 0 / .8);
     border-radius: 18px;
   }
-  html[data-theme="dark"] .value { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 9%, transparent), rgb(244 239 230 / .015) 70%); border-color: color-mix(in srgb, var(--accent) 18%, transparent); }
   html[data-theme="dark"] .card-icon { background: var(--accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent); }
   html[data-theme="dark"] .card p, html[data-theme="dark"] .tile-number p { color: var(--ink); }
   html[data-theme="dark"] .tile-number b { font-family: var(--font-heading); font-weight: 500; background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 25%, #fff), var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  html[data-theme="dark"] .pill { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent); }
 
   /* Theme slides: the icon sits in a dark jewel box with a gold rim */
   html[data-theme="dark"] .tile {
@@ -65,19 +64,18 @@
     box-shadow: inset 0 1px 0 color-mix(in srgb, var(--accent) 15%, rgb(255 255 255 / .12)), 0 40px 80px -30px var(--accent-glow), 0 0 0 10px color-mix(in srgb, var(--accent) 3%, transparent);
   }
   html[data-theme="dark"] .effect { color: var(--ink); font-weight: 400; }
-  html[data-theme="dark"] .points li::before { background: var(--accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent); }
-  html[data-theme="dark"] .hood .tile { color: var(--ink-soft); background: radial-gradient(120% 120% at 30% 15%, rgb(244 239 230 / .08), transparent 60%), #111116; border-color: var(--line); box-shadow: inset 0 1px 0 rgb(244 239 230 / .08), 0 40px 80px -40px rgb(0 0 0 / .9); }
+  html[data-theme="dark"] .statement h1 { color: var(--ink); }
 
-  /* Screens float on the black with a soft gold underglow */
-  html[data-theme="dark"] :is(.theme .screen img, figure img) { border: 1px solid rgb(244 239 230 / .1); box-shadow: 0 40px 90px -40px rgb(0 0 0 / .95), 0 30px 120px -60px var(--accent-glow); }
+  /* Screens on the black: a hairline instead of a shadow, and a white screen dimmed a little so it doesn't glare */
+  html[data-theme="dark"] :is(.theme .screen img, figure img) { border: 1px solid rgb(244 239 230 / .14); box-shadow: 0 30px 120px -60px var(--accent-glow); filter: brightness(.9); }
   html[data-theme="dark"] .theme .screen.phone img, html[data-theme="dark"] .compare.phone figure img { border-color: #1b1b21; outline: 1px solid rgb(244 239 230 / .14); }
   html[data-theme="dark"] figure.after figcaption { color: var(--accent); }
 
-  /* Milestones and meter */
-  html[data-theme="dark"] .milestones li::before { border-color: rgb(244 239 230 / .18); }
-  html[data-theme="dark"] .milestones li.done::before { border-color: var(--accent); background-color: var(--accent); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230a0a0d' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E"); }
-  html[data-theme="dark"] .meter { background: rgb(244 239 230 / .07); height: 6px; }
-  html[data-theme="dark"] .meter i { background: linear-gradient(90deg, var(--accent-deep), var(--accent), color-mix(in srgb, var(--accent) 30%, #fff)); box-shadow: 0 0 18px var(--accent-glow); }
+  /* Roadmap */
+  html[data-theme="dark"] .timeline::before { background: rgb(244 239 230 / .12); }
+  html[data-theme="dark"] .timeline li::before { background: var(--surface); border-color: rgb(244 239 230 / .2); }
+  html[data-theme="dark"] .timeline li.done::before { border-color: var(--accent); background-color: var(--accent); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230a0a0d' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E"); }
+  html[data-theme="dark"] .timeline li.next::before { border-color: var(--accent); box-shadow: 0 0 0 6px var(--accent-soft), 0 0 18px var(--accent-glow); }
 
   /* Chrome */
   html[data-theme="dark"] .progress { height: 2px; background: linear-gradient(90deg, var(--accent-deep), var(--accent)); box-shadow: 0 0 12px var(--accent-glow); }

@@ -48,7 +48,7 @@ test('parse drops points without a real commit and moves non-product points unde
           notes: 'Show it.',
         },
       ],
-      summary: [{ text: 'One list', commits: ['abc1234'], icon: 'nope' }],
+      headline: { text: 'One list', commits: ['abc1234'] },
       under_the_hood: [],
     },
     commits,
@@ -57,8 +57,8 @@ test('parse drops points without a real commit and moves non-product points unde
     config,
   );
   assert.deepEqual(w.themes[0]?.points, ['One list']);
-  assert.equal(w.summary[0]?.icon, 'other');
-  assert.deepEqual(w.underTheHood, ['CI is faster']);
+  assert.equal(w.headline, 'One list');
+  assert.deepEqual(w.underTheHood, [{ text: 'CI is faster', kind: 'maintenance' }]);
   assert.ok(w.checks.some((c) => c.kind === 'dropped' && c.text === 'Invented thing'));
   assert.ok(w.checks.some((c) => c.kind === 'moved' && c.text === 'CI is faster'));
 });
@@ -66,15 +66,15 @@ test('parse drops points without a real commit and moves non-product points unde
 test('parse keeps at most the configured number of themes and only screens that exist', () => {
   const theme = (title: string) => ({ title, icon: 'users', screen: 'Ghost (desktop)', value: 'faster', effect: 'x', points: [{ text: 'y', commits: ['abc1234'] }], notes: '' });
   const small = normalize({ limits: { themes: 2 } }, '/tmp');
-  const w = parse({ themes: [theme('A'), theme('B'), theme('C')], summary: [], under_the_hood: [] }, commits, [], ['Real (desktop)'], small);
+  const w = parse({ themes: [theme('A'), theme('B'), theme('C')], under_the_hood: [] }, commits, [], ['Real (desktop)'], small);
   assert.equal(w.themes.length, 2);
   assert.equal(w.themes[0]?.screen, null);
   assert.ok(w.checks.some((c) => c.text === 'Theme C'));
 });
 
 test('a short hash may come back a character longer or shorter', () => {
-  const w = parse({ themes: [], summary: [{ text: 'One list', commits: ['abc12345'], icon: 'users' }], under_the_hood: [] }, commits, [], [], config);
-  assert.equal(w.summary.length, 1);
+  const w = parse({ themes: [], headline: { text: 'One list', commits: ['abc12345'] }, under_the_hood: [] }, commits, [], [], config);
+  assert.equal(w.headline, 'One list');
 });
 
 test('product paths decide what counts as product work', () => {
@@ -112,4 +112,15 @@ test('themes and points the model sent as JSON text are read, not silently lost'
 
 test('the default room for an answer fits models that think first', () => {
   assert.equal(normalize({}, '/tmp').model.maxTokens, 16000);
+});
+
+test('a theme slide over the glance-test word budget gets a warning, and density sets the points per theme', () => {
+  const long = 'Every repair now shows its parts, its price, its mechanic and the day it is ready';
+  const theme = { title: 'Repairs', icon: 'wrench', screen: 'none', value: 'faster', effect: 'Repairs show everything at once', points: [1, 2, 3, 4].map(() => ({ text: long, commits: ['abc1234'] })), notes: '' };
+  const w = parse({ themes: [theme], under_the_hood: [], questions: ['What is still missing?', 'Is this great!'] }, commits, [], [], config);
+  assert.equal(w.themes[0]!.points.length, 3, 'standard: three points');
+  assert.ok(w.checks.some((c) => c.kind === 'warning' && /words on the slide besides the title; 40/.test(c.reason)));
+  assert.deepEqual(w.questions, ['What is still missing?']);
+  const brief = parse({ themes: [theme], under_the_hood: [] }, commits, [], [], normalize({ deck: { density: 'brief' } }, '/tmp'));
+  assert.equal(brief.themes[0]!.points.length, 2);
 });

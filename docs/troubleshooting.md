@@ -29,7 +29,7 @@ The key is wrong or revoked. The tool doesn't try the fallback model for this.
 Rate limited or overloaded. The tool retries three times with a pause, then tries the fallback model. Run it again a little later if it still fails.
 
 ### "The model returned nothing usable"
-Every theme and summary point failed the checks, usually because the sprint has only tooling commits. Run with `--dry-run` to see which commits count as product work, and check `productPaths` and `nonProductTypes`.
+Every theme and the headline failed the checks, usually because the sprint has only tooling commits. Run with `--dry-run` to see which commits count as product work, and check `productPaths` and `nonProductTypes`.
 
 ### A theme I expected is missing
 Look in `checks.md`. A point that named no real commit, or broke a rule, was dropped there. A theme that lost all its points was dropped too.

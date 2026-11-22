@@ -37,7 +37,7 @@ Every file has one obvious home: one folder per area, the entry points at the to
 | `src/screens/` | Screenshots: finding them in git or a folder, comparing them, taking them with Playwright. |
 | `src/ai/` | The model: clients and provider presets, cost, the prompts, and every check on what comes back (`writer.ts`). |
 | `src/review/` | The pipeline that puts it together (`generate.ts`), and the check on a stored `review.json`. |
-| `src/deck/` | The outputs: the HTML deck, Markdown, PowerPoint, colors, labels per language, icons. |
+| `src/deck/` | The outputs: the slide plan (`plan.ts`, which slides in which order and layout), the HTML deck, Markdown, PowerPoint, colors, labels per language, icons. |
 | `src/brand/` | The brand from a website or a `.pptx` (and the zip reader it needs). |
 | `src/surfaces/` | The other ways in: the local editor, the MCP server, `doctor`, Slack. |
 | `assets/` | Files the code loads at run time: deck CSS, the editor's pages, the config template. |
@@ -63,6 +63,7 @@ Keeping it that way:
 - **The deck stays self-contained.** No outside fonts, scripts or images.
 - **Errors are for people.** Say what went wrong and how to fix it.
 - **Add a test** for every check or fix.
+- **A new slide or layout** goes in `src/deck/plan.ts` first; the HTML deck, the PowerPoint file and the editor all follow the plan. The layout test (`test/deck/layout.test.ts`) measures the rules in [docs/design.md](docs/design.md) in Chrome: keep it passing.
 - **A new label** needs an entry in every label set in `src/deck/i18n.ts` (English, Dutch, German, French, Spanish); the typecheck fails when one is missing. Other languages are welcome as new label sets.
 
 ## Pull requests

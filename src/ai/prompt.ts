@@ -1,10 +1,18 @@
 import { randomBytes } from 'node:crypto';
-import type { Config } from '../config.ts';
-import type { Commit, WrittenReview } from '../types.ts';
+import { DENSITY, type Config } from '../config.ts';
+import { HOOD_KINDS, type Commit, type WrittenReview } from '../types.ts';
 import { iconKeys, iconList, VALUE_KEYS } from '../deck/icons.ts';
 
 /** Words per point the prompt asks for; the check allows a little more (see writer.ts). */
 export const POINT_WORDS = 12;
+/** Words per slide title (a theme's headline, the sprint headline, a before and after caption). */
+export const HEADLINE_WORDS = 12;
+const COUNTS = ['', 'one', 'two', 'three', 'four'];
+/** "two or three" for standard: the points per theme the prompt asks for. */
+function pointCount(c: Config): string {
+  const n = DENSITY[c.deck.density].points;
+  return `${COUNTS[n - 1] || 'one'} or ${COUNTS[n]}`;
+}
 /** The answer for a theme that shows no screenshot. */
 export const NO_SCREEN = 'none';
 /** The files per commit the model reads: enough to see where a change lands. */
@@ -47,13 +55,14 @@ export function commitLog(commits: Commit[]): string {
 
 /** The text of the slides as the audience sees it, without the speaker notes. */
 export function slideText(w: WrittenReview): string {
-  const lines = w.summary.map((p) => `In short: ${p.text}`);
+  const lines = w.headline ? [`This sprint: ${w.headline}`] : [];
   for (const t of w.themes) {
     lines.push(`Theme: ${t.title}`);
     if (t.effect) lines.push(t.effect);
     for (const p of t.points) lines.push(`- ${p}`);
   }
-  for (const p of w.underTheHood) lines.push(`Under the hood: ${p}`);
+  for (const p of w.underTheHood) lines.push(`Under the hood: ${p.text}`);
+  for (const q of w.questions) lines.push(`Question for the audience: ${q}`);
   for (const [screen, caption] of Object.entries(w.screenCaptions)) lines.push(`Before and after, ${screen}: ${caption}`);
   return lines.join('\n');
 }
@@ -76,8 +85,10 @@ export function writerSystem(c: Config): string {
     `You write the content of the sprint review presentation for ${c.product.name}. You get the commits of the sprint.`,
     context(c),
     `Write every text in ${c.language}.`,
-    `Group the changes into themes the way a user of the product experiences them. For each theme and each summary point, pick the icon that fits best, a different one per theme, the most precise one. If none fits, pick other. The icons, with what they suit: ${iconList()}.${areas(c)}`,
-    'For each theme, say in one sentence what a user notices: what they can do now, see, or no longer have to do, so that someone outside the team understands it. Then two to four short points. Go through every commit without [no product code]: whatever a user can do now belongs in a theme.',
+    `Group the changes into themes the way a user of the product experiences them. For each theme, pick the icon that fits best, a different one per theme, the most precise one. If none fits, pick other. The icons, with what they suit: ${iconList()}.${areas(c)}`,
+    `Name each theme the way a user would call it: the screen, task or part of ${c.product.name} it is about, in one to three words, never the name of a module, service, file or technique ("Customer page", not "API structure"; "Repair tickets", not "OCR").`,
+    `Each theme slide has one message, and its title says it: one full sentence of at most ${HEADLINE_WORDS} words with what a user can do, see or no longer has to do now, so that someone outside the team gets it in three seconds. A statement with a subject, never a command or a label: "The front desk reads repair tickets from a photo", not "Read repair tickets from a photo" and not "Ticket reading". Then ${pointCount(c)} short points that back it up, without repeating the title. Go through every commit without [no product code]: whatever a user can do now belongs in a theme.`,
+    `The sprint headline is one sentence of at most ${HEADLINE_WORDS} words with the outcome that matters most to a user this sprint. One outcome, a statement with a subject: "The front desk sees a whole customer on one page", not "Customer page, ticket scanning and planner updates". It is not a list of the themes.`,
     c.goal ? `The sprint goal was: ${c.goal}. Where the work served it, put that first.` : '',
     `What a theme is:
 - Something a user sees or notices in the product. A new feature goes before a fix, even if its commit message is short.
@@ -96,7 +107,8 @@ Rules:
 - File names, commits, hashes, PR numbers and ticket numbers never appear in a text.
 - No marketing language and no intensifiers. No exclamation marks, no emoji, no em dashes.
 - The speaker notes are for the presenter, who knows the product: what to show and how to explain it in plain words, without repeating the slide. Don't invent screens or buttons. If a demo doesn't fit, say what to tell.
-- Order: what is best to show and changes most for a user comes first. Work on the presentation itself comes last.`,
+- Order: what is best to show and changes most for a user comes first. Work on the presentation itself comes last.
+- The questions for the audience close the presentation. Each asks about one specific change, so the answer is more than "looks good": "Which repairs would you still type in by hand?", not "Any questions?".`,
     replace.length ? `- Use the team's words: ${replace.map(([a, b]) => `"${b}", not "${a}"`).join('; ')}.` : '',
     ...c.rules.map((r) => `- ${r}`),
     UNTRUSTED_RULE,
@@ -163,7 +175,7 @@ export function writerTool(c: Config, changedScreens: string[], availableScreens
           screen_changes: {
             type: 'array',
             description:
-              'For each changed screen where a user really sees something different: one sentence that says what to look at on the before and after picture, twenty words at most. Only write about what is visible on exactly that screen. Skip a screen when only something small changed or when the screen is new this sprint: it gets no slide.',
+              `For each changed screen where a user really sees something different: one sentence that says what to look at on the before and after picture, the slide's title, ${HEADLINE_WORDS} words at most. Only write about what is visible on exactly that screen. Skip a screen when only something small changed or when the screen is new this sprint: it gets no slide.`,
             items: {
               type: 'object',
               properties: { screen: { type: 'string', enum: changedScreens }, ...point.properties },
@@ -178,18 +190,18 @@ export function writerTool(c: Config, changedScreens: string[], availableScreens
     input_schema: {
       type: 'object',
       properties: {
-        summary: {
-          type: 'array',
-          description: 'In short: three or four points with the main themes, in the same order, each with the icon of its theme. No point about something that is no theme.',
-          items: { ...point, properties: { ...point.properties, icon: { type: 'string', enum: icons } }, required: ['text', 'commits', 'icon'] },
+        headline: {
+          ...point,
+          description: `The sprint in one sentence with a subject: the one outcome that matters most to a user. At most ${HEADLINE_WORDS} words, never a list of the themes.`,
+          properties: { ...point.properties, text: { type: 'string', description: `At most ${HEADLINE_WORDS} words.` } },
         },
         themes: {
           type: 'array',
-          description: `Two to ${c.limits.themes} themes, one slide each, the best to show first.`,
+          description: `Two to ${c.limits.themes} themes, the best to show first. The first ${DENSITY[c.deck.density].themeSlides} get a slide of their own, the rest share one.`,
           items: {
             type: 'object',
             properties: {
-              title: { type: 'string', description: 'One to three words, a noun.' },
+              title: { type: 'string', description: 'What a user calls this part of the product: one to three words, a noun. Never a module, service or technique.' },
               icon: { type: 'string', enum: icons },
               screen: {
                 type: 'string',
@@ -201,23 +213,28 @@ export function writerTool(c: Config, changedScreens: string[], availableScreens
                 enum: [...VALUE_KEYS],
                 description: 'What it brings: faster work, better quality, less manual work, less risk or more insight.',
               },
-              effect: { type: 'string', description: 'What it brings: one sentence about what a user notices or the business gains, twenty words at most.' },
-              points: { type: 'array', description: 'Two to four points.', items: point },
+              effect: { type: 'string', description: `The slide title: one full sentence with a subject, saying what a user can do, see or no longer has to do now. Not a command. At most ${HEADLINE_WORDS} words.` },
+              points: { type: 'array', description: `${pointCount(c)[0]!.toUpperCase()}${pointCount(c).slice(1)} points that back up the title without repeating it.`, items: point },
               notes: { type: 'string', description: 'A note for the presenter: what to show in the demo and how to explain it to this audience, two or three sentences, sixty words at most.' },
             },
             required: ['title', 'icon', 'screen', 'value', 'effect', 'points', 'notes'],
             additionalProperties: false,
           },
         },
-        summary_notes: { type: 'string', description: 'Speaker note for the summary slide: two or three sentences to open with, sixty words at most.' },
+        summary_notes: { type: 'string', description: 'Speaker note for the headline slide: two or three sentences to open with, sixty words at most.' },
         under_the_hood: {
           type: 'array',
-          description: 'Work without a visible effect, in plain words (security, reliability, speed): five short points at most, and merge what belongs together. Empty when there is none.',
-          items: point,
+          description: 'Work without a visible effect, in plain words: five short points at most, and merge what belongs together. Empty when there is none.',
+          items: { ...point, properties: { ...point.properties, kind: { type: 'string', enum: [...HOOD_KINDS], description: 'What kind of work it is.' } }, required: ['text', 'commits', 'kind'] },
+        },
+        questions: {
+          type: 'array',
+          description: `Two or three open questions for the audience, each about one specific change in this sprint. At most ${HEADLINE_WORDS} words each.`,
+          items: { type: 'string' },
         },
         ...screenChanges,
       },
-      required: ['summary', 'summary_notes', 'themes', 'under_the_hood', ...Object.keys(screenChanges)],
+      required: ['headline', 'summary_notes', 'themes', 'under_the_hood', 'questions', ...Object.keys(screenChanges)],
       additionalProperties: false,
     },
   };

@@ -5,13 +5,13 @@ function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-/** The message: title, the summary points, one line per theme, and a link to the deck when there is one. */
+/** The message: title, the sprint headline, one line per theme, and a link to the deck when there is one. */
 export function slackMessage(review: Review, deckUrl: string | null): Record<string, unknown> {
   const blocks: Record<string, unknown>[] = [
     { type: 'header', text: { type: 'plain_text', text: review.title.slice(0, 150) } },
     { type: 'context', elements: [{ type: 'mrkdwn', text: esc([review.product, review.period].filter(Boolean).join(' · ')) }] },
   ];
-  if (review.summary.length) blocks.push({ type: 'section', text: { type: 'mrkdwn', text: review.summary.map((p) => `• ${esc(p.text)}`).join('\n') } });
+  if (review.headline) blocks.push({ type: 'section', text: { type: 'mrkdwn', text: esc(review.headline) } });
   if (review.themes.length) {
     blocks.push({ type: 'divider' });
     blocks.push({ type: 'section', text: { type: 'mrkdwn', text: review.themes.map((t) => `*${esc(t.title)}*${t.effect ? ` · ${esc(t.effect)}` : ''}`).join('\n') } });

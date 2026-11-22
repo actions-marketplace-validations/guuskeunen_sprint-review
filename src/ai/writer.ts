@@ -1,16 +1,16 @@
-import type { Config } from '../config.ts';
-import type { Check, Commit, WrittenReview, WrittenTheme } from '../types.ts';
+import { DENSITY, type Config } from '../config.ts';
+import { HOOD_KINDS, type Check, type Commit, type HoodItem, type HoodKind, type WrittenReview, type WrittenTheme } from '../types.ts';
 import type { ModelClient } from './model.ts';
 import { isIcon, VALUE_KEYS } from '../deck/icons.ts';
 import { commitLog, MAX_LOG_CHARS, NO_SCREEN, readerSystem, readerTool, slideText, untrusted, writerSystem, writerTool } from './prompt.ts';
 
 export const POINT_WORDS_MAX = 16;
-export const EFFECT_WORDS_MAX = 25;
+/** A slide title: a theme's headline, the sprint headline, a before and after caption. */
+export const EFFECT_WORDS_MAX = 16;
 export const NOTES_WORDS_MAX = 70;
 export const TITLE_WORDS_MAX = 4;
-const POINTS_PER_THEME = 4;
-const SUMMARY_POINTS = 4;
 const HOOD_POINTS = 5;
+const QUESTIONS = 3;
 const MAX_COMPLAINTS = 30;
 
 export class WriterError extends Error {}
@@ -52,7 +52,7 @@ export async function write(model: ModelClient, config: Config, commits: Commit[
     written = parse(draft.toolInput, commits, changedScreens, availableScreens, config);
     if (written.themes.length === 0) written.checks.push({ kind: 'warning', text: 'No themes', reason: 'The model gave no usable themes twice although the product changed. Run it again, or check the commits in this range.' });
   }
-  if (written.themes.length === 0 && written.summary.length === 0) {
+  if (written.themes.length === 0 && written.headline === null) {
     throw new WriterError('The model returned nothing usable. Try again, or check the commits in this range.');
   }
   const read = await complaints(model, config, written);
@@ -111,15 +111,17 @@ function replaceLine(w: WrittenReview, original: string, revised: unknown, repla
     const text = clean(revised, max, replace);
     return text && text !== original ? text : null;
   };
-  for (const p of w.summary) if (p.text === original) { const t = ok(POINT_WORDS_MAX); if (t) return (p.text = t), true; }
+  if (w.headline === original) { const t = ok(EFFECT_WORDS_MAX); if (t) return (w.headline = t), true; }
+  const q = w.questions.indexOf(original);
+  if (q !== -1) { const t = ok(EFFECT_WORDS_MAX); if (t) return (w.questions[q] = t), true; }
   for (const th of w.themes) {
     if (th.title === original) { const t = ok(TITLE_WORDS_MAX); if (t) return (th.title = t), true; }
     if (th.effect === original) { const t = ok(EFFECT_WORDS_MAX); if (t) return (th.effect = t), true; }
     const i = th.points.indexOf(original);
     if (i !== -1) { const t = ok(POINT_WORDS_MAX); if (t) return (th.points[i] = t), true; }
   }
-  const h = w.underTheHood.indexOf(original);
-  if (h !== -1) { const t = ok(POINT_WORDS_MAX); if (t) return (w.underTheHood[h] = t), true; }
+  const h = w.underTheHood.find((x) => x.text === original);
+  if (h) { const t = ok(POINT_WORDS_MAX); if (t) return (h.text = t), true; }
   for (const [screen, caption] of Object.entries(w.screenCaptions)) {
     if (caption === original) { const t = ok(EFFECT_WORDS_MAX); if (t) return (w.screenCaptions[screen] = t), true; }
   }
@@ -184,8 +186,9 @@ async function complaints(model: ModelClient, config: Config, written: WrittenRe
 /** The answer of the writer, with only what holds up. Exported for tests. */
 export function parse(input: Record<string, unknown> | null, commits: Commit[], changedScreens: string[], availableScreens: string[], config: Config): WrittenReview {
   const checks: Check[] = [];
-  const moved: string[] = [];
+  const moved: HoodItem[] = [];
   const replace = config.replace;
+  const density = DENSITY[config.deck.density];
   const phoneLabel = (label: string) => /\((phone|telefoon|mobile)\)$/i.test(label);
 
   const themes: WrittenTheme[] = [];
@@ -197,10 +200,10 @@ export function parse(input: Record<string, unknown> | null, commits: Commit[], 
     const points: string[] = [];
     for (const v of list(t.points)) {
       const p = point(v, commits, checks, replace);
-      if (!p || points.length === POINTS_PER_THEME) continue;
+      if (!p || points.length === density.points) continue;
       if (p.product) points.push(p.text);
       else {
-        moved.push(p.text);
+        moved.push({ text: p.text, kind: 'maintenance' });
         checks.push({ kind: 'moved', text: p.text, reason: 'No change to the product itself: moved under the hood.' });
       }
     }
@@ -210,27 +213,46 @@ export function parse(input: Record<string, unknown> | null, commits: Commit[], 
       continue;
     }
     const screen = typeof t.screen === 'string' && t.screen !== NO_SCREEN && availableScreens.includes(t.screen) ? t.screen : null;
+    const effect = optional(t.effect, EFFECT_WORDS_MAX, checks, replace);
+    // The glance test: what the audience reads besides the title. Flagged, never cut or shrunk.
+    const words = [title, ...points].join(' ').split(/\s+/).length;
+    if (words > density.words) checks.push({ kind: 'warning', text: effect ?? title, reason: `${words} words on the slide besides the title; ${density.words} is what the audience reads at a glance. Shorten a point in the editor.` });
     themes.push({
       title,
       icon: isIcon(t.icon) ? t.icon : 'other',
       screen,
       device: screen !== null && phoneLabel(screen) ? 'phone' : 'desktop',
       value: typeof t.value === 'string' && (VALUE_KEYS as readonly string[]).includes(t.value) ? t.value : null,
-      effect: optional(t.effect, EFFECT_WORDS_MAX, checks, replace),
+      effect,
       points,
       notes: optional(t.notes, NOTES_WORDS_MAX, checks, replace),
     });
   }
 
-  const summary: { text: string; icon: string }[] = [];
-  for (const v of list(input?.summary)) {
-    const p = point(v, commits, checks, replace);
-    if (p && !p.product) checks.push({ kind: 'dropped', text: p.text, reason: 'No change to the product itself.' });
-    else if (p && summary.length < SUMMARY_POINTS) summary.push({ text: p.text, icon: isIcon(v.icon) ? v.icon : 'other' });
+  let headline: string | null = null;
+  const h = item(input?.headline);
+  if (h) {
+    const p = point({ ...h, text: typeof h.text === 'string' ? h.text : '' }, commits, checks, replace, EFFECT_WORDS_MAX);
+    if (p && !p.product) checks.push({ kind: 'dropped', text: p.text, reason: 'The headline is about no change to the product itself.' });
+    else if (p) headline = p.text;
   }
 
-  const hood = [...new Set([...list(input?.under_the_hood).map((v) => point(v, commits, checks, replace)?.text).filter((x): x is string => !!x), ...moved])];
-  for (const text of hood.slice(HOOD_POINTS)) checks.push({ kind: 'dropped', text, reason: `More than ${HOOD_POINTS} points under the hood.` });
+  const hood: HoodItem[] = [];
+  const add = (x: HoodItem) => {
+    if (!hood.some((y) => y.text === x.text)) hood.push(x);
+  };
+  for (const v of list(input?.under_the_hood)) {
+    const p = point(v, commits, checks, replace);
+    if (p) add({ text: p.text, kind: hoodKind(v.kind) });
+  }
+  moved.forEach(add);
+  for (const x of hood.slice(HOOD_POINTS)) checks.push({ kind: 'dropped', text: x.text, reason: `More than ${HOOD_POINTS} points under the hood.` });
+
+  const questions: string[] = [];
+  for (const v of Array.isArray(input?.questions) ? (input.questions as unknown[]) : []) {
+    const q = optional(v, EFFECT_WORDS_MAX, checks, replace);
+    if (q && questions.length < QUESTIONS) questions.push(q);
+  }
 
   const screenCaptions: Record<string, string> = {};
   for (const v of list(input?.screen_changes)) {
@@ -241,19 +263,20 @@ export function parse(input: Record<string, unknown> | null, commits: Commit[], 
   }
 
   return {
-    summary,
+    headline,
     summaryNotes: optional(input?.summary_notes, NOTES_WORDS_MAX, checks, replace),
     themes,
     underTheHood: hood.slice(0, HOOD_POINTS),
+    questions,
     screenCaptions,
     checks,
   };
 }
 
 /** A point that holds up: a text that fits, naming a commit from the list. */
-function point(value: Record<string, unknown>, commits: Commit[], checks: Check[], replace: Record<string, string>): { text: string; product: boolean } | null {
+function point(value: Record<string, unknown>, commits: Commit[], checks: Check[], replace: Record<string, string>, maxWords = POINT_WORDS_MAX): { text: string; product: boolean } | null {
   if (typeof value.text !== 'string') return null;
-  const text = clean(value.text, POINT_WORDS_MAX, replace);
+  const text = clean(value.text, maxWords, replace);
   if (text === null) {
     checks.push({ kind: 'dropped', text: value.text, reason: 'Too long, or has an exclamation mark or emoji.' });
     return null;
@@ -320,16 +343,21 @@ export function unread(log: string, commits: Commit[], max = MAX_LOG_CHARS): Che
 /** The objects in a list; an item sent as JSON text is read too, so nothing is lost silently. */
 function list(v: unknown): Record<string, unknown>[] {
   if (!Array.isArray(v)) return [];
-  return v
-    .map((x) => {
-      if (typeof x !== 'string' || !x.trim().startsWith('{')) return x;
-      try {
-        return JSON.parse(x) as unknown;
-      } catch {
-        return x;
-      }
-    })
-    .filter((x): x is Record<string, unknown> => typeof x === 'object' && x !== null);
+  return v.map(item).filter((x): x is Record<string, unknown> => x !== null);
+}
+/** One object, or the same sent as JSON text. */
+function item(x: unknown): Record<string, unknown> | null {
+  if (typeof x === 'string' && x.trim().startsWith('{')) {
+    try {
+      x = JSON.parse(x) as unknown;
+    } catch {
+      return null;
+    }
+  }
+  return typeof x === 'object' && x !== null && !Array.isArray(x) ? (x as Record<string, unknown>) : null;
+}
+function hoodKind(v: unknown): HoodKind {
+  return typeof v === 'string' && (HOOD_KINDS as readonly string[]).includes(v) ? (v as HoodKind) : 'maintenance';
 }
 function str(v: unknown): string | null {
   return typeof v === 'string' ? v : null;

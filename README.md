@@ -63,7 +63,7 @@ Most AI summary tools hand your history to a model and hope for the best. sprint
 | `checks.md` | What the checks corrected, moved or dropped, and what the second reader flagged. |
 | `deck.pptx` | Optional (`--pptx`): the same deck as an editable PowerPoint, with speaker notes. |
 
-The deck has a cover with your logo and color, *What we gain* grouped by value, usage numbers, a summary, one slide per theme (with a screenshot when one fits), before and after slides, the roadmap, *Under the hood* and a closing slide.
+The deck tells the sprint as a story: a cover with your logo and color, the sprint in one sentence, one slide per big theme whose title says what users can do now (with a screenshot when one fits), the smaller themes as cards, before and after slides, what else shipped, the roadmap, usage numbers, and questions for your audience. It follows presentation research: four text sizes, nothing under 24 px, one message per slide. See [how the deck is designed](docs/design.md).
 
 ## Quick start
 

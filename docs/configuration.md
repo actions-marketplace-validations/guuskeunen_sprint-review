@@ -94,12 +94,14 @@ Your company or team name. Shown on the cover ("Sprint review Northside Cycles")
 ### `audience`
 Who watches the review. A preset, or a sentence of your own:
 
-| Preset | Written for |
-|---|---|
-| `business` (default) | Colleagues without a technical background: marketing, sales, support. |
-| `executives` | Management: the few changes that matter most and what they bring. |
-| `customers` | People who use the product: what they can do now. |
-| `team` | The product team: plain words, a bit more detail. |
+| Preset | Also called | Written for | Deck |
+|---|---|---|---|
+| `business` (default) | `marketing`, `sales`, `support` | Colleagues without a technical background. | standard |
+| `executives` | `management` | Management: the few changes that matter most and what they bring. | brief, numbers first, no *Also shipped* |
+| `customers` | | People who use the product: what they can do now. | standard |
+| `team` | `engineers`, `developers` | The product team: plain words, a bit more detail. | detailed |
+
+The preset sets the defaults of [`deck`](#deck); set `deck.density`, `deck.order` or `deck.sections` only to change them. A sentence of your own gets the standard deck.
 
 ```yaml
 audience: Store managers who use Spoke every day but never see the code.
@@ -109,7 +111,7 @@ audience: Store managers who use Spoke every day but never see the code.
 Who presents. The speaker notes are written for them. Default: a technical presenter who knows the product and gives a short demo per theme.
 
 ### `language`
-The language of the slide content, as a name (`English`, `Dutch`, `German`) or a code (`nl`, `de-DE`). The AI writes in any language. The fixed labels ("Under the hood", "Before", "After"…) ship in English, Dutch, German, French and Spanish. Other languages fall back to English labels; override them with [`labels`](#labels). Dates follow the language too: `November 16, 2026` in English, `16 november 2026` in Dutch.
+The language of the slide content, as a name (`English`, `Dutch`, `German`) or a code (`nl`, `de-DE`). The AI writes in any language. The fixed labels ("Also shipped", "Before", "After"…) ship in English, Dutch, German, French and Spanish. Other languages fall back to English labels; override them with [`labels`](#labels). Dates follow the language too: `November 16, 2026` in English, `16 november 2026` in Dutch.
 
 ### `goal`
 The sprint goal. Shown on the cover, and the AI puts the work that served it first. Default none.
@@ -136,7 +138,7 @@ brand:
 The website is read once per run. When it can't be reached the run stops with a clear error; set `color` and `logo` yourself to not depend on it.
 
 ### `productPaths`
-Folders (path prefixes) that hold product code. A commit that only touches files outside them can't carry a theme or a summary point; whatever the AI writes about it moves under the hood. Default: empty, meaning every commit counts. Strongly recommended for monorepos.
+Folders (path prefixes) that hold product code. A commit that only touches files outside them can't carry a theme or the headline; whatever the AI writes about it moves under the hood. Default: empty, meaning every commit counts. Strongly recommended for monorepos.
 
 ```yaml
 productPaths: [apps/web/src/, apps/api/app/, packages/ui/]
@@ -216,7 +218,7 @@ At most six. Numbers of zero are left out. `previous` shows under the number. Th
 ### `labels`
 Override any fixed label on the slides. Keys:
 
-`sprintReview`, `period`, `goalLabel`, `valuesLabel`, `valuesTitle`, `valuesTitleNoOrg`, `usageLabel`, `usageTitle`, `previous`, `summaryLabel`, `summaryTitle`, `themeCount`, `screensLabel`, `before`, `after`, `beforeAlt`, `afterAlt`, `onPhone`, `roadmapLabel`, `roadmapTitle`, `roadmapReached`, `hoodLabel`, `hoodTitle`, `questions`, `notesLabel`, `hintBrowse`, `hintFullscreen`, `hintPresenter`, `hintNotes`, `presenter`, `previousSlide`, `nextSlide`, `slideOf`, `noNotes`, `upNext`, `lastSlide`, `phone`, `desktop`, `value_faster`, `value_quality`, `value_less_manual_work`, `value_less_risk`, `value_insight`.
+`sprintReview`, `period`, `goalLabel`, `usageLabel`, `usageTitle`, `previous`, `summaryTitle`, `moreLabel`, `moreTitle`, `screensLabel`, `before`, `after`, `beforeAlt`, `afterAlt`, `onPhone`, `roadmapLabel`, `roadmapReached`, `roadmapNext`, `hoodLabel`, `hoodTitle`, `kind_security`, `kind_reliability`, `kind_speed`, `kind_maintenance`, `questions`, `feedbackTitle`, `notesLabel`, `hintBrowse`, `hintFullscreen`, `hintPresenter`, `hintNotes`, `presenter`, `previousSlide`, `nextSlide`, `slideOf`, `noNotes`, `upNext`, `lastSlide`, `edit`, `editStart`, `copy`, `copied`, `phone`, `desktop`, `value_faster`, `value_quality`, `value_less_manual_work`, `value_less_risk`, `value_insight`.
 
 Placeholders in curly braces are filled in: `{org}`, `{product}`, `{n}`, `{total}`, `{name}`, `{from}`, `{until}`, `{title}`.
 
@@ -224,16 +226,34 @@ Placeholders in curly braces are filled in: `{org}`, `{product}`, `{n}`, `{total
 language: German
 labels:
   sprintReview: Sprint-Review
-  hoodTitle: Unter der Haube
+  hoodTitle: Außerdem geliefert
   before: Vorher
   after: Nachher
 ```
+
+### `deck`
+What goes on the slides and in which order. See [How the deck is designed](design.md) for the rules behind it.
+
+| Key | Default | Description |
+|---|---|---|
+| `density` | by [audience](#audience) | `brief`: two points per theme and two theme slides. `standard`: three and three. `detailed`: four and four. Themes past that share a slide of cards. A slide with more words than the audience reads at a glance (30, 40 or 50) gets a warning in `checks.md`. |
+| `order` | `story` | `story` puts the numbers near the end. `numbers-first` puts them right after the headline, and is the default for `audience: executives`. |
+| `sections` | all on | Turn optional slides off: `headline`, `screens` (before and after), `hood` (also shipped), `roadmap`, `usage`, `questions`. Executives get `hood: false` by default. |
+
+```yaml
+deck:
+  density: brief
+  sections:
+    roadmap: false
+```
+
+A theme's layout (beside its screenshot, a large screenshot, the icon, or a card) is picked per theme from its content. Change it in the editor or with `"layout"` in `review.json`.
 
 ### `limits`
 
 | Key | Default | Description |
 |---|---|---|
-| `themes` | `6` | The most theme slides. |
+| `themes` | `6` | The most themes. The first ones get a slide each (see [`deck.density`](#deck)), the rest share a slide of cards. |
 | `themeScreens` | `4` | The most theme slides with a screenshot. |
 | `changedScreens` | `4` | The most before and after slides. |
 | `commits` | `1000` | The most commits read. Very long sprints are also cut to what the AI can read; `checks.md` names the commits it skipped. |

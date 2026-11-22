@@ -20,6 +20,7 @@ Quick start (Node 20+, inside a git repository):
 - [README](https://github.com/guuskeunen/sprint-review#readme): overview, install, privacy and cost
 - [Getting started](https://github.com/guuskeunen/sprint-review/blob/main/docs/getting-started.md)
 - [Configuration](https://github.com/guuskeunen/sprint-review/blob/main/docs/configuration.md): every option in sprint-review.config.yml
+- [Design](https://github.com/guuskeunen/sprint-review/blob/main/docs/design.md): the slide rules, the story order and the theme layouts
 - [Screenshots](https://github.com/guuskeunen/sprint-review/blob/main/docs/screenshots.md): from visual tests, a folder, or captured from URLs
 - [GitHub Action and CI](https://github.com/guuskeunen/sprint-review/blob/main/docs/github-action.md): schedule, Pages, Slack, GitLab
 - [Editing](https://github.com/guuskeunen/sprint-review/blob/main/docs/editing.md): the editor, review.json, PowerPoint

@@ -10,6 +10,7 @@ const files = [
   'docs/screenshots.md',
   'docs/github-action.md',
   'docs/editing.md',
+  'docs/design.md',
   'docs/integrations.md',
   'docs/models.md',
   'docs/security.md',

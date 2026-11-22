@@ -13,6 +13,37 @@ export const AUDIENCES = {
     'Customers who use the product. They want to know what they can do now that they could not before, and what got easier.',
   team: 'The product team itself. Plain words still, but they know the product well and like a bit more detail.',
 } as const;
+type Audience = keyof typeof AUDIENCES;
+
+/** Other names people use for the same presets. */
+const AUDIENCE_ALIASES: Record<string, Audience> = { marketing: 'business', sales: 'business', support: 'business', management: 'executives', engineers: 'team', developers: 'team' };
+
+/** How much each audience gets on a slide unless deck.density says otherwise. */
+const AUDIENCE_DENSITY: Record<Audience, Density> = { business: 'standard', customers: 'standard', executives: 'brief', team: 'detailed' };
+
+/**
+ * How much goes on the slides. brief: two points per theme, two theme slides; standard: three and
+ * three; detailed: four and four. Themes past the theme slides share one slide of cards. words is
+ * the glance test: a theme slide with more words than this gets a warning, it is never shrunk.
+ */
+export const DENSITY = {
+  brief: { points: 2, themeSlides: 2, words: 30 },
+  standard: { points: 3, themeSlides: 3, words: 40 },
+  detailed: { points: 4, themeSlides: 4, words: 50 },
+} as const;
+export type Density = keyof typeof DENSITY;
+
+/** The slides that can be left out. The cover and the theme slides always show. */
+export const SECTIONS = ['headline', 'screens', 'hood', 'roadmap', 'usage', 'questions'] as const;
+export type Section = (typeof SECTIONS)[number];
+
+export interface DeckConfig {
+  density: Density;
+  /** Which optional slides show. */
+  sections: Record<Section, boolean>;
+  /** story: numbers near the end; numbers-first: right after the headline (the default for executives). */
+  order: 'story' | 'numbers-first';
+}
 
 export interface Area {
   /** A key from the icon set (see `sprint-review icons`). */
@@ -68,6 +99,7 @@ export interface Config {
   limits: { themes: number; themeScreens: number; changedScreens: number; commits: number };
   model: ModelConfig;
   output: { dir: string; markdown: boolean; pptx: boolean };
+  deck: DeckConfig;
   /** Post the summary to Slack after generating. The webhook URL comes from SLACK_WEBHOOK_URL. */
   slack: boolean;
 }
@@ -144,7 +176,8 @@ export function normalize(raw: unknown, root: string): Config {
   const output = obj(r.output ?? {}, 'output');
 
   const audienceRaw = str(r.audience, 'audience') ?? 'business';
-  const audience = audienceRaw in AUDIENCES ? AUDIENCES[audienceRaw as keyof typeof AUDIENCES] : audienceRaw;
+  const preset: Audience | null = audienceRaw in AUDIENCES ? (audienceRaw as Audience) : (AUDIENCE_ALIASES[audienceRaw.toLowerCase()] ?? null);
+  const audience = preset ? AUDIENCES[preset] : audienceRaw;
 
   const color = str(brand.color, 'brand.color');
   if (color !== null && !/^#[0-9a-fA-F]{6}$/.test(color)) throw new ConfigError('brand.color must be a hex color like #ea580c.');
@@ -208,8 +241,31 @@ export function normalize(raw: unknown, root: string): Config {
       markdown: output.markdown === undefined ? true : bool(output.markdown, 'output.markdown'),
       pptx: output.pptx === undefined ? false : bool(output.pptx, 'output.pptx'),
     },
+    deck: deckConfig(r.deck, preset),
     slack: r.slack === undefined ? false : bool(r.slack, 'slack'),
   };
+}
+
+/** The deck settings when there is no config, such as for a review rendered as a library call. */
+export function defaultDeck(): DeckConfig {
+  return deckConfig(undefined, null);
+}
+
+/**
+ * The audience sets the defaults: executives get a brief deck with the numbers early and no slide
+ * about work they can't see, the team a detailed one. Anything in deck overrides them.
+ */
+function deckConfig(value: unknown, audience: Audience | null): DeckConfig {
+  const d = obj(value ?? {}, 'deck');
+  const executives = audience === 'executives';
+  const density = str(d.density, 'deck.density') ?? (audience ? AUDIENCE_DENSITY[audience] : 'standard');
+  if (!(density in DENSITY)) throw new ConfigError(`deck.density must be ${Object.keys(DENSITY).join(', ')}.`);
+  const order = str(d.order, 'deck.order') ?? (executives ? 'numbers-first' : 'story');
+  if (order !== 'story' && order !== 'numbers-first') throw new ConfigError('deck.order must be story or numbers-first.');
+  const given = obj(d.sections ?? {}, 'deck.sections');
+  for (const k of Object.keys(given)) if (!(SECTIONS as readonly string[]).includes(k)) throw new ConfigError(`deck.sections.${k} is not a section: use ${SECTIONS.join(', ')}.`);
+  const sections = Object.fromEntries(SECTIONS.map((k) => [k, given[k] === undefined ? !(executives && k === 'hood') : bool(given[k], `deck.sections.${k}`)])) as Record<Section, boolean>;
+  return { density: density as Density, sections, order };
 }
 
 function screenshots(value: unknown): ScreenshotConfig {

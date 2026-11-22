@@ -203,7 +203,7 @@ Set `ANTHROPIC_API_KEY` as a masked CI/CD variable, and add a pipeline schedule 
 
 ## Posting to Slack
 
-Create an [incoming webhook](https://api.slack.com/messaging/webhooks), store it as a secret, and pass `--slack`. The message has the title, the summary points and one line per theme, plus a button to the deck when you give its URL:
+Create an [incoming webhook](https://api.slack.com/messaging/webhooks), store it as a secret, and pass `--slack`. The message has the title, the sprint headline and one line per theme, plus a button to the deck when you give its URL:
 
 ```yaml
       - uses: guuskeunen/sprint-review@v0

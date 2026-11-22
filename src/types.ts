@@ -48,23 +48,41 @@ export interface Check {
   reason: string;
 }
 
+/** What kind of work a line under the hood is, shown as a label in front of it. */
+export const HOOD_KINDS = ['security', 'reliability', 'speed', 'maintenance'] as const;
+export type HoodKind = (typeof HOOD_KINDS)[number];
+
+export interface HoodItem {
+  text: string;
+  kind: HoodKind;
+}
+
+/** How a theme slide is laid out. auto picks from the content: a screenshot gets split, none gets icon. */
+export const THEME_LAYOUTS = ['auto', 'split', 'full', 'icon', 'card'] as const;
+export type ThemeLayout = (typeof THEME_LAYOUTS)[number];
+
 export interface WrittenTheme {
+  /** The name of the theme as a user would call it: one to three words. Shown above the headline. */
   title: string;
   icon: string;
   /** The label of the screenshot the model chose, or null. */
   screen: string | null;
   device: Device;
   value: string | null;
+  /** The slide's title: one full sentence that says what a user can do or notices now. */
   effect: string | null;
   points: string[];
   notes: string | null;
 }
 
 export interface WrittenReview {
-  summary: { text: string; icon: string }[];
+  /** The sprint in one sentence: the outcome that matters most. */
+  headline: string | null;
   summaryNotes: string | null;
   themes: WrittenTheme[];
-  underTheHood: string[];
+  underTheHood: HoodItem[];
+  /** Two or three open questions for the audience about specific changes. */
+  questions: string[];
   /** What changed per changed screen, by the screen's label. */
   screenCaptions: Record<string, string>;
   checks: Check[];
@@ -81,6 +99,8 @@ export interface ReviewTheme extends Omit<WrittenTheme, 'screen'> {
   screen: StoredPicture | null;
   /** The screen the theme is about, kept so the picture can be switched between devices later. */
   screenKey: string | null;
+  /** Set in the editor or review.json to override the layout the deck picks. */
+  layout?: ThemeLayout;
 }
 
 export interface ReviewScreen {
@@ -101,10 +121,14 @@ export interface Review {
   language: string;
   organization: string;
   product: string;
-  summary: { text: string; icon: string }[];
+  /** The sprint in one sentence, on its own slide after the cover. */
+  headline: string | null;
+  /** Speaker notes for the headline slide. */
   summaryNotes: string | null;
   themes: ReviewTheme[];
-  underTheHood: string[];
+  underTheHood: HoodItem[];
+  /** Asked on the closing slide instead of a bare "Questions". */
+  questions: string[];
   screens: ReviewScreen[];
   milestones: Milestone[];
   usage: UsageMetric[];

@@ -20,7 +20,7 @@ test('the score notices missed themes, plumbing up front and forbidden text', ()
   const review = JSON.parse(readFileSync(new URL('../docs/demo/review.json', import.meta.url), 'utf8')) as Review;
   review.themes[0]!.points.push('Vite is up to date');
   review.underTheHood = [];
-  review.summary.push({ text: 'Every customer gets a free bike', icon: 'other' });
+  review.headline = 'Every customer gets a free bike';
   const s = score(bike!, review);
   assert.ok(s.themes.missed.includes('text when the bike is ready'), 'the demo deck has no text-message theme');
   assert.deepEqual(s.leaked, ['vite upgrade']);
@@ -33,7 +33,7 @@ test('the score notices missed themes, plumbing up front and forbidden text', ()
 test('under the hood counts the effect in plain words, but only tool names count as plumbing up front', () => {
   const [bike] = loadCases(['bike-shop']);
   const review = JSON.parse(readFileSync(new URL('../docs/demo/review.json', import.meta.url), 'utf8')) as Review;
-  review.underTheHood = ['Upgraded core build dependencies.', 'Accelerated automated testing pipeline setup.'];
+  review.underTheHood = [{ text: 'Upgraded core build dependencies.', kind: 'maintenance' }, { text: 'Accelerated automated testing pipeline setup.', kind: 'speed' }];
   review.themes[0]!.points.push('The planning pipeline shows every repair');
   const s = score(bike!, review);
   assert.deepEqual(s.hood.found.sort(), ['playwright cache in CI', 'vite upgrade']);

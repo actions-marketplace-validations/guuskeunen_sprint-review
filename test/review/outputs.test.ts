@@ -9,6 +9,7 @@ import { normalize } from '../../src/config.ts';
 import { renderDeck } from '../../src/deck/render.ts';
 import { readZip } from '../../src/brand/zip.ts';
 import { renderPptx } from '../../src/deck/pptx.ts';
+import { planDeck } from '../../src/deck/plan.ts';
 import { writeOutputs } from '../../src/review/output.ts';
 import { sample } from '../helpers.ts';
 
@@ -17,7 +18,7 @@ test('the review exports to an editable PowerPoint with speaker notes', async ()
   const buf = await renderPptx(review, { color: '#ea580c' });
   const entries = readZip(buf);
   const slides = [...entries.keys()].filter((k) => /^ppt\/slides\/slide\d+\.xml$/.test(k));
-  assert.equal(slides.length, 15);
+  assert.equal(slides.length, planDeck(review).length, 'the same slides as the HTML deck');
   const all = slides.map((k) => entries.get(k)!().toString('utf8')).join('');
   for (const t of review.themes) assert.ok(all.includes(t.title.replace(/&/g, '&amp;')), t.title);
   const notes = [...entries.keys()].filter((k) => /notesSlide\d+\.xml$/.test(k)).map((k) => entries.get(k)!().toString('utf8')).join('');

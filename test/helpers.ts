@@ -91,12 +91,8 @@ export class FakeModel implements ModelClient {
       model: 'fake',
       usage,
       toolInput: {
-        summary: [
-          { text: 'One customer page shows online store, register and workshop history', commits: [h('timeline')], icon: 'users' },
-          { text: 'A photo of a paper ticket fills in the repair', commits: [h('tickets')], icon: 'clipboard-list' },
-          { text: 'The workshop planner shows progress per status', commits: [h('planner')], icon: 'calendar' },
-          { text: 'Bumped Vite to the latest version', commits: [h('vite')], icon: 'other' },
-        ],
+        headline: { text: 'The front desk sees a whole customer on one page', commits: [h('timeline')] },
+        questions: ['Which repairs would you still type in by hand?', 'What is missing on the customer page?', 'Is this amazing!'],
         summary_notes: 'Open with the customer page: it is what the front desk asked for most.',
         themes: [
           {
@@ -159,7 +155,7 @@ export class FakeModel implements ModelClient {
           },
           { title: 'A theme without points', icon: 'other', screen: 'none', value: 'insight', effect: 'x', points: [{ text: 'Invented', commits: ['0000000'] }], notes: '' },
         ],
-        under_the_hood: [{ text: 'Vite is up to date', commits: [h('vite')] }],
+        under_the_hood: [{ text: 'Vite is up to date', commits: [h('vite')], kind: 'maintenance' }],
         screen_changes: [
           { screen: 'Customer page', text: 'Look at the source label on each line and the bike cards on the right.', commits: [h('timeline')] },
           { screen: 'Workshop planner', text: 'Look at the progress bar and the counts per status.', commits: [h('planner')] },
