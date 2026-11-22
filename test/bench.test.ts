@@ -1,8 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { EchoModel, loadCases, report, runCase, score } from '../bench/bench.ts';
-import type { Review } from '../src/types.ts';
+import { sample } from './helpers.ts';
 
 test('every benchmark case loads and runs through the real pipeline', async () => {
   const cases = loadCases();
@@ -17,7 +16,7 @@ test('every benchmark case loads and runs through the real pipeline', async () =
 
 test('the score notices missed themes, plumbing up front and forbidden text', () => {
   const [bike] = loadCases(['bike-shop']);
-  const review = JSON.parse(readFileSync(new URL('../docs/demo/review.json', import.meta.url), 'utf8')) as Review;
+  const review = sample();
   review.themes[0]!.points.push('Vite is up to date');
   review.underTheHood = [];
   review.headline = 'Every customer gets a free bike';
@@ -32,7 +31,7 @@ test('the score notices missed themes, plumbing up front and forbidden text', ()
 
 test('under the hood counts the effect in plain words, but only tool names count as plumbing up front', () => {
   const [bike] = loadCases(['bike-shop']);
-  const review = JSON.parse(readFileSync(new URL('../docs/demo/review.json', import.meta.url), 'utf8')) as Review;
+  const review = sample();
   review.underTheHood = [{ text: 'Upgraded core build dependencies.', kind: 'maintenance' }, { text: 'Accelerated automated testing pipeline setup.', kind: 'speed' }];
   review.themes[0]!.points.push('The planning pipeline shows every repair');
   const s = score(bike!, review);

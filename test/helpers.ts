@@ -166,5 +166,5 @@ export class FakeModel implements ModelClient {
   }
 }
 
-/** The demo review (docs/demo/review.json): a complete review to render, edit and check. */
+/** A complete review to render, edit and check (test/fixtures/sample-review.json, once the demo deck's content). */
 export const sample = (): Review => JSON.parse(readFileSync(new URL('./fixtures/sample-review.json', import.meta.url), 'utf8')) as Review;
