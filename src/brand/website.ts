@@ -41,7 +41,7 @@ export async function withWebsiteBrand(config: Config, fetchImpl: typeof fetch =
 /**
  * Takes the look of a website: its brand color from the stylesheet (a --brand or --primary
  * variable, or the theme-color), its heading and body fonts from --font-heading/--font-display
- * and --font-sans/--font-body, and its logo (a logo image or SVG on the page, else its largest
+ * and --font-sans/--font-body, and its logo (a logo image or SVG, in the header first, never from a wall of client logos; else its largest
  * icon). Grays, white and black are passed over as brand colors.
  */
 export async function brandFromWebsite(url: string, fetchImpl: typeof fetch = fetch): Promise<Brand> {
@@ -121,13 +121,12 @@ function font(css: string, names: string[]): string | null {
 // ---------------------------------------------------------------- logo
 
 async function logo(html: string, base: string, fetchImpl: typeof fetch): Promise<string | null> {
-  const img = tags(html, 'img').find((t) => /logo/i.test(t));
-  const src = img ? attr(img, 'src') : null;
-  const candidates: string[] = src ? [src] : [];
-  if (!src) {
-    const svg = elements(html, 'svg').find((e) => /logo/i.test(e.open))?.whole;
-    if (svg) return `data:image/svg+xml;base64,${Buffer.from(svg.includes('xmlns=') ? svg : svg.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"')).toString('base64')}`;
-  }
+  // The site's own logo sits in its header; further down, logos are usually clients or partners.
+  const header = elements(html, 'header')[0]?.whole ?? elements(html, 'nav')[0]?.whole ?? '';
+  const own = siteName(base);
+  const found = markedLogo(header, own) ?? markedLogo(html, own);
+  if (found?.svg) return `data:image/svg+xml;base64,${Buffer.from(found.svg.includes('xmlns=') ? found.svg : found.svg.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"')).toString('base64')}`;
+  const candidates: string[] = found?.src ? [found.src] : [];
   const icons = tags(html, 'link')
     .filter((t) => /rel=["']?[^"'>]*icon/i.test(t))
     .map((t) => ({ href: attr(t, 'href'), size: Number(/sizes=["']?(\d+)/i.exec(t)?.[1] ?? 0) + (/apple-touch-icon/i.test(t) ? 1000 : 0) }))
@@ -140,6 +139,31 @@ async function logo(html: string, base: string, fetchImpl: typeof fetch): Promis
     if (uri) return uri;
   }
   return null;
+}
+
+/** The first word of the host: essentium for www.essentium.nl. */
+function siteName(base: string): string | null {
+  const host = new URL(base).hostname.replace(/^www\./, '');
+  return host.split('.')[0]?.toLowerCase() || null;
+}
+
+/**
+ * An image or inline SVG marked as a logo. Three or more logo images from one folder are a wall of
+ * clients or partners and are passed over; among the rest, one that names the site wins.
+ */
+function markedLogo(html: string, own: string | null): { src?: string; svg?: string } | null {
+  const images = tags(html, 'img')
+    .filter((t) => /logo/i.test(t))
+    .map((tag) => ({ tag, src: attr(tag, 'src') }))
+    .filter((i): i is { tag: string; src: string } => !!i.src);
+  const folder = (src: string) => src.replace(/[?#].*$/, '').replace(/[^/]*$/, '');
+  const perFolder = new Map<string, number>();
+  for (const i of images) perFolder.set(folder(i.src), (perFolder.get(folder(i.src)) ?? 0) + 1);
+  const single = images.filter((i) => (perFolder.get(folder(i.src)) ?? 0) < 3);
+  const image = (own ? single.find((i) => i.tag.toLowerCase().includes(own)) : undefined) ?? single[0];
+  if (image) return { src: image.src };
+  const svg = elements(html, 'svg').find((e) => /logo/i.test(e.open))?.whole;
+  return svg ? { svg } : null;
 }
 
 /** A data URI the deck and PowerPoint can both show: PNG, JPEG and SVG as they are, the rest as PNG. */

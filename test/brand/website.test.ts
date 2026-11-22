@@ -95,3 +95,36 @@ test('a hostile site can neither fill memory nor stall the parser', async () => 
   await brandFromWebsite('https://slow.test', slow.impl);
   assert.ok(Date.now() - t < 3000, `parsed in ${Date.now() - t} ms`);
 });
+
+test('the logo in the header wins over a wall of client logos further down', async () => {
+  // As on essentium.nl: the own logo is an inline SVG in the header, the clients are <img> logos.
+  const clients = ['abnamro', 'alliander', 'bam', 'stedin']
+    .map((c) => `<img class="grayscale" src="/assets/logo/merken-waarvoor-wij-werken/${c}.png" alt="logo ${c} zwartwit">`)
+    .join('');
+  const s = site({
+    '/': `<html><body><header class="header"><a href="/"><svg class="text-white logo-svg" viewBox="0 0 182 28"><path d="M0 0h10v10z"/></svg></a></header><main><h2>Merken waarvoor wij werken</h2>${clients}</main></body></html>`,
+    '/assets/logo/merken-waarvoor-wij-werken/abnamro.png': png,
+  });
+  const brand = await brandFromWebsite('https://www.essentium.nl', s.impl);
+  assert.ok(brand.logo?.startsWith('data:image/svg+xml'), `got ${brand.logo?.slice(0, 40)}`);
+  assert.ok(!s.asked.some((u) => u.includes('abnamro')));
+});
+
+test('a wall of client logos is never the logo, even without a header logo', async () => {
+  const clients = ['abnamro', 'bam', 'ns'].map((c) => `<img src="/clients/${c}-logo.png" alt="logo ${c}">`).join('');
+  const s = site({ '/': `<body><main>${clients}</main></body>`, '/clients/abnamro-logo.png': png, '/favicon.ico': ico(png) });
+  const brand = await brandFromWebsite('https://www.example.com', s.impl);
+  assert.ok(!s.asked.some((u) => u.includes('/clients/')), s.asked.join(' '));
+  assert.ok(brand.logo?.startsWith('data:image/png'));
+});
+
+test('among logo images, the one with the site\'s own name wins', async () => {
+  const s = site({
+    '/': '<body><img src="/img/partner-logo.png" alt="Partner logo"><img src="/img/acme-logo.png" alt="Acme"></body>',
+    '/img/partner-logo.png': png,
+    '/img/acme-logo.png': png,
+  });
+  await brandFromWebsite('https://www.acme.com', s.impl);
+  assert.ok(s.asked.some((u) => u.endsWith('/img/acme-logo.png')));
+  assert.ok(!s.asked.some((u) => u.endsWith('/img/partner-logo.png')));
+});
