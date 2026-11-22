@@ -14,6 +14,8 @@ The deck follows rules from presentation research: Apple's keynotes and Human In
 | Evidence over text | Alley, Reynolds | A screenshot takes most of a theme slide. Without one, the icon is shown at hero size. |
 | Screenshots cropped, with no device frame unless the device is the point | Reynolds, documentation style guides | Rounded corners of 10 px and a soft shadow (a hairline border and slight dimming in the dark theme). A phone frame appears only for a theme about the phone. |
 | Before and after: the same crop and size, labeled | Alley | Both pictures share one size and crop. The title says what changed. |
+| One brand color becomes the whole palette, every color measured | Radix, Material, WCAG | Grays and lines take a little of the brand's hue; body text is at least 4.5:1, labels and the accent at least 3:1, in both themes (`src/deck/colors.ts`). |
+| Motion only to show what arrives or changed | NN/g, Tversky et al. | Every animation runs once, in 400 ms or less. The frame around a change appears after the after picture is in. |
 | No logo or chrome on every slide | Reynolds | The logo appears on the cover and the closing slide only. |
 | The same slide type looks the same every time; the deck still has rhythm | Duarte, Pitch, Keynote masters | The title always sits in the same place. A screenshot layout used twice in a row is mirrored the second time. |
 

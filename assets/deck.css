@@ -15,7 +15,11 @@
   }
   * { box-sizing: border-box; margin: 0; }
   html, body { height: 100%; background: var(--surface); color: var(--ink); overflow: hidden; }
-  body { font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
+  /* Type craft: optical sizes where the font has them, kerning, balanced titles, no lone last words
+     in paragraphs, quotes hanging outside the text edge, tighter tracking the larger the text. */
+  body { font-family: var(--font-body); -webkit-font-smoothing: antialiased; font-optical-sizing: auto; font-kerning: normal; }
+  h1, h2 { hanging-punctuation: first; }
+  p, li { text-wrap: pretty; }
 
   .slide {
     position: absolute; inset: 0;
@@ -51,10 +55,10 @@
     --fs-small: clamp(.9rem, min(1.25vw, 2.22vh), 1.9rem);
   }
   h1, h2, h3 { font-family: var(--font-heading); }
-  h1 { font-size: var(--fs-display); line-height: 1.02; letter-spacing: -0.035em; font-weight: 750; text-wrap: balance; }
+  h1 { font-size: var(--fs-display); line-height: 1.02; letter-spacing: -0.03em; font-weight: 750; text-wrap: balance; }
   h2 { font-size: var(--fs-title); line-height: 1.1; letter-spacing: -0.025em; font-weight: 700; text-wrap: balance; max-width: 40ch; }
   h3 { font-size: var(--fs-body); line-height: 1.2; letter-spacing: -0.01em; font-weight: 700; }
-  p, li { font-size: var(--fs-body); line-height: 1.38; color: var(--ink-soft); }
+  p, li { font-size: var(--fs-body); line-height: 1.38; letter-spacing: -0.006em; color: var(--ink-soft); }
   .eyebrow { display: flex; align-items: center; flex-wrap: wrap; gap: .8em; font-size: var(--fs-small); line-height: 1.2; text-transform: uppercase; letter-spacing: .12em; color: var(--accent); font-weight: 650; }
   .muted { color: var(--ink-faint); }
 

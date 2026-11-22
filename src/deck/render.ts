@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { Review } from '../types.ts';
 import { fill, labelsFor, localeOf, type Labels } from './i18n.ts';
-import { readableOn } from './colors.ts';
+import { palette } from './colors.ts';
 import { themeIcon, valueIcon } from './icons.ts';
 import { imageSize } from './images.ts';
 import { change, trendPoints } from './numbers.ts';
@@ -215,13 +215,10 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
 
   const hasNotes = slides.some((x) => x.includes('<aside class="notes">'));
   const theme = options.theme === 'dark' ? 'dark' : 'light';
-  // The brand color as text and icons must read on the theme's background; readableOn shifts it only when it doesn't.
-  const accent = color ? readableOn(color, theme === 'dark' ? '#0a0a0d' : '#ffffff') : null;
-  const brandCss = !color
-    ? ''
-    : theme === 'dark'
-      ? `html[data-theme="dark"] { --accent: ${accent}; --accent-deep: color-mix(in srgb, ${accent} 65%, #000); --accent-soft: color-mix(in srgb, ${accent} 12%, transparent); --accent-glow: color-mix(in srgb, ${accent} 24%, transparent); }`
-      : `:root { --accent: ${accent}; --accent-deep: color-mix(in srgb, ${accent} 70%, #0f172a); --accent-soft: color-mix(in srgb, ${accent} 9%, #fff); }`;
+  // Every color comes from the brand color (or the theme's own accent), measured against the background.
+  const p = palette(color ?? (theme === 'dark' ? '#d6b36a' : '#4f46e5'), theme);
+  const scope = theme === 'dark' ? 'html[data-theme="dark"]' : ':root';
+  const brandCss = `${scope} { --accent: ${p.accent}; --accent-deep: ${p.accentDeep}; --accent-soft: ${p.accentSoft}; --ink: ${p.ink}; --ink-soft: ${p.inkSoft}; --ink-faint: ${p.inkFaint}; --line: ${p.line}; --surface-soft: ${p.surfaceSoft};${theme === 'dark' ? ` --accent-glow: color-mix(in srgb, ${p.accent} 24%, transparent);` : ''} }`;
   const fontCss = [
     options.fonts?.heading ? `--font-heading: ${fontStack(options.fonts.heading)};` : '',
     options.fonts?.body ? `--font-body: ${fontStack(options.fonts.body)};` : '',

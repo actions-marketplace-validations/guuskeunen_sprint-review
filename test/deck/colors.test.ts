@@ -33,3 +33,16 @@ test('German, French and Spanish decks have their own labels, and any other lang
   assert.match(html, /Außerdem geliefert/);
   assert.doesNotMatch(html, /Also shipped/);
 });
+
+test('the palette from any brand color reads: body text 4.5:1, labels and the accent 3:1, in both themes', async () => {
+  const { contrast, palette } = await import('../../src/deck/colors.ts');
+  for (const brand of ['#0e2459', '#ea580c', '#fde047', '#a37b35', '#16a34a', '#ffffff', '#000000']) {
+    for (const [theme, bg] of [['light', '#ffffff'], ['dark', '#0a0a0d']] as const) {
+      const p = palette(brand, theme);
+      assert.ok(contrast(p.ink, bg) >= 12, `${brand} ${theme} ink`);
+      assert.ok(contrast(p.inkSoft, bg) >= 4.5, `${brand} ${theme} body text ${p.inkSoft}`);
+      assert.ok(contrast(p.inkFaint, bg) >= 3, `${brand} ${theme} labels ${p.inkFaint}`);
+      assert.ok(contrast(p.accent, bg) >= 3, `${brand} ${theme} accent`);
+    }
+  }
+});
