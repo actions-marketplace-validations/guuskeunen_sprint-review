@@ -41,7 +41,7 @@ Every file has one obvious home: one folder per area, the entry points at the to
 | `src/brand/` | The brand from a website or a `.pptx` (and the zip reader it needs). |
 | `src/surfaces/` | The other ways in: the local editor, the MCP server, `doctor`, Slack. |
 | `assets/` | Files the code loads at run time: deck CSS, the editor's pages, the config template. |
-| `test/` | Mirrors `src/`: `src/ai/writer.ts` is tested in `test/ai/`. Shared fakes and the demo review are in `test/helpers.ts`; `test/security.test.ts` holds the cross-cutting security checks. |
+| `test/` | Mirrors `src/`: `src/ai/writer.ts` is tested in `test/ai/`. Shared fakes are in `test/helpers.ts`, the sample review in `test/fixtures/sample-review.json`; `test/security.test.ts` holds the cross-cutting security checks. |
 | `bench/` | The quality benchmark: cases, scoring, and results per model. |
 | `scripts/` | Repo tasks: the benchmark runner, the demo and `llms-full.txt` builders. |
 | `docs/` | The user docs and the website. |

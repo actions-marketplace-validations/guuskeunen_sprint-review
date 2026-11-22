@@ -1,0 +1,59 @@
+<!doctype html>
+<!-- Close-ups of the demo app (Spoke, Northside Cycles) for the demo deck. Each [data-shot] element
+     becomes scripts/demo/<name>.png: node scripts/build-demo-screens.ts -->
+<meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 24px; background: #f8f5f0; font: 14px/1.4 -apple-system, "Segoe UI", Inter, sans-serif; color: #1f1d1a; }
+  .card { background: #fff; border: 1px solid #ebe5dc; border-radius: 14px; }
+  .label { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #6f6a63; font-weight: 600; }
+  .muted { color: #8a847b; font-size: 13px; }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: 12px; font-weight: 600; }
+  .green { background: #dcf5e4; color: #17733a; } .amber { background: #fdf0c8; color: #8a5a00; } .blue { background: #dcecfb; color: #1d5fa3; }
+  .icon { width: 40px; height: 40px; border-radius: 10px; background: #fdf3e6; display: grid; place-items: center; font-size: 20px; }
+  section { margin-bottom: 40px; }
+  /* A row of bike cards: a strip much wider than tall. */
+  [data-shot="bike-cards"] { width: 1180px; padding: 18px 20px 20px; box-sizing: border-box; }
+  .bikes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 12px; }
+  .bike { display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; align-items: center; border: 1px solid #ebe5dc; border-radius: 12px; padding: 12px 14px; }
+  .bike b { display: block; font-size: 15px; }
+  /* A scanned repair ticket beside the fields read from it. */
+  [data-shot="ticket-scan"] { width: 900px; padding: 20px; box-sizing: border-box; display: grid; grid-template-columns: 330px 1fr; gap: 22px; }
+  .photo { align-self: start; background: #fffdf6; border: 1px solid #e4dcc8; border-radius: 10px; padding: 18px 20px; transform: rotate(-1.2deg); box-shadow: 0 8px 20px -10px rgb(0 0 0 / .25); font: 19px/1.7 "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive; color: #2b3a67; }
+  .photo .head { font: 600 11px/1 -apple-system, sans-serif; letter-spacing: .1em; color: #a1977f; text-transform: uppercase; margin-bottom: 8px; }
+  .photo .smudge { filter: blur(1.4px); }
+  .fields { display: grid; gap: 10px; align-content: start; }
+  .row { display: grid; grid-template-columns: 110px 1fr auto; gap: 12px; align-items: center; padding: 10px 12px; border: 1px solid #ebe5dc; border-radius: 10px; }
+  .row.flag { border-color: #f3c766; background: #fffaeb; }
+  .actions { display: flex; gap: 10px; margin-top: 6px; }
+  .btn { padding: 8px 14px; border-radius: 8px; font-weight: 600; font-size: 14px; border: 1px solid #ebe5dc; background: #fff; }
+  .btn.primary { background: #ea580c; color: #fff; border-color: #ea580c; }
+</style>
+
+<section class="card" data-shot="bike-cards">
+  <div class="label">Bikes</div>
+  <div class="bikes">
+    <div class="bike"><div class="icon">🚲</div><div><b>City bike</b><span class="muted">7 gears · 57 cm frame</span></div><span class="pill green">Checked Oct</span></div>
+    <div class="bike"><div class="icon">⚡</div><div><b>E-bike</b><span class="muted">Mid-drive motor · 500 Wh</span></div><span class="pill amber">Service in 3 wks</span></div>
+    <div class="bike"><div class="icon">🚵</div><div><b>Gravel bike</b><span class="muted">2×11 · tubeless</span></div><span class="pill blue">Next: Dec 2026</span></div>
+  </div>
+</section>
+
+<section class="card" data-shot="ticket-scan">
+  <div class="photo">
+    <div class="head">Repair ticket · photo</div>
+    Name: Sarah Mitchell<br>
+    Bike: City bike, blue<br>
+    Job: new chain + cassette<br>
+    Phone: <span class="smudge">(503) 555-01??</span><br>
+    Price: $85 · Fri
+  </div>
+  <div class="fields">
+    <div class="label">Read from the photo</div>
+    <div class="row"><span class="muted">Customer</span><b>Sarah Mitchell</b><span class="pill green">Matched</span></div>
+    <div class="row"><span class="muted">Bike</span><b>City bike</b><span class="pill green">Matched</span></div>
+    <div class="row"><span class="muted">Job</span><b>New chain and cassette</b><span></span></div>
+    <div class="row flag"><span class="muted">Phone</span><b>(503) 555-01··</b><span class="pill amber">Hard to read</span></div>
+    <div class="row"><span class="muted">Price</span><b>$85 · ready Friday</b><span></span></div>
+    <div class="actions"><span class="btn primary">Create repair</span><span class="btn">Check the photo</span></div>
+  </div>
+</section>
