@@ -268,7 +268,7 @@ A theme's layout (beside its screenshot, a large screenshot, the icon, or a card
 | `themes` | `6` | The most themes. The first ones get a slide each (see [`deck.density`](#deck)), the rest share a slide of cards. |
 | `themeScreens` | `4` | The most theme slides with a screenshot. |
 | `changedScreens` | `4` | The most before and after slides. |
-| `commits` | `1000` | The most commits read. Very long sprints are also cut to what the AI can read; `checks.md` names the commits it skipped. |
+| `commits` | `3000` | The most commits read, newest first; past it, `checks.md` says the sprint's first days are missing. What the AI reads is fitted to `model.maxInputChars`: a line for every product commit first, then details as far as they fit; `checks.md` counts what was left out. |
 
 ### `model`
 

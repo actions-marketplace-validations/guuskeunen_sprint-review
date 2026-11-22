@@ -121,7 +121,8 @@ export async function generate(config: Config, options: GenerateOptions): Promis
     screens: reviewScreens,
     milestones,
     usage: readUsage(config),
-    checks: written.checks,
+    // git gives the newest first: a sprint past the limit loses its first days, so say so.
+    checks: commits.length >= config.limits.commits ? [{ kind: 'warning', text: `Only the newest ${commits.length} commits were read`, reason: `The sprint has more commits than limits.commits, so its first days are missing. Raise limits.commits, or narrow ignore.` }, ...written.checks] : written.checks,
     ...(said ? { lastTime: said } : {}),
     ...(written.answered.length ? { answered: written.answered.map((a) => ({ ask: requests[a.item]!, did: a.text })) } : {}),
   };
