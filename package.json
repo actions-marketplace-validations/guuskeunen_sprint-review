@@ -29,7 +29,7 @@
     "action.yml",
     "README.md",
     "LICENSE",
-    "skills",
+    "plugin/skills",
     "examples"
   ],
   "engines": {

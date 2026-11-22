@@ -86,14 +86,14 @@ The deck tells the sprint as a story: a cover with your logo and color, the spri
 
 ## Real decks from real repositories
 
-The same two weeks (November 9 to 22, 2026) of four well-known open-source projects, written by Claude Sonnet and not edited by hand:
+A slide from the Excalidraw review, with a screenshot sprint-review took of the live app. The same two weeks (November 9 to 22, 2026) of four well-known open-source projects, not edited by hand:
 
-| Project | Commits | Deck | Cost |
-|---|---|---|---|
-| VS Code | 1,298 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/vscode/) | $0.21 |
-| Next.js | 252 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/nextjs/) | $0.28 |
-| Supabase | 355 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/supabase/) | $0.22 |
-| Excalidraw | 16 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/excalidraw/) | $0.12 |
+| Project | Commits | Deck | Written by | Cost |
+|---|---|---|---|---|
+| VS Code | 1,298 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/vscode/) | Claude Sonnet 5.5 | $0.21 |
+| Next.js | 252 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/nextjs/) | Claude Sonnet 5.5 | $0.28 |
+| Supabase | 355 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/supabase/) | Claude Sonnet 5.5 | $0.22 |
+| Excalidraw | 16 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/excalidraw/) (with a screenshot) | Gemini 3.6 Flash | $0.02 |
 
 Made from each project's public git history and pull requests, as examples; not affiliated with or endorsed by these projects. How they were made and what they found: [the benchmark](docs/benchmark.md#real-repositories).
 
@@ -1339,18 +1339,20 @@ claude mcp add sprint-review -- npx -y @guuskeunen/sprint-review mcp
 
 Then ask: *"Make our sprint review for the last two weeks"*, or *"What would the sprint review read for v1.4.0 to v1.5.0?"*.
 
-| Tool | Does |
-|---|---|
-| `check_sprint_review_setup` | Runs the same checks as `doctor`. |
-| `preview_sprint_commits` | Lists the commits for a range, without a model call. |
-| `generate_sprint_review` | Writes the deck and returns the paths, the themes and every check. |
-| `render_sprint_review` | Rebuilds the deck from an edited `review.json`. |
+| Tool | Does | Changes files |
+|---|---|---|
+| `check_sprint_review_setup` | Runs the same checks as `doctor`. | No |
+| `preview_sprint_commits` | Lists the commits for a range, without a model call. | No |
+| `generate_sprint_review` | Writes the deck and returns the paths, the themes, every check and the cost. Replaces an earlier deck in the same folder. | Yes |
+| `render_sprint_review` | Rebuilds the deck from an edited `review.json`. | Yes, the deck only |
 
-Every tool takes `directory` (the project folder; default where the server started) and the range arguments `since`, `until`, `from` and `to`.
+Every tool takes `directory` (the project folder; default where the server started). `preview_sprint_commits` and `generate_sprint_review` also take the range arguments `since`, `until`, `from` and `to`. Each tool tells the client whether it only reads, changes files or calls outside services (MCP tool annotations), so clients can ask before the ones that do.
 
 ## The Claude Code skill on its own
 
-[`skills/sprint-review/SKILL.md`](../skills/sprint-review/SKILL.md) teaches Claude Code the workflow: check, preview, generate, report the checks, edit. The plugin includes it; without the plugin, copy the folder into your project's `.claude/skills/` (or `~/.claude/skills/` for all projects).
+[`plugin/skills/sprint-review/SKILL.md`](../plugin/skills/sprint-review/SKILL.md) teaches Claude Code the workflow: check, preview, generate, report the checks, edit. The plugin includes it; without the plugin, copy the folder into your project's `.claude/skills/` (or `~/.claude/skills/` for all projects).
+
+[`plugin/`](../plugin/) is the same skill as a plugin of its own, without the MCP server: that is the version for Anthropic's plugin directory, which takes plugins with a local MCP server, a `package.json` or scripts only from verified organizations. It uses the `sprint-review` command, so install the tool first. The plugin at the repository root has the skill and the MCP server.
 
 ## Pull request descriptions
 
@@ -1707,6 +1709,8 @@ The sample sprints check the words. Real repositories check everything else: siz
 | Next.js | 252 | 80 | all but 1 without product code | 167 s | 72,838 | $0.28 | 23 |
 | Supabase | 355 | 114 | all | 146 s | 67,659 | $0.22 | 9 |
 | Excalidraw | 16 | 15 | all | 77 s | 25,704 | $0.12 | 11 |
+
+The Excalidraw deck on the site was made again afterwards, with Gemini 3.6 Flash ($0.02, 21 s, 13,856 tokens, 3 checks) and a screenshot: `screenshots.source: capture` photographed excalidraw.com with a drawing loaded through `storageState` (Excalidraw keeps its drawing and settings, such as `minimapEnabled`, in local storage), and the writer put it on the minimap slide.
 
 What the first round found, and what changed:
 
