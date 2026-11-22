@@ -111,7 +111,7 @@ audience: Store managers who use Spoke every day but never see the code.
 Who presents. The speaker notes are written for them. Default: a technical presenter who knows the product and gives a short demo per theme.
 
 ### `language`
-The language of the slide content, as a name (`English`, `Dutch`, `German`) or a code (`nl`, `de-DE`). The AI writes in any language. The fixed labels ("Also shipped", "Before", "After"…) ship in English, Dutch, German, French and Spanish. Other languages fall back to English labels; override them with [`labels`](#labels). Dates follow the language too: `November 16, 2026` in English, `16 november 2026` in Dutch.
+The language of the slide content, as a name (`English`, `Dutch`, `German`) or a code (`nl`, `de-DE`). The AI writes in any language. The fixed labels ("Also shipped", "Before", "After"…) ship in English, Dutch, German, French and Spanish. Other languages fall back to English labels; override them with [`labels`](#labels). Dates follow the language too: `November 16, 2026` in English, `16 november 2026` in Dutch. Dutch slides address the audience as *je* or *jij*, never *u*, the way Dutch teams speak to each other.
 
 ### `goal`
 The sprint goal. Shown on the cover, and the AI puts the work that served it first. Default none.

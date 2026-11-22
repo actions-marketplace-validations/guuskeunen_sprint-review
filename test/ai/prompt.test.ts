@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fitLog, commitLog } from '../../src/ai/prompt.ts';
+import { fitLog, commitLog, writerSystem } from '../../src/ai/prompt.ts';
+import { normalize } from '../../src/config.ts';
 import { unread } from '../../src/ai/writer.ts';
 import type { Commit } from '../../src/types.ts';
 
@@ -37,4 +38,21 @@ test('what was left out is one line in the check log, not a line per commit', ()
   assert.equal(checks[0]!.text, '3 of 900 commits not read (1 with product code and 2 without)');
   assert.match(checks[0]!.reason, /model\.maxInputChars.*feat: change 1; docs: change 2/);
   assert.deepEqual(unread([], 10), []);
+});
+
+test('Dutch slides address the audience as je or jij, never u', () => {
+  for (const language of ['Dutch', 'nl', 'Nederlands', 'nl-BE']) {
+    const system = writerSystem(normalize({ language }, '/tmp'));
+    assert.match(system, /"je" or "jij"/, language);
+    assert.match(system, /never "u"/, language);
+  }
+  assert.doesNotMatch(writerSystem(normalize({ language: 'English' }, '/tmp')), /"jij"/);
+});
+
+test('the sprint headline asks for one change, short, in what changed for a user', () => {
+  const system = writerSystem(normalize({}, '/tmp'));
+  const rule = system.split('\n\n').find((p) => p.startsWith('The sprint headline'))!;
+  assert.match(rule, /at most 10 words/);
+  assert.match(rule, /never two joined with "and"/);
+  assert.match(rule, /not how it works or where the data comes from/);
 });

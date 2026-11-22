@@ -2,13 +2,15 @@ import { randomBytes } from 'node:crypto';
 import { DENSITY, type Config } from '../config.ts';
 import { HOOD_KINDS, type Commit, type WrittenReview } from '../types.ts';
 import { iconKeys, iconList, VALUE_KEYS } from '../deck/icons.ts';
-import { labelsFor } from '../deck/i18n.ts';
+import { labelsFor, localeOf } from '../deck/i18n.ts';
 import { humanize } from '../screens/screenshots.ts';
 
 /** Words per point the prompt asks for; the check allows a little more (see writer.ts). */
 export const POINT_WORDS = 12;
 /** Words per slide title (a theme's headline, the sprint headline, a before and after caption). */
 export const HEADLINE_WORDS = 12;
+/** Words in the sprint headline: one change, said the way you'd tell a colleague. */
+export const SPRINT_HEADLINE_WORDS = 10;
 const COUNTS = ['', 'one', 'two', 'three', 'four'];
 /** "two or three" for standard: the points per theme the prompt asks for. */
 function pointCount(c: Config): string {
@@ -118,16 +120,23 @@ function areas(c: Config): string {
   return `\n\nThe main areas of the product, with their icon: ${entries.map((a) => `${a.label} (${a.icon})`).join(', ')}. Prefer the icon of the area a theme is about.`;
 }
 
+/** How to address the audience, where a language has a polite and a plain form and teams use the plain one. */
+function register(language: string): string {
+  const locale = localeOf(language).split('-')[0];
+  if (locale === 'nl') return ' Address the audience as "je" or "jij" (and "jouw"), never "u" or "uw", the way Dutch teams speak to each other.';
+  return '';
+}
+
 export function writerSystem(c: Config): string {
   const replace = Object.entries(c.replace);
   return [
     `You write the content of the sprint review presentation for ${c.product.name}. You get the commits of the sprint.`,
     context(c),
-    `Write every text in ${c.language}.`,
+    `Write every text in ${c.language}.${register(c.language)}`,
     `Group the changes into themes the way a user of the product experiences them. For each theme, pick the icon that fits best, a different one per theme, the most precise one. If none fits, pick other. The icons, with what they suit: ${iconList()}.${areas(c)}`,
     `Name each theme the way a user would call it: the screen, task or part of ${c.product.name} it is about, in one to three words, never the name of a module, service, file or technique ("Customer page", not "API structure"; "Repair tickets", not "OCR"). One topic per theme: two topics joined with "&" are two themes.`,
     `Each theme slide has one message, and its title says it: one full sentence of at most ${HEADLINE_WORDS} words with what a user can do, see or no longer has to do now, so that someone outside the team gets it in three seconds. A statement with a subject, never a command or a label: "The front desk reads repair tickets from a photo", not "Read repair tickets from a photo" and not "Ticket reading". Then ${pointCount(c)} short points that back it up, without repeating the title. Go through every commit without [no product code]: whatever a user can do now belongs in a theme.`,
-    `The sprint headline is one sentence of at most ${HEADLINE_WORDS} words with the outcome that matters most to a user this sprint. One outcome, a statement with a subject: "The front desk sees a whole customer on one page", not "Customer page, ticket scanning and planner updates". It is not a list of the themes.`,
+    `The sprint headline is the one change that matters most to a user this sprint, said the way you would tell a colleague in the hallway: one short sentence with a subject, at most ${SPRINT_HEADLINE_WORDS} words, in plain words. Say what changed for the user, not how it works or where the data comes from. One change, never two joined with "and", and never a list of the themes: "The front desk sees a whole customer on one page", not "Customer page, ticket scanning and planner updates", and not "Photo uploads now give the front desk repair tickets and customer matches".`,
     c.goal ? `The sprint goal was: ${c.goal}. Where the work served it, put that first.` : '',
     `What a theme is:
 - Something a user sees or notices in the product. A new feature goes before a fix, even if its commit message is short.
@@ -271,8 +280,8 @@ export function writerTool(c: Config, changedScreens: string[], availableScreens
       properties: {
         headline: {
           ...point,
-          description: `The sprint in one sentence with a subject: the one outcome that matters most to a user. At most ${HEADLINE_WORDS} words, never a list of the themes.`,
-          properties: { ...point.properties, text: { type: 'string', description: `At most ${HEADLINE_WORDS} words.` } },
+          description: `The sprint in one short sentence with a subject: the one change that matters most to a user, in plain words. At most ${SPRINT_HEADLINE_WORDS} words, one change, never a list of the themes.`,
+          properties: { ...point.properties, text: { type: 'string', description: `At most ${SPRINT_HEADLINE_WORDS} words.` } },
         },
         themes: {
           type: 'array',
