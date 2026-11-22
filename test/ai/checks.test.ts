@@ -89,10 +89,12 @@ test('trailers are removed from commit bodies', () => {
 });
 
 test('screenshot file names give a key and a device', () => {
-  assert.deepEqual(parseFile('e2e/x/customer-page-desktop.png'), { key: 'customer-page', device: 'desktop' });
-  assert.deepEqual(parseFile('repairs-phone.png'), { key: 'repairs', device: 'phone' });
-  assert.deepEqual(parseFile('dashboard-mobile-chromium-linux.png'), { key: 'dashboard', device: 'phone' });
-  assert.deepEqual(parseFile('settings.png'), { key: 'settings', device: 'desktop' });
+  assert.deepEqual(parseFile('e2e/x/customer-page-desktop.png'), { key: 'customer-page', device: 'desktop', dark: false });
+  assert.deepEqual(parseFile('repairs-phone.png'), { key: 'repairs', device: 'phone', dark: false });
+  assert.deepEqual(parseFile('dashboard-mobile-chromium-linux.png'), { key: 'dashboard', device: 'phone', dark: false });
+  assert.deepEqual(parseFile('settings.png'), { key: 'settings', device: 'desktop', dark: false });
+  assert.deepEqual(parseFile('planner-desktop-dark.png'), { key: 'planner', device: 'desktop', dark: true });
+  assert.deepEqual(parseFile('planner-dark-phone.png'), { key: 'planner', device: 'phone', dark: true });
   assert.equal(parseFile('notes.txt'), null);
 });
 

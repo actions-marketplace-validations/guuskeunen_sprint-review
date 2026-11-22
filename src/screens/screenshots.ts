@@ -24,20 +24,29 @@ export interface Screens {
   name(key: string): string;
 }
 
-/** `customer-page-desktop.png`, `customer-page-phone.png`, and Playwright's `-chromium-linux` suffix. */
-export function parseFile(file: string): { key: string; device: Device } | null {
+/**
+ * `customer-page-desktop.png`, `customer-page-phone.png`, Playwright's `-chromium-linux` suffix,
+ * and `-dark` for the same screen in the app's dark mode (`customer-page-desktop-dark.png`).
+ */
+export function parseFile(file: string): { key: string; device: Device; dark: boolean } | null {
   if (!file.toLowerCase().endsWith('.png')) return null;
   let stem = basename(file, '.png').replace(/-(chromium|firefox|webkit|chrome|msedge)(-(linux|darwin|win32))?$/i, '');
+  const dark = /-dark$/i.test(stem) || /-dark-(desktop|phone|mobile)$/i.test(stem);
+  stem = stem.replace(/-dark$/i, '').replace(/-dark(-(desktop|phone|mobile))$/i, '$1');
   let device: Device = 'desktop';
   const m = /-(desktop|phone|mobile)$/i.exec(stem);
   if (m) {
     device = m[1]!.toLowerCase() === 'desktop' ? 'desktop' : 'phone';
     stem = stem.slice(0, m.index);
   }
-  return stem ? { key: stem, device } : null;
+  return stem ? { key: stem, device, dark } : null;
 }
 
-export function screens(config: ScreenshotConfig, root: string, history: History, range: Range, labels: ScreenLabels): Screens {
+/** A picture's id in the maps below: `key|device`, with `|dark` for its dark-mode version. */
+const idOf = (p: { key: string; device: Device; dark: boolean }) => `${p.key}|${p.device}${p.dark ? '|dark' : ''}`;
+
+/** scheme dark: use the dark-mode pictures where both ends have one, so a comparison never mixes the two. */
+export function screens(config: ScreenshotConfig, root: string, history: History, range: Range, labels: ScreenLabels, scheme: 'light' | 'dark' = 'light'): Screens {
   if (config.source === 'none') {
     return { changed: async () => [], available: () => new Map(), picture: () => null, name: (k) => humanize(k) };
   }
@@ -63,7 +72,7 @@ export function screens(config: ScreenshotConfig, root: string, history: History
       if (!rev) return map;
       for (const path of history.listFiles(rev, config.dir)) {
         const p = parseFile(path);
-        if (p) map.set(`${p.key}|${p.device}`, () => history.show(rev, path));
+        if (p) map.set(idOf(p), () => history.show(rev, path));
       }
       return map;
     };
@@ -75,6 +84,10 @@ export function screens(config: ScreenshotConfig, root: string, history: History
       const p = parseFile(path);
       if (!p) continue;
       const id = `${p.key}|${p.device}`;
+      if (p.dark) {
+        if (!changedIds.includes(id)) changedIds.push(id);
+        continue;
+      }
       pathOf.set(id, path);
       if (!changedIds.includes(id)) changedIds.push(id);
     }
@@ -88,7 +101,7 @@ export function screens(config: ScreenshotConfig, root: string, history: History
     const afterDay = [...days].reverse().find((d) => d <= until && d !== beforeDay) ?? null;
     startPics = beforeDay ? folderPics(join(base, beforeDay)) : new Map();
     endPics = afterDay ? folderPics(join(base, afterDay)) : new Map();
-    changedIds = [...endPics.keys()].filter((id) => startPics.has(id));
+    changedIds = lightIds(endPics).filter((id) => startPics.has(id) || startPics.has(`${id}|dark`));
   } else {
     const folder = (dir: string) => {
       const abs = resolve(root, dir);
@@ -96,14 +109,20 @@ export function screens(config: ScreenshotConfig, root: string, history: History
       if (!existsSync(abs)) return map;
       for (const file of readdirSync(abs)) {
         const p = parseFile(file);
-        if (p) map.set(`${p.key}|${p.device}`, () => readFileSync(join(abs, file)));
+        if (p) map.set(idOf(p), () => readFileSync(join(abs, file)));
       }
       return map;
     };
     startPics = folder(config.before);
     endPics = folder(config.after);
-    changedIds = [...endPics.keys()].filter((id) => startPics.has(id));
+    changedIds = lightIds(endPics).filter((id) => startPics.has(id) || startPics.has(`${id}|dark`));
   }
+
+  // Dark mode: a dark pair where both ends have one, else the light pair; a single picture prefers dark.
+  const darkPair = (id: string) => scheme === 'dark' && startPics.has(`${id}|dark`) && endPics.has(`${id}|dark`);
+  const startOf = (id: string) => startPics.get(darkPair(id) ? `${id}|dark` : id);
+  const endOf = (id: string) => endPics.get(darkPair(id) ? `${id}|dark` : id);
+  const pictureOf = (id: string) => (scheme === 'dark' && endPics.has(`${id}|dark`) ? endPics.get(`${id}|dark`) : endPics.get(id));
 
   const byScreenOrder = (ids: string[]) =>
     [...ids].sort((x, y) => {
@@ -120,8 +139,8 @@ export function screens(config: ScreenshotConfig, root: string, history: History
         const [key = '', dev = 'desktop'] = id.split('|');
         const device = dev as Device;
         // A picture without an earlier version may be a new screen, or a screen that only got its first picture now: no slide.
-        const before = startPics.get(id)?.() ?? firstInRange(id);
-        const after = endPics.get(id)?.();
+        const before = startOf(id)?.() ?? (darkPair(id) ? null : firstInRange(id));
+        const after = endOf(id)?.();
         if (!before || !after || before.equals(after)) continue;
         const cmp = await compareScreens(before, after, device, config.ignore);
         if (cmp && !cmp.changed) continue;
@@ -132,7 +151,7 @@ export function screens(config: ScreenshotConfig, root: string, history: History
     },
     available() {
       const map = new Map<string, { key: string; device: Device }>();
-      for (const id of byScreenOrder([...endPics.keys()])) {
+      for (const id of byScreenOrder(lightIds(endPics))) {
         const [key = '', dev = 'desktop'] = id.split('|');
         const device = dev as Device;
         map.set(device === 'phone' ? label(key, device) : `${name(key)} (${labels.desktop})`, { key, device });
@@ -140,7 +159,7 @@ export function screens(config: ScreenshotConfig, root: string, history: History
       return map;
     },
     picture(key, device) {
-      return endPics.get(`${key}|${device}`)?.() ?? null;
+      return pictureOf(`${key}|${device}`)?.() ?? null;
     },
   };
 }
@@ -150,9 +169,14 @@ function folderPics(abs: string): Map<string, () => Buffer | null> {
   if (!existsSync(abs)) return map;
   for (const file of readdirSync(abs)) {
     const p = parseFile(file);
-    if (p) map.set(`${p.key}|${p.device}`, () => readFileSync(join(abs, file)));
+    if (p) map.set(idOf(p), () => readFileSync(join(abs, file)));
   }
   return map;
+}
+
+/** The screens in a map, once each: `key|device`, whether it has a light picture, a dark one or both. */
+function lightIds(map: Map<string, unknown>): string[] {
+  return [...new Set([...map.keys()].map((id) => id.replace(/\|dark$/, '')))];
 }
 
 /** The first and last day of a range; for refs, the dates of the commits at both ends. */

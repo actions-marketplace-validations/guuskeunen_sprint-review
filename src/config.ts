@@ -142,6 +142,8 @@ export interface CaptureConfig {
   wait: number;
   /** Where the pictures are kept, one folder per day. Keep it between runs (commit it or cache it in CI). */
   dir: string;
+  /** Also photograph every page in the app's dark mode, for the dark deck. Only useful when the app follows the system's dark mode. */
+  darkMode: boolean;
 }
 
 const DEFAULT_FILES = ['sprint-review.config.yml', 'sprint-review.config.yaml', 'sprint-review.config.json'];
@@ -304,6 +306,7 @@ function screenshots(value: unknown): ScreenshotConfig {
         storageState: str(s.storageState, 'screenshots.storageState'),
         wait: int(s.wait, 'screenshots.wait', 500, 0, 60000),
         dir: str(s.storage, 'screenshots.storage') ?? '.sprint-review/screenshots',
+        darkMode: s.darkMode === undefined ? false : bool(s.darkMode, 'screenshots.darkMode'),
       },
     };
   }

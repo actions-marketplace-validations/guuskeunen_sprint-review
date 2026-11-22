@@ -47,15 +47,16 @@ export async function capture(config: CaptureConfig, root: string, day = new Dat
   }
   const written: string[] = [];
   try {
-    for (const device of config.devices) {
-      const context = await browser.newContext({ ...VIEWPORTS[device], ...(config.storageState ? { storageState: resolve(root, config.storageState) } : {}) });
+    const schemes = config.darkMode ? (['light', 'dark'] as const) : (['light'] as const);
+    for (const device of config.devices) for (const scheme of schemes) {
+      const context = await browser.newContext({ ...VIEWPORTS[device], colorScheme: scheme, ...(config.storageState ? { storageState: resolve(root, config.storageState) } : {}) });
       const page = await context.newPage();
       for (const [key, url] of Object.entries(config.pages)) {
         const target = config.baseUrl ? new URL(url, config.baseUrl).toString() : url;
-        onStep(`Photographing ${key} on ${device}`);
+        onStep(`Photographing ${key} on ${device}${scheme === 'dark' ? ', dark mode' : ''}`);
         await page.goto(target, { waitUntil: 'networkidle', timeout: 60_000 });
         if (config.wait) await page.waitForTimeout(config.wait);
-        const file = join(out, `${key}-${device}.png`);
+        const file = join(out, `${key}-${device}${scheme === 'dark' ? '-dark' : ''}.png`);
         await page.screenshot({ path: file, fullPage: true, animations: 'disabled', mask: config.mask.map((m) => page.locator(m)), maskColor: '#1f2937' });
         written.push(file);
       }

@@ -76,7 +76,7 @@ export async function generate(config: Config, options: GenerateOptions): Promis
   }
 
   const t = labelsFor(config.language, config.labels);
-  const shots = openScreens(config.screenshots, config.root, history, range, { phone: t.phone, desktop: t.desktop });
+  const shots = openScreens(config.screenshots, config.root, history, range, { phone: t.phone, desktop: t.desktop }, config.brand.theme);
   if (config.screenshots.source !== 'none') step('Comparing screenshots');
   const changed = await shots.changed();
   const available = shots.available();

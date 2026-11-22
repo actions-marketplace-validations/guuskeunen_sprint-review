@@ -107,6 +107,15 @@ The screen key turns into a readable name ("customer-page" → "Customer page") 
 
 Phone pictures are shown upright, in a phone frame.
 
+## Dark mode
+
+With `brand.theme: dark`, a light screenshot glares on the black slides. If your app has a dark mode, give the deck dark pictures too:
+
+- **Capture:** set `screenshots.darkMode: true` and every page is also photographed in the app's dark mode (Playwright's `colorScheme: dark`). It only works when the app follows the system setting.
+- **Git or folders:** add the dark picture next to the light one with `-dark` in the name: `planner-desktop-dark.png`.
+
+The dark deck uses a dark pair when both the before and the after picture have one, and the light pair otherwise, so a comparison never mixes the two (that would count every screen as changed). A light picture on the dark deck is dimmed a little.
+
 ## Tips
 
 - **Use made-up data in your test fixtures.** Then the pictures are safe to show anywhere.
