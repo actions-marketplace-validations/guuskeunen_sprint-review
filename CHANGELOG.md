@@ -2,6 +2,32 @@
 
 All notable changes are listed here, written per release from the commit messages ([Conventional Commits](https://www.conventionalcommits.org)). Versions follow [Semantic Versioning](https://semver.org).
 
+## [0.3.0](https://github.com/guuskeunen/sprint-review/compare/sprint-review-v0.2.2...sprint-review-v0.3.0) (2026-11-22)
+
+
+### Added
+
+* **config:** the audience sets the deck's density; aliases for the presets ([4a913cf](https://github.com/guuskeunen/sprint-review/commit/4a913cf6f09afad3bae6255ab609b2fc67b00205))
+* **deck:** a deck that tells the sprint as a story, by presentation rules ([d420951](https://github.com/guuskeunen/sprint-review/commit/d420951e5538fed82dac0aa81caa8d5c50694b62))
+* **deck:** a deck that tells the sprint as a story, by presentation rules ([56c2dc9](https://github.com/guuskeunen/sprint-review/commit/56c2dc9d2059ba2244c9c94ed403763b89aa051d))
+* **deck:** frame what changed on the after picture; a motion budget ([d232c3b](https://github.com/guuskeunen/sprint-review/commit/d232c3b0ea9bf11ddc4b043485e43928786151c3))
+* **deck:** frame what changed, dark screenshots, trends, palette, last sprint, Now/Next roadmap ([94c4e1a](https://github.com/guuskeunen/sprint-review/commit/94c4e1afd36cb4372df9e34f401daa1e1172f8f1))
+* **deck:** last sprint we said; short video clips per screen ([fa0aacf](https://github.com/guuskeunen/sprint-review/commit/fa0aacf5137569c8e1dc7c2a332d6a64bd224533))
+* **deck:** numbers show their change and a trend line ([9c2d5df](https://github.com/guuskeunen/sprint-review/commit/9c2d5df0289076d7f9dda9186ce235922c1bccb4))
+* **deck:** the whole palette from the brand color, measured; type details ([129d363](https://github.com/guuskeunen/sprint-review/commit/129d363731eae28ac5b6dfbf23b8ad0f37a7f762))
+* **roadmap:** read Now and Next roadmaps, in the audience's words ([94e98e0](https://github.com/guuskeunen/sprint-review/commit/94e98e017b8ba7fb97e6a039a966768e64b0e6b9))
+* **screens:** dark-mode screenshots for the dark deck ([1916260](https://github.com/guuskeunen/sprint-review/commit/191626027b0017d16219f5005cab0f184cf61f92))
+
+
+### Fixed
+
+* **deck:** a list-like headline gets a warning; roadmap columns use the width ([3b40011](https://github.com/guuskeunen/sprint-review/commit/3b4001144cfb7bc25999516673c479ea34e9d22f))
+
+
+### Docs
+
+* how the deck is designed, the deck options, demo and benchmark ([7bd5811](https://github.com/guuskeunen/sprint-review/commit/7bd5811574389dbfb88daf62a72de27cc1fc4552))
+
 ## [0.2.2](https://github.com/guuskeunen/sprint-review/compare/sprint-review-v0.2.1...sprint-review-v0.2.2) (2026-11-21)
 
 
