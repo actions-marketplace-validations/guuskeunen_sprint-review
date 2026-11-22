@@ -72,12 +72,6 @@ Keep them focused, explain the why in the description, and make sure `npm test`,
 
 GitHub deletes a branch when its pull request is merged. Delete your local copy too (`git branch -D <name>` after checking the PR is merged, since squash merges don't look merged to `git branch -d`), so only branches with open work are left.
 
-## Releasing (maintainers)
-
-1. Update `CHANGELOG.md` and the version in `package.json`.
-2. `npm publish`.
-3. Tag `vX.Y.Z`, move the `v0` tag to it, and publish a GitHub release (tick *Publish this Action to the GitHub Marketplace*).
-
 ## Releases
 
-Releases are automatic. Commit messages follow [Conventional Commits](https://www.conventionalcommits.org) (`feat:`, `fix:`, `docs:`…). On every push to `main`, release-please updates a release pull request with the next version and the changelog. Merging it tags the release, publishes to npm with provenance, and moves the `v0` tag. Changing the prompts? Run `npm run bench` before and after, and put both numbers in the pull request.
+Releases are automatic. Commit messages follow [Conventional Commits](https://www.conventionalcommits.org) (`feat:`, `fix:`, `docs:`…). On every push to `main`, release-please updates a release pull request with the next version and the changelog. Merging it tags the release, publishes to npm with provenance, attaches the MCP bundle (`sprint-review.mcpb`, from `node scripts/build-mcpb.ts`) to the GitHub release, publishes `server.json` to the [MCP registry](https://registry.modelcontextprotocol.io), and moves the `v0` tag. None of it needs a token: npm and the registry trust the release workflow. The Marketplace listing follows the release by itself. Changing the prompts? Run `npm run bench` before and after, and put both numbers in the pull request.
