@@ -1,5 +1,6 @@
 import { DENSITY, defaultDeck, type DeckConfig } from '../config.ts';
 import type { Milestone, Review, ReviewTheme } from '../types.ts';
+import { imageSize } from './images.ts';
 
 /** How a theme slide is drawn: beside a screenshot, a large screenshot, a phone, or the icon. */
 export type ThemeSlideLayout = 'split' | 'full' | 'phone' | 'icon';
@@ -19,6 +20,8 @@ export type PlannedSlide =
 
 /** Numbers on one slide: one big number per idea, four at most. */
 export const MAX_NUMBERS = 4;
+/** A picture this much wider than tall (a strip of cards, a toolbar) is lost beside the points: it gets the slide's width. */
+const WIDE = 2.4;
 /** Milestones on the roadmap: the last ones reached and the next ones, so the line stays readable. */
 const MAX_MILESTONES = 6;
 
@@ -81,7 +84,20 @@ function themeLayout(th: ReviewTheme): ThemeSlideLayout {
   if (th.screen.device === 'phone') return 'phone';
   if (th.layout === 'full') return 'full';
   if (th.layout === 'icon') return 'icon';
-  return 'split';
+  if (th.layout === 'split') return 'split';
+  return isWide(th.screen.image) ? 'full' : 'split';
+}
+
+/** A strip: a picture much wider than tall, such as a row of cards. */
+export function isWide(image: string): boolean {
+  const size = imageSize(image);
+  return size !== null && size.w / size.h >= WIDE;
+}
+
+/** The picture on the cover: the first desktop screenshot shaped like a screen, so a strip never floats there. */
+export function coverPicture(review: Review): string | null {
+  const shots = [...review.themes.flatMap((th) => (th.screen?.device === 'desktop' ? [th.screen.image] : [])), ...review.screens.filter((x) => x.device === 'desktop').map((x) => x.after)];
+  return shots.find((image) => !isWide(image)) ?? null;
 }
 
 /** Up to six milestones around where the team is: the last three reached and what comes next. */

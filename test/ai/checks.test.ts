@@ -155,3 +155,12 @@ test('you asked, we did: the request must exist and a product commit must back w
   assert.deepEqual(w.answered, [{ item: 0, text: 'Leads now show a direct phone number' }]);
   assert.equal(w.checks.filter((c) => c.kind === 'dropped').length, 3);
 });
+
+test('the writer is told which pictures are close-ups, and that no picture beats a wrong one', async () => {
+  const { writerTool } = await import('../../src/ai/prompt.ts');
+  const { normalize } = await import('../../src/config.ts');
+  const c = normalize({ screenshots: { source: 'capture', pages: { companies: '/companies', contacts: { url: '/c/1', selector: 'section' } }, names: { contacts: 'Company contacts' } } }, '/tmp');
+  const text = JSON.stringify(writerTool(c, [], ['Companies (desktop)', 'Company contacts (desktop)']));
+  assert.match(text, /prefer them when they fit: Company contacts \(desktop\)\./);
+  assert.match(text, /worse than none/);
+});

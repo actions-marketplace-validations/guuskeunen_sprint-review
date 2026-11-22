@@ -58,6 +58,7 @@ ${bold('Options for generate')}
   --slack           Post the summary to SLACK_WEBHOOK_URL
   --deck-url <url>  Link to the published deck, for the Slack message
   --dry-run         Show what would be sent to the AI, without calling it
+  --no-edit         Don't open the editor afterwards (it never opens in CI or without a terminal)
   -c, --config      Path to the config file
   -q, --quiet       Only print the paths of what was written
   --json            Print the result as JSON
@@ -87,6 +88,7 @@ async function main(argv: string[]): Promise<number> {
       port: { type: 'string' },
       config: { type: 'string', short: 'c' },
       'dry-run': { type: 'boolean' },
+      'no-edit': { type: 'boolean' },
       quiet: { type: 'boolean', short: 'q' },
       json: { type: 'boolean' },
       force: { type: 'boolean' },
@@ -123,7 +125,7 @@ async function main(argv: string[]): Promise<number> {
   }
 }
 
-type Flags = { since?: string; until?: string; from?: string; to?: string; out?: string; config?: string; 'dry-run'?: boolean; quiet?: boolean; json?: boolean; pptx?: boolean; slack?: boolean; 'deck-url'?: string };
+type Flags = { 'no-edit'?: boolean; since?: string; until?: string; from?: string; to?: string; out?: string; config?: string; 'dry-run'?: boolean; quiet?: boolean; json?: boolean; pptx?: boolean; slack?: boolean; 'deck-url'?: string };
 
 async function run(flags: Flags): Promise<number> {
   const config = await withWebsiteBrand(configOrDefaults(flags.config));
@@ -175,6 +177,11 @@ async function run(flags: Flags): Promise<number> {
   if (files.pptx) out(`  ${bold('PowerPoint')} ${rel(files.pptx)}`);
   if (slack) out(`  ${bold('Slack')}    ${slack === 'posted' ? green('posted') : yellow(slack)}`);
   out(`  ${bold('Cost')}     ${costLine(result, ledger)} ${dim(rel(ledger.file))}`);
+  // In a terminal the review opens in the editor: click a text to change it, saving rebuilds the deck.
+  if (process.stdout.isTTY && !process.env.CI && !flags['no-edit']) {
+    out('');
+    return edit(files.review, flags.config, undefined);
+  }
   out(`\n  ${dim('Change anything:')} sprint-review edit ${rel(files.review!)}`);
   out('');
   return 0;

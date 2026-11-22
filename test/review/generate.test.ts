@@ -55,7 +55,7 @@ test('generates a full review from a real git history', async () => {
   assert.match(html, /--accent: #ea580c/);
   assert.match(html, /data-ref="headline"[\s\S]*The front desk sees a whole customer on one page/);
   assert.doesNotMatch(html, /<script src=|<link rel="stylesheet"|https?:\/\/fonts/);
-  assert.match(markdown, /^# Sprint review November 16, 2026/);
+  assert.match(markdown, /^# Sprint review\n\n_November 3 to November 16, 2026/);
 });
 
 test('a failing second reader leaves the draft with a warning', async () => {
@@ -67,7 +67,8 @@ test('a failing second reader leaves the draft with a warning', async () => {
 test('Dutch labels and a range by git refs', async () => {
   const dir = demoRepo();
   const { review, html } = await generate(demoConfig(dir, { language: 'Dutch' }), { model: new FakeModel(), range: { kind: 'refs', from: 'HEAD~9', to: 'HEAD' } });
-  assert.match(review.title, /^Sprint review 14 november 2026$/);
+  assert.equal(review.title, 'Sprint review', 'the period below it carries the date');
+  assert.match(review.period, /14 november 2026/);
   assert.match(html, /Ook opgeleverd/);
   assert.match(html, /lang="nl"/);
 });

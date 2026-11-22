@@ -2,6 +2,8 @@ import { randomBytes } from 'node:crypto';
 import { DENSITY, type Config } from '../config.ts';
 import { HOOD_KINDS, type Commit, type WrittenReview } from '../types.ts';
 import { iconKeys, iconList, VALUE_KEYS } from '../deck/icons.ts';
+import { labelsFor } from '../deck/i18n.ts';
+import { humanize } from '../screens/screenshots.ts';
 
 /** Words per point the prompt asks for; the check allows a little more (see writer.ts). */
 export const POINT_WORDS = 12;
@@ -157,6 +159,7 @@ export function readerTool() {
 }
 
 export function writerTool(c: Config, changedScreens: string[], availableScreens: string[], roadmapItems = 0, requests = 0) {
+  const closeUps = closeUpScreens(c).filter((s) => availableScreens.includes(s));
   const point = {
     type: 'object',
     properties: {
@@ -245,7 +248,7 @@ export function writerTool(c: Config, changedScreens: string[], availableScreens
               screen: {
                 type: 'string',
                 enum: [NO_SCREEN, ...availableScreens],
-                description: `The screenshot on the slide: the screen where this change is visible. Choose a phone picture only when the theme itself is about working on a phone. Choose ${NO_SCREEN} when no screen fits.`,
+                description: `The screenshot on the slide: only a picture that shows this theme's change itself, so the audience sees what the title says. A picture of something nearby is worse than none: choose ${NO_SCREEN} then, and the slide shows the icon.${closeUps.length ? ` Close-ups of one card or panel read far better on a slide than whole pages; prefer them when they fit: ${closeUps.join(', ')}.` : ''} Choose a phone picture only when the theme itself is about working on a phone.`,
               },
               value: {
                 type: 'string',
@@ -279,4 +282,14 @@ export function writerTool(c: Config, changedScreens: string[], availableScreens
       additionalProperties: false,
     },
   };
+}
+
+/** The captured pictures of one element (a card, a panel), by the name the writer picks them by. */
+function closeUpScreens(c: Config): string[] {
+  const s = c.screenshots;
+  if (s.source !== 'capture') return [];
+  const desktop = labelsFor(c.language, c.labels).desktop;
+  return Object.entries(s.capture.pages)
+    .filter(([, page]) => page.selector)
+    .map(([key]) => `${s.names[key] ?? humanize(key)} (${desktop})`);
 }

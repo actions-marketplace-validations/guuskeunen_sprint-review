@@ -6,7 +6,7 @@ import { palette } from './colors.ts';
 import { themeIcon, valueIcon } from './icons.ts';
 import { imageSize } from './images.ts';
 import { change, trendPoints } from './numbers.ts';
-import { numbers, planDeck } from './plan.ts';
+import { coverPicture, isWide, numbers, planDeck } from './plan.ts';
 import type { DeckConfig } from '../config.ts';
 import { fontFaceCss, type FontFace } from '../brand/fonts.ts';
 type PlannedSlide = ReturnType<typeof planDeck>[number];
@@ -99,12 +99,11 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
     switch (p.kind) {
       case 'cover': {
         // The product on the cover: the sprint's first desktop screenshot, large, bleeding off the edge.
-        const hero = review.themes.find((th) => th.screen?.device === 'desktop')?.screen ?? review.screens.find((x) => x.device === 'desktop');
-        const heroImage = hero ? ('image' in hero ? hero.image : hero.after) : null;
+        const heroImage = coverPicture(review);
         return `<section class="slide cover${heroImage ? ' with-product' : ''}" data-ref="cover">
   ${heroImage ? `<img class="product rise" style="--i: 2" src="${picture(heroImage)}" alt="">` : '<div class="rings" aria-hidden="true"></div>'}
   ${logoImg}
-  <p class="eyebrow rise">${esc(t.sprintReview)}${org ? ` ${esc(org)}` : ''}</p>
+  ${org ? `<p class="eyebrow rise">${esc(org)}</p>` : ''}
   <h1 class="rise"${rise(1)}>${esc(review.title)}</h1>
   <p class="rise"${rise(2)}>${esc(review.period)}</p>
   ${goal ? `<p class="goal rise"${rise(3)}><b>${esc(t.goalLabel)}</b><span>${esc(goal)}</span></p>` : ''}
@@ -150,7 +149,9 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
             : p.layout === 'full'
               ? `${shot}\n    ${points(th.points, 4)}`
               : `${points(th.points, 2)}\n    ${shot}`;
-        return `<section class="slide theme layout-${p.layout}${p.flip ? ' flip' : ''}" data-ref="theme-${p.index}">
+        // A strip (a row of cards) keeps its points right under it instead of at the foot of the slide.
+        const strip = p.layout === 'full' && th.screen && isWide(th.screen.image) ? ' strip' : '';
+        return `<section class="slide theme layout-${p.layout}${p.flip ? ' flip' : ''}${strip}" data-ref="theme-${p.index}">
   ${head(esc(th.title), th.effect ?? th.title, chip)}
   <div class="body">
     ${body}
@@ -286,9 +287,9 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="generator" content="sprint-review">
-<title>${esc(review.title)}</title>
+<title>${esc(review.title)}${org ? ` · ${esc(org)}` : ''}</title>
 <meta name="description" content="${esc(review.period)}${org ? `, ${esc(org)}` : ''}">
-<meta property="og:title" content="${esc(review.title)}">
+<meta property="og:title" content="${esc(review.title)}${org ? ` · ${esc(org)}` : ''}">
 <meta property="og:description" content="${esc(review.period)}">
 <script>document.documentElement.classList.add('js')</script>
 <style>

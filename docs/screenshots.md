@@ -118,7 +118,7 @@ Two ways, pick one:
 
 When a page sends capture to a login page (`/login`, `/signin`, `/auth`), it stops right away rather than photographing the login page ten times.
 
-- **Components make the best slides.** A selector crops the picture to one card or panel, which reads far better on a slide than a whole page (any Playwright selector works: CSS, `text=`, `:has()`, `xpath=`). A selector that finds nothing is skipped and named in the output.
+- **Components make the best slides.** A selector crops the picture to one card or panel, which reads far better on a slide than a whole page, whose text ends up a few pixels tall. The writer prefers them, and they are taken at twice the sharpness (whole pages at normal sharpness, to keep the deck small) (any Playwright selector works: CSS, `text=`, `:has()`, `xpath=`). A selector that finds nothing is skipped and named in the output.
 - **Point it at staging with demo data**, never production. `mask` is a safety net, not a plan.
 - **No Playwright browser download?** Set `SPRINT_REVIEW_CHROME` to a Chrome or Chromium binary.
 

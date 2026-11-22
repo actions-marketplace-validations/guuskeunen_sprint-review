@@ -1,4 +1,4 @@
-# Sprint review November 16, 2026
+# Sprint review
 
 _November 3 to November 16, 2026 · Northside Cycles_
 

@@ -60,6 +60,8 @@ function focusIn(rows: Map<number, [number, number]>, area: { x: number; y: numb
 }
 
 export async function compareScreens(before: Buffer, after: Buffer, device: Device, ignore: { left: number; top: number }): Promise<Comparison | null> {
+  // Taken at another sharpness (1x before, 2x after): compare at the after picture's scale.
+  before = await sameScale(before, after);
   const [a, b] = await Promise.all([decode(before), decode(after)]);
   if (!a || !b) return null;
 
@@ -113,6 +115,19 @@ export async function compareScreens(before: Buffer, after: Buffer, device: Devi
   const shown = cropAfter ? { x, y: focusTop, w: focusWidth, h: Math.min(FOCUS_HEIGHT, b.height - focusTop) } : { x: 0, y: 0, w: b.width, h: b.height };
   const focus = focusIn(rows, shown);
   return { changed: true, before: cropBefore ?? before, after: cropAfter ?? after, ...(focus ? { focus } : {}) };
+}
+
+async function sameScale(before: Buffer, after: Buffer): Promise<Buffer> {
+  try {
+    const [m, n] = await Promise.all([sharp(before).metadata(), sharp(after).metadata()]);
+    if (!m.width || !n.width || m.width === n.width) return before;
+    const ratio = n.width / m.width;
+    // Only a change of sharpness (about 2x or 0.5x), not a picture of another size.
+    if (Math.abs(ratio - 2) > 0.05 && Math.abs(ratio - 0.5) > 0.02) return before;
+    return await sharp(before).resize({ width: n.width }).png().toBuffer();
+  } catch {
+    return before;
+  }
 }
 
 async function decode(png: Buffer): Promise<{ data: Buffer; width: number; height: number } | null> {
