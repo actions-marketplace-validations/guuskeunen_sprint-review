@@ -8,6 +8,7 @@ import { numbers, planDeck } from './plan.ts';
 import type { DeckConfig } from '../config.ts';
 import { readableOn } from './colors.ts';
 import { imageSize } from './images.ts';
+import { change } from './numbers.ts';
 
 export class PptxError extends Error {}
 
@@ -208,7 +209,16 @@ export async function renderPptx(review: Review, options: PptxOptions = {}): Pro
           const x = X + i * (w + 0.4);
           s.addText(nf.format(u.value), { x, y: BODY_Y, w, h: 1.1, fontFace: heading, fontSize: SIZE.display, bold: true, color: pal.accent, margin: 0 });
           s.addText(u.label, { x, y: BODY_Y + 1.2, w, h: 0.6, fontFace: body, fontSize: SIZE.body, color: pal.ink, valign: 'top', margin: 0 });
-          if (u.previous) s.addText(`${t.previous}: ${nf.format(u.previous)}`, { x, y: BODY_Y + 1.85, w, h: 0.4, fontFace: body, fontSize: SIZE.small, color: pal.faint, margin: 0 });
+          const c = change(u, localeOf(review.language));
+          const before = u.previous ?? u.history?.at(-1);
+          if (c && before !== undefined)
+            s.addText(
+              [
+                { text: c.text, options: { bold: true, color: c.good ? '059669' : 'DC2626' } },
+                { text: ` · ${t.previous}: ${nf.format(before)}`, options: { color: pal.faint } },
+              ],
+              { x, y: BODY_Y + 1.85, w, h: 0.4, fontFace: body, fontSize: SIZE.small, margin: 0 },
+            );
         });
         break;
       }

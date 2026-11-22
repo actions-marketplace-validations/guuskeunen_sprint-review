@@ -186,9 +186,18 @@ function readUsage(config: Config): UsageMetric[] {
   const raw = JSON.parse(readFileSync(file, 'utf8')) as unknown;
   if (!Array.isArray(raw)) return [];
   return raw
-    .filter((u): u is { label: string; value: number; previous?: number } => typeof u?.label === 'string' && typeof u?.value === 'number')
+    .filter((u): u is { label: string; value: number; previous?: unknown; history?: unknown; better?: unknown } => typeof u?.label === 'string' && typeof u?.value === 'number')
     .slice(0, 6)
-    .map((u) => ({ label: u.label, value: u.value, ...(typeof u.previous === 'number' ? { previous: u.previous } : {}) }));
+    .map((u) => {
+      const history = Array.isArray(u.history) ? u.history.filter((n): n is number => typeof n === 'number' && Number.isFinite(n)).slice(-11) : [];
+      return {
+        label: u.label,
+        value: u.value,
+        ...(typeof u.previous === 'number' ? { previous: u.previous } : {}),
+        ...(history.length ? { history } : {}),
+        ...(u.better === 'down' ? { better: 'down' as const } : {}),
+      };
+    });
 }
 
 const MIME: Record<string, string> = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.gif': 'image/gif' };

@@ -168,7 +168,13 @@
     {
       "label": "repairs booked",
       "value": 312,
-      "previous": 268
+      "previous": 268,
+      "history": [
+        190,
+        221,
+        240,
+        268
+      ]
     },
     {
       "label": "repair tickets read",
@@ -178,6 +184,12 @@
       "label": "questions to Spoke",
       "value": 27,
       "previous": 19
+    },
+    {
+      "label": "minutes until a bike is ready",
+      "value": 52,
+      "previous": 61,
+      "better": "down"
     }
   ],
   "checks": [

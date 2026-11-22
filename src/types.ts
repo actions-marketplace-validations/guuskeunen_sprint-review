@@ -48,6 +48,10 @@ export interface UsageMetric {
   label: string;
   value: number;
   previous?: number;
+  /** Earlier sprints, oldest first, for the trend line. */
+  history?: number[];
+  /** down when less is better (errors, waiting time): the change is colored the other way. */
+  better?: 'up' | 'down';
 }
 
 export type CheckKind = 'corrected' | 'moved' | 'dropped' | 'warning';

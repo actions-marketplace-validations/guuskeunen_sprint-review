@@ -21,6 +21,7 @@
     --accent-deep: #3730a3;
     --accent-soft: #eef2ff;
     --good: #059669;
+    --bad: #dc2626;
     --font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --font-heading: var(--font-body);
   }
@@ -168,7 +169,13 @@
   .tile-number b { font-size: var(--fs-display); line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 750; letter-spacing: -0.04em; }
   .tile-number p { color: var(--ink); }
   .tile-number small { font-size: var(--fs-small); color: var(--ink-faint); }
-  .tile-number small.up { color: var(--good); }
+  .tile-number small b { font-size: inherit; font-weight: 700; letter-spacing: 0; color: inherit; font-variant-numeric: tabular-nums; }
+  .tile-number small.good b { color: var(--good); }
+  .tile-number small.bad b { color: var(--bad); }
+  /* The trend over the last sprints: a word-sized line (Tufte), this sprint as a dot. */
+  .trend { width: calc(var(--fs-small) * 6); height: calc(var(--fs-small) * 1.5); overflow: visible; }
+  .trend polyline { fill: none; stroke: var(--ink-faint); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .trend circle { fill: var(--accent); }
 
   /* Roadmap: a line through the milestones, done ones filled, the next one marked */
   .timeline { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 2vw; position: relative; padding-top: 5vh; }
@@ -417,7 +424,7 @@ Look and feel: Each source has a fixed color: Tables on a phone scroll sideways<
     <div class="tile-number rise" style="--i: 2">
       <b data-count="312">312</b>
       <p>repairs booked</p>
-      <small class="up">last sprint: 268</small>
+      <small class="good"><b>+16%</b> · last sprint: 268</small><svg class="trend" viewBox="0 0 120 30" aria-hidden="true"><polyline points="3,27 32,21 60,17 89,12 117,3"/><circle cx="117" cy="3" r="3"/></svg>
     </div>
     <div class="tile-number rise" style="--i: 3">
       <b data-count="41">41</b>
@@ -427,7 +434,12 @@ Look and feel: Each source has a fixed color: Tables on a phone scroll sideways<
     <div class="tile-number rise" style="--i: 4">
       <b data-count="27">27</b>
       <p>questions to Spoke</p>
-      <small class="up">last sprint: 19</small>
+      <small class="good"><b>+42%</b> · last sprint: 19</small>
+    </div>
+    <div class="tile-number rise" style="--i: 5">
+      <b data-count="52">52</b>
+      <p>minutes until a bike is ready</p>
+      <small class="good"><b>−15%</b> · last sprint: 61</small>
     </div>
   </div>
 </section>

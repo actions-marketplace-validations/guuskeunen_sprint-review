@@ -5,6 +5,7 @@ import { fill, labelsFor, localeOf, type Labels } from './i18n.ts';
 import { readableOn } from './colors.ts';
 import { themeIcon, valueIcon } from './icons.ts';
 import { imageSize } from './images.ts';
+import { change, trendPoints } from './numbers.ts';
 import { numbers, planDeck } from './plan.ts';
 import type { DeckConfig } from '../config.ts';
 type PlannedSlide = ReturnType<typeof planDeck>[number];
@@ -167,6 +168,15 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
       }
       case 'usage': {
         const tiles = numbers(review);
+        const delta = (u: (typeof tiles)[number]) => {
+          const c = change(u, localeOf(review.language));
+          const before = u.previous ?? u.history?.at(-1);
+          const line = trendPoints(u);
+          const svgLine = line
+            ? `<svg class="trend" viewBox="0 0 120 30" aria-hidden="true"><polyline points="${line.map((p) => `${p.x},${p.y}`).join(' ')}"/><circle cx="${line.at(-1)!.x}" cy="${line.at(-1)!.y}" r="3"/></svg>`
+            : '';
+          return `${c && before !== undefined ? `<small class="${c.good ? 'good' : 'bad'}"><b>${esc(c.text)}</b> · ${esc(t.previous)}: ${nf.format(before)}</small>` : ''}${svgLine}`;
+        };
         return `<section class="slide" data-ref="usage">
   ${head(esc(t.usageLabel), fill(t.usageTitle, { product: review.product }))}
   <div class="tiles${tiles.length === 1 ? ' one' : ''}">${tiles
@@ -175,7 +185,7 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
     <div class="tile-number rise"${rise(i + 2)}>
       <b data-count="${u.value}">${nf.format(u.value)}</b>
       <p>${esc(u.label)}</p>
-      ${u.previous !== undefined && u.previous > 0 ? `<small class="${u.value > u.previous ? 'up' : ''}">${esc(t.previous)}: ${nf.format(u.previous)}</small>` : ''}
+      ${delta(u)}
     </div>`,
     )
     .join('')}
