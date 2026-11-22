@@ -94,12 +94,14 @@ Your company or team name. Shown on the cover ("Sprint review Northside Cycles")
 ### `audience`
 Who watches the review. A preset, or a sentence of your own:
 
-| Preset | Written for |
-|---|---|
-| `business` (default) | Colleagues without a technical background: marketing, sales, support. |
-| `executives` | Management: the few changes that matter most and what they bring. |
-| `customers` | People who use the product: what they can do now. |
-| `team` | The product team: plain words, a bit more detail. |
+| Preset | Also called | Written for | Deck |
+|---|---|---|---|
+| `business` (default) | `marketing`, `sales`, `support` | Colleagues without a technical background. | standard |
+| `executives` | `management` | Management: the few changes that matter most and what they bring. | brief, numbers first, no *Also shipped* |
+| `customers` | | People who use the product: what they can do now. | standard |
+| `team` | `engineers`, `developers` | The product team: plain words, a bit more detail. | detailed |
+
+The preset sets the defaults of [`deck`](#deck); set `deck.density`, `deck.order` or `deck.sections` only to change them. A sentence of your own gets the standard deck.
 
 ```yaml
 audience: Store managers who use Spoke every day but never see the code.
@@ -234,7 +236,7 @@ What goes on the slides and in which order. See [How the deck is designed](desig
 
 | Key | Default | Description |
 |---|---|---|
-| `density` | `standard` | `brief`: two points per theme and two theme slides. `standard`: three and three. `detailed`: four and four. Themes past that share a slide of cards. A slide with more words than the audience reads at a glance (30, 40 or 50) gets a warning in `checks.md`. |
+| `density` | by [audience](#audience) | `brief`: two points per theme and two theme slides. `standard`: three and three. `detailed`: four and four. Themes past that share a slide of cards. A slide with more words than the audience reads at a glance (30, 40 or 50) gets a warning in `checks.md`. |
 | `order` | `story` | `story` puts the numbers near the end. `numbers-first` puts them right after the headline, and is the default for `audience: executives`. |
 | `sections` | all on | Turn optional slides off: `headline`, `screens` (before and after), `hood` (also shipped), `roadmap`, `usage`, `questions`. Executives get `hood: false` by default. |
 

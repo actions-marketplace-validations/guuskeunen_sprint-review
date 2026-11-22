@@ -29,7 +29,7 @@ The deck follows rules from presentation research: Apple's keynotes and Human In
 8. **Numbers**: one big number per idea, at most four.
 9. **Questions**: two or three specific questions for the audience, in place of a bare "Questions?" slide.
 
-Executives (`audience: executives`) see the numbers right after the headline and get no slide about work behind the scenes. `deck.order` and `deck.sections` change that.
+The audience sets the defaults: executives get a brief deck with the numbers right after the headline and no slide about work behind the scenes, the team gets a detailed deck, everyone else a standard one. `deck.density`, `deck.order` and `deck.sections` change that.
 
 ## Theme layouts
 

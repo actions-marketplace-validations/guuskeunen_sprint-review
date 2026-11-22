@@ -13,6 +13,13 @@ export const AUDIENCES = {
     'Customers who use the product. They want to know what they can do now that they could not before, and what got easier.',
   team: 'The product team itself. Plain words still, but they know the product well and like a bit more detail.',
 } as const;
+type Audience = keyof typeof AUDIENCES;
+
+/** Other names people use for the same presets. */
+const AUDIENCE_ALIASES: Record<string, Audience> = { marketing: 'business', sales: 'business', support: 'business', management: 'executives', engineers: 'team', developers: 'team' };
+
+/** How much each audience gets on a slide unless deck.density says otherwise. */
+const AUDIENCE_DENSITY: Record<Audience, Density> = { business: 'standard', customers: 'standard', executives: 'brief', team: 'detailed' };
 
 /**
  * How much goes on the slides. brief: two points per theme, two theme slides; standard: three and
@@ -169,7 +176,8 @@ export function normalize(raw: unknown, root: string): Config {
   const output = obj(r.output ?? {}, 'output');
 
   const audienceRaw = str(r.audience, 'audience') ?? 'business';
-  const audience = audienceRaw in AUDIENCES ? AUDIENCES[audienceRaw as keyof typeof AUDIENCES] : audienceRaw;
+  const preset: Audience | null = audienceRaw in AUDIENCES ? (audienceRaw as Audience) : (AUDIENCE_ALIASES[audienceRaw.toLowerCase()] ?? null);
+  const audience = preset ? AUDIENCES[preset] : audienceRaw;
 
   const color = str(brand.color, 'brand.color');
   if (color !== null && !/^#[0-9a-fA-F]{6}$/.test(color)) throw new ConfigError('brand.color must be a hex color like #ea580c.');
@@ -233,20 +241,24 @@ export function normalize(raw: unknown, root: string): Config {
       markdown: output.markdown === undefined ? true : bool(output.markdown, 'output.markdown'),
       pptx: output.pptx === undefined ? false : bool(output.pptx, 'output.pptx'),
     },
-    deck: deckConfig(r.deck, audienceRaw === 'executives'),
+    deck: deckConfig(r.deck, preset),
     slack: r.slack === undefined ? false : bool(r.slack, 'slack'),
   };
 }
 
 /** The deck settings when there is no config, such as for a review rendered as a library call. */
 export function defaultDeck(): DeckConfig {
-  return deckConfig(undefined, false);
+  return deckConfig(undefined, null);
 }
 
-/** Executives get the numbers early and no slide about work they can't see, unless the config says otherwise. */
-function deckConfig(value: unknown, executives: boolean): DeckConfig {
+/**
+ * The audience sets the defaults: executives get a brief deck with the numbers early and no slide
+ * about work they can't see, the team a detailed one. Anything in deck overrides them.
+ */
+function deckConfig(value: unknown, audience: Audience | null): DeckConfig {
   const d = obj(value ?? {}, 'deck');
-  const density = str(d.density, 'deck.density') ?? 'standard';
+  const executives = audience === 'executives';
+  const density = str(d.density, 'deck.density') ?? (audience ? AUDIENCE_DENSITY[audience] : 'standard');
   if (!(density in DENSITY)) throw new ConfigError(`deck.density must be ${Object.keys(DENSITY).join(', ')}.`);
   const order = str(d.order, 'deck.order') ?? (executives ? 'numbers-first' : 'story');
   if (order !== 'story' && order !== 'numbers-first') throw new ConfigError('deck.order must be story or numbers-first.');

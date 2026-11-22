@@ -62,3 +62,12 @@ test('a review from an older version still opens: the first summary point become
   assert.deepEqual(v.underTheHood, [{ text: 'Faster builds', kind: 'maintenance' }]);
   assert.throws(() => validReview({ ...sample(), themes: [{ ...sample().themes[0], layout: 'diagonal' }] }), /layout/);
 });
+
+test('the audience sets the default density and has aliases; deck.density still wins', () => {
+  assert.equal(normalize({ audience: 'executives' }, '/tmp').deck.density, 'brief');
+  assert.equal(normalize({ audience: 'engineers' }, '/tmp').deck.density, 'detailed');
+  assert.equal(normalize({ audience: 'Marketing' }, '/tmp').audience, normalize({ audience: 'business' }, '/tmp').audience);
+  assert.equal(normalize({}, '/tmp').deck.density, 'standard');
+  assert.equal(normalize({ audience: 'Our sales team' }, '/tmp').deck.density, 'standard', 'a description of your own keeps the default');
+  assert.equal(normalize({ audience: 'executives', deck: { density: 'detailed' } }, '/tmp').deck.density, 'detailed');
+});
