@@ -2,6 +2,14 @@
 
 All notable changes are listed here, written per release from the commit messages ([Conventional Commits](https://www.conventionalcommits.org)). Versions follow [Semantic Versioning](https://semver.org).
 
+## [0.4.2](https://github.com/guuskeunen/sprint-review/compare/sprint-review-v0.4.1...sprint-review-v0.4.2) (2026-11-22)
+
+
+### Fixed
+
+* **doctor:** playwright-core with the installed Chrome counts as Playwright ([9f8124c](https://github.com/guuskeunen/sprint-review/commit/9f8124c7b9a1502874bad8933adb45f929de779f))
+* **doctor:** playwright-core with the installed Chrome counts as Playwright ([82fa04f](https://github.com/guuskeunen/sprint-review/commit/82fa04f9c930d0a57b91391979e3ac433e661e9f))
+
 ## [0.4.1](https://github.com/guuskeunen/sprint-review/compare/sprint-review-v0.4.0...sprint-review-v0.4.1) (2026-11-22)
 
 
