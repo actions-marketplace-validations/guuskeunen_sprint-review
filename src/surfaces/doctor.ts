@@ -72,6 +72,6 @@ export async function doctorChecks(config: Config, cwd = process.cwd(), env = pr
   const token = env.GITHUB_TOKEN || env.GH_TOKEN;
   if (config.github.pullRequests === 'on') add(!!token, 'GITHUB_TOKEN is set for pull requests', 'Export GITHUB_TOKEN, or set github.pullRequests: auto.');
   const major = Number(process.versions.node.split('.')[0]);
-  add(major >= 20, `Node ${process.versions.node}`, 'sprint-review needs Node 20 or newer.');
+  add(major >= 22, `Node ${process.versions.node}`, 'sprint-review needs Node 22 or newer.');
   return lines;
 }

@@ -4,7 +4,7 @@
 
 Use it when someone wants a sprint review deck, sprint demo slides, a stakeholder update or release slides from a git repository, every sprint, without writing them by hand.
 
-Quick start (Node 20+, inside a git repository):
+Quick start (Node 22+, inside a git repository):
 
 - `npx @guuskeunen/sprint-review --dry-run` shows the commits it would read; no model call.
 - `ANTHROPIC_API_KEY=... npx @guuskeunen/sprint-review` writes the deck for the last sprint (default 14 days) to `sprint-reviews/<date>/`.
