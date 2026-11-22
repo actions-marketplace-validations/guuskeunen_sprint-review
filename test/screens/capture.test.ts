@@ -48,3 +48,82 @@ test('a page entry with a selector photographs just that element; one that is mi
   assert.deepEqual([width, height], [320, 180], 'only the element');
   assert.ok(steps.some((m) => m.includes('Not found on gone')));
 });
+
+test('a login takes its values from the environment, never from the config', async () => {
+  const { isLoginPage } = await import('../../src/screens/capture.ts');
+  const base = { source: 'capture', pages: { app: '/app' } };
+  const c = normalize({ screenshots: { ...base, login: { url: '/login', fields: { 'input[type=email]': 'SHOT_EMAIL' }, submit: 'button' } } }, '/tmp');
+  assert.ok(c.screenshots.source === 'capture' && c.screenshots.capture.login?.fields['input[type=email]'] === 'SHOT_EMAIL');
+  assert.ok(c.screenshots.source === 'capture' && c.screenshots.capture.onReview, 'pictures are taken on review by default');
+  assert.throws(() => normalize({ screenshots: { ...base, login: { url: '/login', fields: { 'input[type=password]': 'hunter2!' }, submit: 'button' } } }, '/tmp'), /must name an environment variable/);
+  assert.throws(() => normalize({ screenshots: { ...base, login: { url: '/login' } } }, '/tmp'), /needs url, fields and submit/);
+  assert.ok(isLoginPage('https://app.test/login') && isLoginPage('https://app.test/auth/sign-in') && isLoginPage('file:///x/login/index.html'));
+  assert.ok(!isLoginPage('https://app.test/app/demo/feed') && !isLoginPage('https://app.test/blogin'));
+});
+
+test('capture logs in with the form, and stops when a page sends it to the login', async (t) => {
+  const { capture, CaptureError } = await import('../../src/screens/capture.ts');
+  const { mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const dir = mkdtempSync(join(tmpdir(), 'sprint-review-login-'));
+  mkdirSync(join(dir, 'login'));
+  writeFileSync(join(dir, 'login', 'index.html'), `<form action="../app.html"><input type="email" name="e"><input type="password" name="p"><button type="submit">Sign in</button></form>`);
+  writeFileSync(join(dir, 'app.html'), '<body>the app</body>');
+  writeFileSync(join(dir, 'gone.html'), `<script>location.href = 'login/index.html'</script>`);
+  const url = (f: string) => `file://${join(dir, f)}`;
+  const login = { url: url('login/index.html'), fields: { 'input[type=email]': 'SHOT_EMAIL', 'input[type=password]': 'SHOT_PASSWORD' }, submit: 'button' };
+  const config = (pages: Record<string, string>) => {
+    const c = normalize({ screenshots: { source: 'capture', pages, wait: 0, login } }, dir);
+    if (c.screenshots.source !== 'capture') throw new Error('capture expected');
+    return c.screenshots.capture;
+  };
+  process.env.SHOT_EMAIL = 'shots@app.test';
+  process.env.SHOT_PASSWORD = 'secret';
+  try {
+    const steps: string[] = [];
+    let files: string[];
+    try {
+      files = await capture(config({ app: url('app.html') }), dir, '2026-11-22', (m) => steps.push(m));
+    } catch (e) {
+      if (e instanceof CaptureError && /browser|Playwright/.test(e.message)) return t.skip('no browser');
+      throw e;
+    }
+    assert.deepEqual(steps.slice(0, 2), ['Logging in', 'Photographing app on desktop']);
+    assert.equal(files.length, 1);
+    await assert.rejects(capture(config({ gone: url('gone.html') }), dir, '2026-11-22'), /Not logged in: gone went to .*login/);
+    delete process.env.SHOT_PASSWORD;
+    await assert.rejects(capture(config({ app: url('app.html') }), dir, '2026-11-22'), /needs SHOT_PASSWORD in the environment/);
+  } finally {
+    delete process.env.SHOT_EMAIL;
+    delete process.env.SHOT_PASSWORD;
+  }
+});
+
+test("a review takes today's pictures when its sprint ends today and there are none yet", async () => {
+  const { captureToday } = await import('../../src/review/generate.ts');
+  const { mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const dir = mkdtempSync(join(tmpdir(), 'sprint-review-today-'));
+  const c = normalize({ screenshots: { source: 'capture', pages: { app: '/app' } } }, dir);
+  const today = new Date().toISOString().slice(0, 10);
+  const now = { kind: 'dates' as const, from: '2026-01-01', until: today };
+  const history = {} as History;
+  const calls: string[] = [];
+  const steps: string[] = [];
+  const take = async (_c: unknown, _r: string, day = '') => { calls.push(day); return [join(dir, `${day}/app-desktop.png`)]; };
+  await captureToday(c, history, range, (m) => steps.push(m), take);
+  assert.deepEqual(calls, [], 'a sprint that ended earlier: today is not its end');
+  await captureToday(c, history, now, (m) => steps.push(m), take);
+  assert.deepEqual(calls, [today]);
+  mkdirSync(join(dir, '.sprint-review/screenshots', today), { recursive: true });
+  writeFileSync(join(dir, '.sprint-review/screenshots', today, 'app-desktop.png'), '');
+  await captureToday(c, history, now, (m) => steps.push(m), take);
+  assert.equal(calls.length, 1, 'pictures of today already there');
+  const off = normalize({ screenshots: { source: 'capture', pages: { app: '/app' }, onReview: false } }, dir);
+  await captureToday(off, history, now, () => {}, take);
+  assert.equal(calls.length, 1, 'onReview: false');
+  const failing = async () => { throw new Error('Not logged in: app went to /login'); };
+  const other = normalize({ screenshots: { source: 'capture', pages: { app: '/app' }, storage: 'elsewhere' } }, dir);
+  await captureToday(other, history, now, (m) => steps.push(m), failing);
+  assert.match(steps.at(-1)!, /^Screenshots not taken: Not logged in/);
+});

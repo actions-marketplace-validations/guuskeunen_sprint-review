@@ -152,6 +152,13 @@ export interface CaptureConfig {
   mask: string[];
   /** A Playwright storage state file with a logged-in session. */
   storageState: string | null;
+  /**
+   * Log in with the app's login form before photographing: field selectors to the names of the
+   * environment variables that hold their values. Nothing expires, unlike a saved session.
+   */
+  login: { url: string; fields: Record<string, string>; submit: string } | null;
+  /** Take today's pictures when a review is made, unless there are some already. Default true. */
+  onReview: boolean;
   /** Milliseconds to wait after the page has loaded. */
   wait: number;
   /** Where the pictures are kept, one folder per day. Keep it between runs (commit it or cache it in CI). */
@@ -332,6 +339,8 @@ function screenshots(value: unknown): ScreenshotConfig {
         devices: devices as ('desktop' | 'phone')[],
         mask: strList(s.mask, 'screenshots.mask'),
         storageState: str(s.storageState, 'screenshots.storageState'),
+        login: s.login === undefined ? null : login(s.login),
+        onReview: s.onReview === undefined ? true : bool(s.onReview, 'screenshots.onReview'),
         wait: int(s.wait, 'screenshots.wait', 500, 0, 60000),
         dir: str(s.storage, 'screenshots.storage') ?? '.sprint-review/screenshots',
         darkMode: s.darkMode === undefined ? false : bool(s.darkMode, 'screenshots.darkMode'),
@@ -339,6 +348,19 @@ function screenshots(value: unknown): ScreenshotConfig {
     };
   }
   throw new ConfigError(`screenshots.source must be none, git, folder or capture, not "${source}".`);
+}
+
+function login(value: unknown): CaptureConfig['login'] {
+  const l = obj(value, 'screenshots.login');
+  const url = str(l.url, 'screenshots.login.url');
+  const submit = str(l.submit, 'screenshots.login.submit');
+  const fields = strMap(l.fields, 'screenshots.login.fields');
+  if (!url || !submit || !Object.keys(fields).length) throw new ConfigError('screenshots.login needs url, fields and submit.');
+  for (const [selector, name] of Object.entries(fields)) {
+    // The name of a variable, never the value: a password does not belong in a config file.
+    if (!/^[A-Z_][A-Z0-9_]*$/.test(name)) throw new ConfigError(`screenshots.login.fields."${selector}" must name an environment variable (like SCREENSHOT_PASSWORD), not hold the value.`);
+  }
+  return { url, fields, submit };
 }
 
 function themeOf(v: string | null): 'dark' | 'light' {

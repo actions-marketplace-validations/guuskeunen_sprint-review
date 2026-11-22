@@ -1,9 +1,10 @@
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
 import type { Config } from '../config.ts';
 import type { ChangedScreen, Milestone, Review, ReviewScreen, ReviewTheme, UsageMetric, WrittenTheme } from '../types.ts';
 import { History, type Range } from '../git/history.ts';
-import { screens as openScreens, type Screens } from '../screens/screenshots.ts';
+import { rangeDays, screens as openScreens, type Screens } from '../screens/screenshots.ts';
+import { capture } from '../screens/capture.ts';
 import { write } from '../ai/writer.ts';
 import { githubRepo, withPullRequests } from '../git/github.ts';
 import type { ModelClient } from '../ai/model.ts';
@@ -77,6 +78,7 @@ export async function generate(config: Config, options: GenerateOptions): Promis
     step(`${withPrs.found} pull request${withPrs.found === 1 ? '' : 's'} found`);
   }
 
+  await captureToday(config, history, range, step);
   const t = labelsFor(config.language, config.labels);
   const shots = openScreens(config.screenshots, config.root, history, range, { phone: t.phone, desktop: t.desktop }, config.brand.theme);
   if (config.screenshots.source !== 'none') step('Comparing screenshots');
@@ -254,6 +256,27 @@ function dataUri(png: Buffer): string {
 
 function describe(range: Range): string {
   return range.kind === 'dates' ? `from ${range.from} to ${range.until}` : `in ${range.from}..${range.to}`;
+}
+
+/**
+ * Takes today's pictures for a sprint that ends today, unless there are some already. They are
+ * this review's "after" and the next review's "before", so nobody has to remember to take them.
+ * A failure is reported and the review goes on with the pictures there are.
+ */
+export async function captureToday(config: Config, history: History, range: Range, step: (m: string) => void, take = capture): Promise<void> {
+  const s = config.screenshots;
+  if (s.source !== 'capture' || !s.capture.onReview) return;
+  const day = today();
+  if (rangeDays(range, history).until < day) return;
+  const folder = resolve(config.root, s.capture.dir, day);
+  if (existsSync(folder) && readdirSync(folder).some((f) => f.endsWith('.png'))) return;
+  step("Taking today's screenshots");
+  try {
+    const files = await take(s.capture, config.root, day, step);
+    step(`${files.length} screenshot${files.length === 1 ? '' : 's'} taken`);
+  } catch (e) {
+    step(`Screenshots not taken: ${(e as Error).message.split('\n')[0]}`);
+  }
 }
 
 function today(): string {
