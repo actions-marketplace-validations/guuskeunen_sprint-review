@@ -245,6 +245,12 @@
   .edit-button:hover, .edit-button:focus-visible { opacity: 1; color: var(--accent); }
   .edit-button[hidden], .edit-panel[hidden] { display: none; }
   .edit-panel { position: fixed; top: calc(2vh + 2.6rem); right: 2vw; z-index: 10; max-width: min(34rem, 90vw); padding: .9rem 1rem; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: .85rem; box-shadow: 0 20px 50px -20px rgb(0 0 0 / .35); }
+  .download-button { position: fixed; top: 2vh; right: 2vw; z-index: 10; font: 500 .8rem/1 var(--font-body, inherit); padding: .5em .9em; border-radius: 99px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-faint); cursor: pointer; opacity: .55; transition: opacity .2s, color .2s; }
+  .download-button:hover, .download-button:focus-visible, .download-button[aria-expanded="true"] { opacity: 1; color: var(--accent); }
+  .download-button[hidden], .download-menu[hidden], .download-menu [hidden] { display: none; }
+  .download-menu { position: fixed; top: calc(2vh + 2.6rem); right: 2vw; z-index: 10; display: grid; min-width: 12rem; padding: .35rem; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); box-shadow: 0 20px 50px -20px rgb(0 0 0 / .35); }
+  .download-menu > * { display: block; font: 500 .85rem/1.2 var(--font-body, inherit); text-align: left; padding: .55em .8em; border: 0; border-radius: 8px; background: transparent; color: var(--ink); text-decoration: none; cursor: pointer; }
+  .download-menu > *:hover, .download-menu > *:focus-visible { background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent); }
   .edit-panel p { margin: 0 0 .6rem; }
   .edit-panel code { display: block; padding: .5rem .6rem; border-radius: 8px; background: var(--bg, transparent); border: 1px solid var(--line); font-size: .78rem; word-break: break-all; user-select: all; }
   .edit-panel button { margin-top: .6rem; font: inherit; padding: .35em .8em; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--accent); cursor: pointer; }
@@ -256,7 +262,7 @@
     html, body { overflow: visible; height: auto; }
     .slide { display: flex !important; opacity: 1 !important; visibility: visible !important; transform: none !important; transition: none !important; position: relative; inset: auto; width: 1440px; height: 810px; page-break-after: always; break-after: page; }
     .slide *, .slide.active * { animation: none !important; }
-    .progress, .counter, .hint, .notes, .edit-button, .edit-panel { display: none !important; }
+    .progress, .counter, .hint, .notes, .edit-button, .edit-panel, .download-button, .download-menu { display: none !important; }
     * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
 
@@ -527,6 +533,8 @@ Look and feel: Each source has a fixed color: Tables on a phone scroll sideways<
 <div class="counter" aria-live="polite"></div>
 <button class="edit-button" type="button" hidden>Edit</button>
 <div class="edit-panel" role="dialog" hidden><p>The editor is not running. Start it in a terminal, then click Edit again:</p><code></code><button type="button">Copy</button></div>
+<button class="download-button" type="button" aria-haspopup="menu" hidden>Download</button>
+<div class="download-menu" role="menu" hidden><button type="button" role="menuitem" data-get="pdf">PDF</button><a role="menuitem" data-get="html" download>HTML (works offline)</a><a role="menuitem" data-get="pptx" download hidden>PowerPoint</a></div>
 <div class="hint" aria-hidden="true"><kbd>←</kbd> <kbd>→</kbd> browse · <kbd>F</kbd> full screen · <kbd>P</kbd> presenter · <kbd>N</kbd> notes</div>
 
 <script>
@@ -621,13 +629,41 @@ Look and feel: Each source has a fixed color: Tables on a phone scroll sideways<
     });
   }
 
+  // Download: only on a deck opened from a website, where viewers have no file of their own.
+  // PDF prints every slide as a page; HTML is this file, which works offline; PowerPoint when a deck.pptx sits beside it.
+  var downloadButton = document.querySelector('.download-button');
+  var downloadMenu = document.querySelector('.download-menu');
+  if (/^https?:$/.test(location.protocol) && window.parent === window && downloadButton && downloadMenu) {
+    var here = location.href.split('#')[0];
+    var name = (document.title || 'sprint-review').toLowerCase().replace(/[^a-z0-9À-ɏ]+/g, '-').replace(/^-+|-+$/g, '') || 'sprint-review';
+    var htmlLink = downloadMenu.querySelector('[data-get="html"]');
+    htmlLink.href = here;
+    htmlLink.setAttribute('download', name + '.html');
+    var pptxLink = downloadMenu.querySelector('[data-get="pptx"]');
+    var pptxUrl = new URL('deck.pptx', here).href;
+    fetch(pptxUrl, { method: 'HEAD' }).then(function (r) {
+      if (!r.ok) return;
+      pptxLink.href = pptxUrl;
+      pptxLink.setAttribute('download', name + '.pptx');
+      pptxLink.hidden = false;
+    }).catch(function () {});
+    var setOpen = function (open) { downloadMenu.hidden = !open; downloadButton.setAttribute('aria-expanded', String(open)); };
+    downloadButton.hidden = false;
+    downloadButton.setAttribute('aria-expanded', 'false');
+    downloadButton.addEventListener('click', function () { setOpen(downloadMenu.hidden); });
+    downloadMenu.querySelector('[data-get="pdf"]').addEventListener('click', function () { setOpen(false); window.print(); });
+    downloadMenu.addEventListener('click', function (e) { if (e.target.closest('a')) setOpen(false); });
+    document.addEventListener('click', function (e) { if (!e.target.closest('.download-button, .download-menu')) setOpen(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setOpen(false); });
+  }
+
   window.addEventListener('hashchange', function () {
     var n = parseInt((location.hash || '').slice(1), 10);
     if (n > 0 && n - 1 !== current) show(n - 1);
   });
 
   document.addEventListener('keydown', function (e) {
-    if (e.target && e.target.closest && e.target.closest('.edit-button, .edit-panel')) return;
+    if (e.target && e.target.closest && e.target.closest('.edit-button, .edit-panel, .download-button, .download-menu')) return;
     if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].indexOf(e.key) !== -1) { e.preventDefault(); forward(); }
     else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].indexOf(e.key) !== -1) { e.preventDefault(); back(); }
     else if (e.key === 'Home') show(0);
@@ -705,7 +741,7 @@ Look and feel: Each source has a fixed color: Tables on a phone scroll sideways<
     if (e.data.type === 'ready') { if (startedAt === null) startedAt = Date.now(); tellPresenter(); }
     else if (e.data.type === 'go') { if (e.data.to === 'prev') back(); else forward(); }
   });
-  function onEdit(e) { return e.target && e.target.closest && e.target.closest('.edit-button, .edit-panel'); }
+  function onEdit(e) { return e.target && e.target.closest && e.target.closest('.edit-button, .edit-panel, .download-button, .download-menu'); }
   document.addEventListener('click', function (e) {
     if (onEdit(e)) return;
     if (e.clientX < window.innerWidth / 3) back(); else forward();

@@ -309,6 +309,8 @@ ${slides.join('\n\n')}
 <div class="counter" aria-live="polite"></div>
 <button class="edit-button" type="button" hidden>${esc(t.edit)}</button>
 <div class="edit-panel" role="dialog" hidden><p>${esc(t.editStart)}</p><code></code><button type="button">${esc(t.copy)}</button></div>
+<button class="download-button" type="button" aria-haspopup="menu" hidden>${esc(t.download)}</button>
+<div class="download-menu" role="menu" hidden><button type="button" role="menuitem" data-get="pdf">${esc(t.downloadPdf)}</button><a role="menuitem" data-get="html" download>${esc(t.downloadHtml)}</a><a role="menuitem" data-get="pptx" download hidden>${esc(t.downloadPptx)}</a></div>
 <div class="hint" aria-hidden="true"><kbd>←</kbd> <kbd>→</kbd> ${esc(t.hintBrowse)} · <kbd>F</kbd> ${esc(t.hintFullscreen)} · <kbd>P</kbd> ${esc(t.hintPresenter)}${hasNotes ? ` · <kbd>N</kbd> ${esc(t.hintNotes)}` : ''}</div>
 
 <script>
@@ -424,13 +426,41 @@ function script(t: Labels, lang: string): string {
     });
   }
 
+  // Download: only on a deck opened from a website, where viewers have no file of their own.
+  // PDF prints every slide as a page; HTML is this file, which works offline; PowerPoint when a deck.pptx sits beside it.
+  var downloadButton = document.querySelector('.download-button');
+  var downloadMenu = document.querySelector('.download-menu');
+  if (/^https?:$/.test(location.protocol) && window.parent === window && downloadButton && downloadMenu) {
+    var here = location.href.split('#')[0];
+    var name = (document.title || 'sprint-review').toLowerCase().replace(/[^a-z0-9\u00c0-\u024f]+/g, '-').replace(/^-+|-+$/g, '') || 'sprint-review';
+    var htmlLink = downloadMenu.querySelector('[data-get="html"]');
+    htmlLink.href = here;
+    htmlLink.setAttribute('download', name + '.html');
+    var pptxLink = downloadMenu.querySelector('[data-get="pptx"]');
+    var pptxUrl = new URL('deck.pptx', here).href;
+    fetch(pptxUrl, { method: 'HEAD' }).then(function (r) {
+      if (!r.ok) return;
+      pptxLink.href = pptxUrl;
+      pptxLink.setAttribute('download', name + '.pptx');
+      pptxLink.hidden = false;
+    }).catch(function () {});
+    var setOpen = function (open) { downloadMenu.hidden = !open; downloadButton.setAttribute('aria-expanded', String(open)); };
+    downloadButton.hidden = false;
+    downloadButton.setAttribute('aria-expanded', 'false');
+    downloadButton.addEventListener('click', function () { setOpen(downloadMenu.hidden); });
+    downloadMenu.querySelector('[data-get="pdf"]').addEventListener('click', function () { setOpen(false); window.print(); });
+    downloadMenu.addEventListener('click', function (e) { if (e.target.closest('a')) setOpen(false); });
+    document.addEventListener('click', function (e) { if (!e.target.closest('.download-button, .download-menu')) setOpen(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setOpen(false); });
+  }
+
   window.addEventListener('hashchange', function () {
     var n = parseInt((location.hash || '').slice(1), 10);
     if (n > 0 && n - 1 !== current) show(n - 1);
   });
 
   document.addEventListener('keydown', function (e) {
-    if (e.target && e.target.closest && e.target.closest('.edit-button, .edit-panel')) return;
+    if (e.target && e.target.closest && e.target.closest('.edit-button, .edit-panel, .download-button, .download-menu')) return;
     if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].indexOf(e.key) !== -1) { e.preventDefault(); forward(); }
     else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].indexOf(e.key) !== -1) { e.preventDefault(); back(); }
     else if (e.key === 'Home') show(0);
@@ -508,7 +538,7 @@ function script(t: Labels, lang: string): string {
     if (e.data.type === 'ready') { if (startedAt === null) startedAt = Date.now(); tellPresenter(); }
     else if (e.data.type === 'go') { if (e.data.to === 'prev') back(); else forward(); }
   });
-  function onEdit(e) { return e.target && e.target.closest && e.target.closest('.edit-button, .edit-panel'); }
+  function onEdit(e) { return e.target && e.target.closest && e.target.closest('.edit-button, .edit-panel, .download-button, .download-menu'); }
   document.addEventListener('click', function (e) {
     if (onEdit(e)) return;
     if (e.clientX < window.innerWidth / 3) back(); else forward();
