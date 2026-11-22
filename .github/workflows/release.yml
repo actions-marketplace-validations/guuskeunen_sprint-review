@@ -55,16 +55,19 @@ jobs:
         run: |
           node scripts/build-mcpb.ts
           gh release upload "$TAG" sprint-review.mcpb --clobber
-      # The registry lists the npm package, so it goes after npm publish. No token: it trusts this workflow.
-      - name: Publish to the MCP registry
-        run: |
-          curl -sL https://github.com/modelcontextprotocol/registry/releases/download/v1.8.12/mcp-publisher_linux_amd64.tar.gz | tar xz mcp-publisher
-          ./mcp-publisher login github-oidc
-          for i in 1 2 3 4 5; do ./mcp-publisher publish && exit 0; echo "npm may not show the new version yet; retrying"; sleep 30; done
-          exit 1
       - name: Move the major version tag
         env:
           MAJOR: v${{ needs.release-please.outputs.major }}
         run: |
           git tag -f "$MAJOR"
           git push -f origin "$MAJOR"
+      # The registry lists the npm package, so it goes last: npm can take several minutes to show a new
+      # version ("being processed"). No token: the registry trusts this workflow.
+      - name: Publish to the MCP registry
+        env:
+          VERSION: ${{ needs.release-please.outputs.tag }}
+        run: |
+          for i in $(seq 1 40); do npm view "@guuskeunen/sprint-review@${VERSION##*v}" version >/dev/null 2>&1 && break; echo "Waiting for npm to show ${VERSION##*v}"; sleep 15; done
+          curl -sL https://github.com/modelcontextprotocol/registry/releases/download/v1.8.12/mcp-publisher_linux_amd64.tar.gz | tar xz mcp-publisher
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish
