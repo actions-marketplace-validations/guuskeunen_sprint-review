@@ -41,18 +41,55 @@ export const UNTRUSTED_RULE =
 const PR_BODY_CHARS = 800;
 
 export function commitLog(commits: Commit[]): string {
-  return commits
-    .map((c) => {
-      const lines = [`${c.hash} ${c.date} ${c.subject}${c.product ? '' : ' [no product code]'}`];
-      if (c.files.length) lines.push(`Files: ${c.files.slice(0, FILES_PER_COMMIT).join(', ')}`);
-      if (c.body) lines.push(c.body);
-      if (c.pullRequest) {
-        const body = c.pullRequest.body.replace(/<!--[\s\S]*?-->/g, '').replace(/\n{3,}/g, '\n\n').trim().slice(0, PR_BODY_CHARS);
-        lines.push(`Pull request: ${c.pullRequest.title}${body ? `\n${body}` : ''}`);
-      }
-      return lines.join('\n');
-    })
-    .join('\n\n');
+  return commits.map((c) => entry(c, true)).join('\n\n');
+}
+
+/** One commit as the model reads it: in full, or only its first line when the sprint is long. */
+function entry(c: Commit, full: boolean): string {
+  const lines = [`${c.hash} ${c.date} ${c.subject}${c.product ? '' : ' [no product code]'}`];
+  if (!full) return lines[0]!;
+  if (c.files.length) lines.push(`Files: ${c.files.slice(0, FILES_PER_COMMIT).join(', ')}`);
+  if (c.body) lines.push(c.body);
+  if (c.pullRequest) {
+    const body = c.pullRequest.body.replace(/<!--[\s\S]*?-->/g, '').replace(/\n{3,}/g, '\n\n').trim().slice(0, PR_BODY_CHARS);
+    lines.push(`Pull request: ${c.pullRequest.title}${body ? `\n${body}` : ''}`);
+  }
+  return lines.join('\n');
+}
+
+/** Of a long sprint's budget, the share kept for one line per commit without product code (the work under the hood). */
+const OTHER_SHARE = 0.15;
+
+/**
+ * The commit log within the model's input budget. When everything fits, every commit in full.
+ * Otherwise the whole sprint stays in view rather than only its last days: first one line per
+ * product commit, then a line per other commit (up to a share), then the details of product
+ * commits, newest first, then the remaining lines. What doesn't fit is returned as skipped.
+ */
+export function fitLog(commits: Commit[], max = MAX_LOG_CHARS): { log: string; skipped: Commit[] } {
+  const budget = max - 200;
+  const fullLog = commitLog(commits);
+  if (fullLog.length <= budget) return { log: fullLog, skipped: [] };
+  const shown = new Map<Commit, boolean>();
+  let used = 0;
+  const add = (c: Commit, full: boolean, limit = budget) => {
+    const before = shown.has(c) ? entry(c, shown.get(c)!).length + 2 : 0;
+    const cost = entry(c, full).length + 2 - before;
+    if (used + cost > limit) return;
+    shown.set(c, full);
+    used += cost;
+  };
+  const product = commits.filter((c) => c.product);
+  const other = commits.filter((c) => !c.product);
+  for (const c of product) add(c, false);
+  const otherLimit = Math.min(budget, used + budget * OTHER_SHARE);
+  for (const c of other) add(c, false, otherLimit);
+  for (const c of product) if (shown.has(c)) add(c, true);
+  for (const c of other) if (!shown.has(c)) add(c, false);
+  return {
+    log: commits.filter((c) => shown.has(c)).map((c) => entry(c, shown.get(c)!)).join('\n\n'),
+    skipped: commits.filter((c) => !shown.has(c)),
+  };
 }
 
 /** The text of the slides as the audience sees it, without the speaker notes. */

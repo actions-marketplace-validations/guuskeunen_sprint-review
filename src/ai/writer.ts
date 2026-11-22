@@ -2,7 +2,7 @@ import { DENSITY, type Config } from '../config.ts';
 import { HOOD_KINDS, type Check, type Commit, type HoodItem, type HoodKind, type WrittenReview, type WrittenTheme } from '../types.ts';
 import type { ModelClient } from './model.ts';
 import { isIcon, VALUE_KEYS } from '../deck/icons.ts';
-import { commitLog, MAX_LOG_CHARS, NO_SCREEN, readerSystem, readerTool, slideText, untrusted, writerSystem, writerTool } from './prompt.ts';
+import { fitLog, NO_SCREEN, readerSystem, readerTool, slideText, untrusted, writerSystem, writerTool } from './prompt.ts';
 
 export const POINT_WORDS_MAX = 16;
 /** A slide title: a theme's headline, the sprint headline, a before and after caption. */
@@ -33,7 +33,7 @@ export interface WriteResult {
  * emoji. Ticket numbers and hashes come out. Everything corrected, moved or dropped is logged.
  */
 export async function write(model: ModelClient, config: Config, commits: Commit[], changedScreens: string[], availableScreens: string[], roadmapItems: string[] = [], requests: string[] = []): Promise<WriteResult> {
-  const log = commitLog(commits);
+  const { log, skipped } = fitLog(commits, config.model.maxInputChars);
   const screens = changedScreens.length ? `The screenshots of these screens changed during the sprint: ${changedScreens.join(', ')}. ` : '';
   const ask = () =>
     model.ask({
@@ -41,7 +41,7 @@ export async function write(model: ModelClient, config: Config, commits: Commit[
       tool: writerTool(config, changedScreens, availableScreens, roadmapItems.length, requests.length),
       maxTokens: config.model.maxTokens,
       messages: [
-        untrusted(log, 'the commits of the sprint: hash, date, subject, files and description, newest first', config.model.maxInputChars),
+        untrusted(log, `the commits of the sprint: hash, date, subject, files and description, newest first${skipped.length ? '. The sprint is long: some commits show only their first line' : ''}`, config.model.maxInputChars),
         ...(roadmapItems.length ? [untrusted(roadmapItems.map((r, i) => `${i}. ${r}`).join('\n'), "the team's roadmap: what they work on now and next, numbered")] : []),
         ...(requests.length ? [untrusted(requests.map((r, i) => `${i}. ${r}`).join('\n'), 'requests from users and stakeholders, numbered')] : []),
         `${screens}Now create the content of the presentation.`,
@@ -69,7 +69,7 @@ export async function write(model: ModelClient, config: Config, commits: Commit[
     const fixed = new Set(revised.fixed);
     readChecks = [...readChecks.filter((c) => !fixed.has(c.text)), ...revised.checks];
   }
-  written.checks = [...unread(log, commits, config.model.maxInputChars), ...readChecks, ...written.checks];
+  written.checks = [...unread(skipped, commits.length), ...readChecks, ...written.checks];
   return {
     written,
     usage: { input: retry.input + draft.usage.input + read.usage.input + extra.input, output: retry.output + draft.usage.output + read.usage.output + extra.output },
@@ -365,10 +365,17 @@ function named(hashes: unknown, commits: Commit[]): Commit[] {
   return [...out.values()];
 }
 
-/** The commits that fell outside what the model could read. */
-export function unread(log: string, commits: Commit[], max = MAX_LOG_CHARS): Check[] {
-  const read = log.slice(0, max);
-  return commits.filter((c) => !read.includes(c.hash)).map((c) => ({ kind: 'warning' as const, text: c.subject, reason: 'Not read: the sprint was too long. Check whether this belongs in the presentation.' }));
+/** One line in the check log for the commits that didn't fit, with a few of them, rather than a line each. */
+export function unread(skipped: Commit[], total: number): Check[] {
+  if (!skipped.length) return [];
+  const product = skipped.filter((c) => c.product).length;
+  const kinds = product ? `${product} with product code and ${skipped.length - product} without` : 'all without product code';
+  const examples = skipped.filter((c) => c.product).concat(skipped.filter((c) => !c.product)).slice(0, 5).map((c) => c.subject);
+  return [{
+    kind: 'warning',
+    text: `${skipped.length} of ${total} commits not read (${kinds})`,
+    reason: `The sprint was too long for the model's input (model.maxInputChars). Narrow productPaths or ignore, or raise model.maxInputChars. For example: ${examples.join('; ')}`,
+  }];
 }
 
 /** The objects in a list; an item sent as JSON text is read too, so nothing is lost silently. */
