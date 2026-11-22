@@ -615,7 +615,7 @@ What goes on the slides and in which order. See [How the deck is designed](desig
 |---|---|---|
 | `density` | by [audience](#audience) | `brief`: two points per theme and two theme slides. `standard`: three and three. `detailed`: four and four. Themes past that share a slide of cards. A slide with more words than the audience reads at a glance (30, 40 or 50) gets a warning in `checks.md`. |
 | `order` | `story` | `story` puts the numbers near the end. `numbers-first` puts them right after the headline, and is the default for `audience: executives`. |
-| `sections` | all on | Turn optional slides off: `headline`, `screens` (before and after), `hood` (also shipped), `roadmap`, `usage`, `questions`. Executives get `hood: false` by default. |
+| `sections` | all on | Turn optional slides off: `headline`, `lastTime` (what the last review said was next), `screens` (before and after), `hood` (also shipped), `roadmap`, `usage`, `questions`. Executives get `hood: false` by default. |
 
 ```yaml
 deck:
@@ -780,6 +780,20 @@ Run `capture` at the end of every sprint, right before `generate` (in CI: as a s
 The screen key turns into a readable name ("customer-page" → "Customer page") unless you set one in `names`. The order of `names` is also the order of the slides.
 
 Phone pictures are shown upright, in a phone frame.
+
+## Short video clips
+
+A feature you click through shows better moving. Record a few seconds of it with any screen recorder, save it as `.mp4` or `.webm` (8 MB at most, since it goes inside the deck), and name it per screen key:
+
+```yaml
+screenshots:
+  source: git
+  dir: e2e/__screenshots__
+  videos:
+    planner: docs/clips/planner.mp4
+```
+
+A theme showing that screen plays the clip muted in a loop while its slide is open, with the screenshot as its first frame. With reduced motion, in PowerPoint and on paper, the screenshot shows.
 
 ## Dark mode
 
@@ -1195,13 +1209,14 @@ The deck follows rules from presentation research: Apple's keynotes and Human In
 
 1. **Cover**: title, period, the sprint goal when `goal` is set.
 2. **The sprint headline**: one sentence with the outcome that matters most, and a row with the theme names. A sprint goal is set before the sprint and can't be read from git, so the headline describes what was done.
-3. **Theme slides**: the biggest themes, one slide each. `deck.density` sets how many: 2, 3 or 4.
-4. **More changes**: the remaining themes as cards, one message each. Their points go into the speaker notes.
-5. **Before and after**: one slide per changed screen.
-6. **Also shipped**: work behind the scenes, with a label per line (security, reliability, speed, maintenance).
-7. **Roadmap**: how many milestones are reached, as a line through the last ones reached and the next ones.
-8. **Numbers**: one big number per idea, at most four.
-9. **Questions**: two or three specific questions for the audience, in place of a bare "Questions?" slide.
+3. **Last sprint**: what the previous review showed as next on the roadmap, and whether it is done now. Only when there is a previous review in the output folder and a roadmap; the audience checks promises before hearing new ones (GitLab publishes its kickoff and retrospective as a pair for the same reason).
+4. **Theme slides**: the biggest themes, one slide each. `deck.density` sets how many: 2, 3 or 4.
+5. **More changes**: the remaining themes as cards, one message each. Their points go into the speaker notes.
+6. **Before and after**: one slide per changed screen.
+7. **Also shipped**: work behind the scenes, with a label per line (security, reliability, speed, maintenance).
+8. **Roadmap**: how many milestones are reached, as a line through the last ones reached and the next ones.
+9. **Numbers**: one big number per idea, at most four.
+10. **Questions**: two or three specific questions for the audience, in place of a bare "Questions?" slide.
 
 The audience sets the defaults: executives get a brief deck with the numbers right after the headline and no slide about work behind the scenes, the team gets a detailed deck, everyone else a standard one. `deck.density`, `deck.order` and `deck.sections` change that.
 

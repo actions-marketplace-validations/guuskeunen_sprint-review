@@ -23,13 +23,14 @@ The deck follows rules from presentation research: Apple's keynotes and Human In
 
 1. **Cover**: title, period, the sprint goal when `goal` is set.
 2. **The sprint headline**: one sentence with the outcome that matters most, and a row with the theme names. A sprint goal is set before the sprint and can't be read from git, so the headline describes what was done.
-3. **Theme slides**: the biggest themes, one slide each. `deck.density` sets how many: 2, 3 or 4.
-4. **More changes**: the remaining themes as cards, one message each. Their points go into the speaker notes.
-5. **Before and after**: one slide per changed screen.
-6. **Also shipped**: work behind the scenes, with a label per line (security, reliability, speed, maintenance).
-7. **Roadmap**: how many milestones are reached, as a line through the last ones reached and the next ones.
-8. **Numbers**: one big number per idea, at most four.
-9. **Questions**: two or three specific questions for the audience, in place of a bare "Questions?" slide.
+3. **Last sprint**: what the previous review showed as next on the roadmap, and whether it is done now. Only when there is a previous review in the output folder and a roadmap; the audience checks promises before hearing new ones (GitLab publishes its kickoff and retrospective as a pair for the same reason).
+4. **Theme slides**: the biggest themes, one slide each. `deck.density` sets how many: 2, 3 or 4.
+5. **More changes**: the remaining themes as cards, one message each. Their points go into the speaker notes.
+6. **Before and after**: one slide per changed screen.
+7. **Also shipped**: work behind the scenes, with a label per line (security, reliability, speed, maintenance).
+8. **Roadmap**: how many milestones are reached, as a line through the last ones reached and the next ones.
+9. **Numbers**: one big number per idea, at most four.
+10. **Questions**: two or three specific questions for the audience, in place of a bare "Questions?" slide.
 
 The audience sets the defaults: executives get a brief deck with the numbers right after the headline and no slide about work behind the scenes, the team gets a detailed deck, everyone else a standard one. `deck.density`, `deck.order` and `deck.sections` change that.
 

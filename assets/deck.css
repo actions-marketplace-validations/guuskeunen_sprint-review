@@ -133,6 +133,12 @@
   .hood-list { list-style: none; padding: 0; display: grid; gap: 0; font-size: var(--fs-body); max-width: 52ch; }
   .hood-list li { display: grid; grid-template-columns: calc(var(--fs-small) * 10) minmax(0, 1fr); gap: 1.4vw; align-items: baseline; padding: 1.6vh 0; border-top: 1px solid var(--line); color: var(--ink); }
   .hood-list li:first-child { border-top: 0; }
+  /* Last sprint: what was said to be next, done or not yet */
+  .promises { list-style: none; padding: 0; display: grid; font-size: var(--fs-body); max-width: 52ch; }
+  .promises li { display: grid; grid-template-columns: calc(var(--fs-small) * 7) minmax(0, 1fr); gap: 1.4vw; align-items: baseline; padding: 2vh 0; border-top: 1px solid var(--line); color: var(--ink); }
+  .promises li:first-child { border-top: 0; }
+  .promises li.done .tag { color: var(--good); }
+  .theme .screen video { width: 100%; max-height: 100%; border-radius: 10px; border: 1px solid var(--line); box-shadow: 0 24px 48px -24px rgb(15 23 42 / .35); }
   .tag { font-size: var(--fs-small); font-weight: 650; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-faint); }
 
   /* Before and after: the same crop and size for both, labeled */

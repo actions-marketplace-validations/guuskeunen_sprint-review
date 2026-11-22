@@ -53,6 +53,10 @@ const EN = {
   kind_maintenance: 'Maintenance',
   roadmapNext: 'Next',
   feedbackTitle: 'What we would like to hear from you',
+  lastTimeLabel: 'Last sprint',
+  lastTimeTitle: '{n} of {total} things we said were next are done',
+  statusDone: 'Done',
+  statusOpen: 'Not yet',
 };
 
 export type LabelKey = keyof typeof EN;
@@ -108,6 +112,10 @@ const NL: Labels = {
   kind_maintenance: 'Onderhoud',
   roadmapNext: 'Volgende',
   feedbackTitle: 'Wat we graag van jullie horen',
+  lastTimeLabel: 'Vorige sprint',
+  lastTimeTitle: '{n} van de {total} dingen die we als volgende noemden zijn klaar',
+  statusDone: 'Klaar',
+  statusOpen: 'Nog niet',
 };
 
 const DE: Labels = {
@@ -160,6 +168,10 @@ const DE: Labels = {
   kind_maintenance: 'Wartung',
   roadmapNext: 'Als Nächstes',
   feedbackTitle: 'Was wir gern von Ihnen hören',
+  lastTimeLabel: 'Letzter Sprint',
+  lastTimeTitle: '{n} von {total} angekündigten nächsten Schritten sind erledigt',
+  statusDone: 'Erledigt',
+  statusOpen: 'Noch nicht',
 };
 
 const FR: Labels = {
@@ -212,6 +224,10 @@ const FR: Labels = {
   kind_maintenance: 'Maintenance',
   roadmapNext: 'Ensuite',
   feedbackTitle: 'Ce que nous aimerions savoir',
+  lastTimeLabel: 'Sprint précédent',
+  lastTimeTitle: '{n} sur {total} des prochaines étapes annoncées sont faites',
+  statusDone: 'Fait',
+  statusOpen: 'Pas encore',
 };
 
 const ES: Labels = {
@@ -264,6 +280,10 @@ const ES: Labels = {
   kind_maintenance: 'Mantenimiento',
   roadmapNext: 'Siguiente',
   feedbackTitle: 'Lo que nos gustaría saber',
+  lastTimeLabel: 'Sprint anterior',
+  lastTimeTitle: '{n} de {total} próximos pasos anunciados están hechos',
+  statusDone: 'Hecho',
+  statusOpen: 'Todavía no',
 };
 
 const NAMES: Record<string, string> = { english: 'en', dutch: 'nl', nederlands: 'nl', german: 'de', deutsch: 'de', french: 'fr', 'français': 'fr', spanish: 'es', 'español': 'es' };

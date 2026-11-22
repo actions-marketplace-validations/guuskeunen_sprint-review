@@ -107,6 +107,20 @@ The screen key turns into a readable name ("customer-page" → "Customer page") 
 
 Phone pictures are shown upright, in a phone frame.
 
+## Short video clips
+
+A feature you click through shows better moving. Record a few seconds of it with any screen recorder, save it as `.mp4` or `.webm` (8 MB at most, since it goes inside the deck), and name it per screen key:
+
+```yaml
+screenshots:
+  source: git
+  dir: e2e/__screenshots__
+  videos:
+    planner: docs/clips/planner.mp4
+```
+
+A theme showing that screen plays the clip muted in a loop while its slide is open, with the screenshot as its first frame. With reduced motion, in PowerPoint and on paper, the screenshot shows.
+
 ## Dark mode
 
 With `brand.theme: dark`, a light screenshot glares on the black slides. If your app has a dark mode, give the deck dark pictures too:

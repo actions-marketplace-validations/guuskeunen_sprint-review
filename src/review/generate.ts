@@ -14,6 +14,7 @@ import { renderMarkdown } from '../deck/markdown.ts';
 import { brandFromPptx, type Brand } from '../brand/brand.ts';
 import { isWebsite, withWebsiteBrand } from '../brand/website.ts';
 import { costOf, metered, type Cost } from '../ai/costs.ts';
+import { lastTime, previousReview } from './previous.ts';
 
 export class NothingToReview extends Error {}
 
@@ -89,11 +90,13 @@ export async function generate(config: Config, options: GenerateOptions): Promis
   const models = [...new Set(meter.calls.map((c) => c.model))];
 
   const reviewScreens = explained(changed, written.screenCaptions, config.limits.changedScreens);
-  const themes = withScreens(written.themes, reviewScreens, available, shots, config.limits.themeScreens);
+  const themes = withVideos(withScreens(written.themes, reviewScreens, available, shots, config.limits.themeScreens), config, step);
   const { end } = history.ends(range);
   const until = range.kind === 'dates' ? range.until : (commits[0]?.date ?? today());
   const from = range.kind === 'dates' ? range.from : (commits.at(-1)?.date ?? until);
 
+  const milestones = history.milestones(end, config.roadmap);
+  const said = lastTime(previousReview(config, until), milestones);
   const review: Review = {
     version: 1,
     title: `${t.sprintReview} ${longDate(until, config.language)}`,
@@ -109,9 +112,10 @@ export async function generate(config: Config, options: GenerateOptions): Promis
     underTheHood: written.underTheHood,
     questions: written.questions,
     screens: reviewScreens,
-    milestones: history.milestones(end, config.roadmap),
+    milestones,
     usage: readUsage(config),
     checks: written.checks,
+    ...(said ? { lastTime: said } : {}),
   };
   step('Building the deck');
   return { review, ...render(review, config), usage, cost, models };
@@ -175,6 +179,25 @@ function withScreens(themes: WrittenTheme[], shown: ReviewScreen[], available: M
       }
     }
     return { ...th, screen, screenKey: chosen?.key ?? null };
+  });
+}
+
+/** A video is embedded in the deck, so it stays short: a few seconds of screen. */
+const MAX_VIDEO_BYTES = 8 * 1024 * 1024;
+
+/** A theme's screenshot gets the clip of the same screen from screenshots.videos, when there is one. */
+function withVideos(themes: ReviewTheme[], config: Config, step: (m: string) => void): ReviewTheme[] {
+  if (config.screenshots.source === 'none') return themes;
+  const videos = config.screenshots.videos;
+  return themes.map((th) => {
+    const path = th.screen && th.screenKey ? videos[th.screenKey] : undefined;
+    if (!path || !th.screen) return th;
+    const file = resolve(config.root, path);
+    if (!existsSync(file)) return step(`Video not found: ${path}`), th;
+    const data = readFileSync(file);
+    if (data.length > MAX_VIDEO_BYTES) return step(`Video left out, over 8 MB: ${path}`), th;
+    const type = extname(file).toLowerCase() === '.webm' ? 'video/webm' : 'video/mp4';
+    return { ...th, screen: { ...th.screen, video: `data:${type};base64,${data.toString('base64')}` } };
   });
 }
 

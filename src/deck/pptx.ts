@@ -114,6 +114,17 @@ export async function renderPptx(review: Review, options: PptxOptions = {}): Pro
         s.addText(review.themes.map((th) => th.title).join('     '), { x: X, y: 5.5, w: CW, h: 0.5, fontFace: body, fontSize: SIZE.small, color: pal.soft, margin: 0 });
         break;
       }
+      case 'lastTime': {
+        const said = review.lastTime!;
+        const s = newSlide();
+        head(s, t.lastTimeLabel, fill(t.lastTimeTitle, { n: said.items.filter((m) => m.done).length, total: said.items.length }));
+        said.items.forEach((m, i) => {
+          const y = BODY_Y + i * 0.85;
+          s.addText((m.done ? t.statusDone : t.statusOpen).toUpperCase(), { x: X, y, w: 1.7, h: 0.8, fontFace: body, fontSize: SIZE.small, bold: true, color: m.done ? '059669' : pal.faint, charSpacing: 2, valign: 'top', margin: 0 });
+          s.addText(m.text, { x: X + 1.8, y, w: Math.min(CW - 1.8, 8.5), h: 0.8, fontFace: body, fontSize: SIZE.body, color: pal.ink, valign: 'top', margin: 0 });
+        });
+        break;
+      }
       case 'theme': {
         const th = review.themes[p.index]!;
         const s = newSlide(th.notes);

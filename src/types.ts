@@ -107,6 +107,8 @@ export interface StoredPicture {
   name: string;
   device: Device;
   image: string;
+  /** A short muted loop of the same screen (a data URI, mp4 or webm), played instead of the picture. */
+  video?: string;
 }
 
 export interface ReviewTheme extends Omit<WrittenTheme, 'screen'> {
@@ -145,6 +147,8 @@ export interface Review {
   underTheHood: HoodItem[];
   /** Asked on the closing slide instead of a bare "Questions". */
   questions: string[];
+  /** What the previous review said was next, and whether it is done now. */
+  lastTime?: { until: string; items: Milestone[] };
   screens: ReviewScreen[];
   milestones: Milestone[];
   usage: UsageMetric[];

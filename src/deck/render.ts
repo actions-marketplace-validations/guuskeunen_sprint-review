@@ -39,6 +39,8 @@ function fontStack(name: string): string {
 }
 
 /** A picture for an img src: only an image data URI passes (review.json can be edited by hand). */
+/** A clip for a video src: only an mp4 or webm data URI passes. */
+export const VIDEO_DATA_URI = /^data:video\/(mp4|webm);base64,[A-Za-z0-9+/=]+$/;
 export const IMAGE_DATA_URI = /^data:image\/(png|jpeg|webp|gif|svg\+xml);base64,[A-Za-z0-9+/=]+$/;
 /**
  * A before or after picture in a box with the after picture's shape, so both show the same size
@@ -95,12 +97,26 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
   </ul>
   ${review.summaryNotes ? `<aside class="notes">${esc(review.summaryNotes)}</aside>` : ''}
 </section>`;
+      case 'lastTime': {
+        const said = review.lastTime!;
+        const done = said.items.filter((m) => m.done).length;
+        return `<section class="slide" data-ref="lastTime">
+  ${head(esc(t.lastTimeLabel), fill(t.lastTimeTitle, { n: done, total: said.items.length }))}
+  <ul class="promises">${said.items.map((m, i) => `\n    <li class="rise ${m.done ? 'done' : ''}"${rise(i + 2)}><span class="tag">${esc(m.done ? t.statusDone : t.statusOpen)}</span><span>${esc(m.text)}</span></li>`).join('')}
+  </ul>
+</section>`;
+      }
       case 'theme': {
         const th = review.themes[p.index]!;
         const chip = th.value ? ` <span class="chip">${valueIcon(th.value)}${esc(t[`value_${th.value}` as keyof Labels] ?? th.value)}</span>` : '';
-        const shot = th.screen
-          ? `<figure class="screen ${p.layout === 'phone' ? 'phone ' : ''}rise"${rise(3)}><img src="${picture(th.screen.image)}" alt="${esc(p.layout === 'phone' ? fill(t.onPhone, { name: th.screen.name }) : th.screen.name)}"></figure>`
-          : '';
+        const alt = th.screen ? (p.layout === 'phone' ? fill(t.onPhone, { name: th.screen.name }) : th.screen.name) : '';
+        // A clip plays muted in a loop while its slide is open; the picture is its poster, and what prints.
+        const media = !th.screen
+          ? ''
+          : th.screen.video && VIDEO_DATA_URI.test(th.screen.video)
+            ? `<video src="${th.screen.video}" poster="${picture(th.screen.image)}" muted loop playsinline preload="auto" aria-label="${esc(alt)}"></video>`
+            : `<img src="${picture(th.screen.image)}" alt="${esc(alt)}">`;
+        const shot = th.screen ? `<figure class="screen ${p.layout === 'phone' ? 'phone ' : ''}rise"${rise(3)}>${media}</figure>` : '';
         const body =
           p.layout === 'icon'
             ? `<div class="tile rise"${rise(2)}>${themeIcon(th.icon)}</div>\n    ${points(th.points, 3)}`
@@ -311,6 +327,11 @@ function script(t: Labels, lang: string): string {
     counter.textContent = (current + 1) + ' / ' + slides.length;
     try { if (history.replaceState) history.replaceState(null, '', '#' + (current + 1)); } catch (e) { /* not allowed in an embedded preview */ }
     countUp(slides[current]);
+    // Only the open slide's clips play, and none with reduced motion: the poster stays.
+    Array.prototype.forEach.call(document.querySelectorAll('video'), function (v) {
+      if (!reducedMotion && slides[current].contains(v)) { var p = v.play(); if (p && p.catch) p.catch(function () {}); }
+      else v.pause();
+    });
     tellPresenter();
     // Embedded (the editor's preview, a landing page): tell the page around it where we are.
     if (window.parent !== window) window.parent.postMessage({ type: 'sprint-review:slide', n: current + 1, total: slides.length }, '*');

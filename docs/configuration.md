@@ -239,7 +239,7 @@ What goes on the slides and in which order. See [How the deck is designed](desig
 |---|---|---|
 | `density` | by [audience](#audience) | `brief`: two points per theme and two theme slides. `standard`: three and three. `detailed`: four and four. Themes past that share a slide of cards. A slide with more words than the audience reads at a glance (30, 40 or 50) gets a warning in `checks.md`. |
 | `order` | `story` | `story` puts the numbers near the end. `numbers-first` puts them right after the headline, and is the default for `audience: executives`. |
-| `sections` | all on | Turn optional slides off: `headline`, `screens` (before and after), `hood` (also shipped), `roadmap`, `usage`, `questions`. Executives get `hood: false` by default. |
+| `sections` | all on | Turn optional slides off: `headline`, `lastTime` (what the last review said was next), `screens` (before and after), `hood` (also shipped), `roadmap`, `usage`, `questions`. Executives get `hood: false` by default. |
 
 ```yaml
 deck:
