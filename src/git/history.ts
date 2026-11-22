@@ -39,8 +39,11 @@ export class History {
     }
   }
 
-  /** Throws a readable error when the folder is no git repository or has a shallow history. */
-  assertUsable(): void {
+  /**
+   * Throws a readable error when the folder is no git repository, or when its history is cut off
+   * (a shallow clone) after the range starts. A shallow clone that reaches back far enough is fine.
+   */
+  assertUsable(range?: Range): void {
     try {
       this.git(['rev-parse', '--git-dir']);
       if (!this.git(['rev-parse', '--verify', '--quiet', 'HEAD'], true).trim()) throw new GitError(`${this.repo} has no commits yet: there is nothing to review.`);
@@ -49,9 +52,17 @@ export class History {
       // Usually a config file kept outside the repository: the repository is taken from where the config is.
       throw new GitError(`${this.repo} is not a git repository. Run sprint-review inside the repository, or set repo: in the config to its folder.`);
     }
-    if (this.git(['rev-parse', '--is-shallow-repository']).trim() === 'true') {
-      throw new GitError('This checkout has a shallow history, so older commits are missing. In GitHub Actions, use actions/checkout with fetch-depth: 0.');
+    if (this.git(['rev-parse', '--is-shallow-repository']).trim() !== 'true') return;
+    const fetchMore = 'In GitHub Actions, use actions/checkout with fetch-depth: 0.';
+    if (!range) throw new GitError(`This checkout has a shallow history, so older commits may be missing. ${fetchMore}`);
+    // Where the history is cut off: the oldest commit that is still there.
+    const starts = this.git(['log', '--format=%cs', '--max-parents=0', 'HEAD']).split('\n').filter(Boolean).sort();
+    const cut = starts[0] ?? '';
+    if (range.kind === 'dates') {
+      if (cut && cut >= range.from) throw new GitError(`This checkout's history starts on ${cut}, but the sprint starts on ${range.from}. Fetch more: git fetch --shallow-since=${earlier(range.from)}. ${fetchMore}`);
+      return;
     }
+    if (!this.resolve(range.from)) throw new GitError(`"${range.from}" is not in this checkout's shallow history. Fetch more: git fetch --unshallow. ${fetchMore}`);
   }
 
   /** The commits of the range, newest first, without merges. */
@@ -220,4 +231,9 @@ export function parseRoadmap(text: string): Milestone[] {
     }
   }
   return out;
+}
+
+/** A week before a day, so a shallow fetch also has the commit the sprint starts from. */
+function earlier(day: string): string {
+  return new Date(Date.parse(`${day}T00:00:00Z`) - 7 * 86_400_000).toISOString().slice(0, 10);
 }

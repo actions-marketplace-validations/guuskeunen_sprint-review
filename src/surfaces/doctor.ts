@@ -1,3 +1,4 @@
+import { sprintRange } from '../review/generate.ts';
 import { existsSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import type { Config } from '../config.ts';
@@ -16,7 +17,8 @@ export async function doctorChecks(config: Config, cwd = process.cwd(), env = pr
   const lines: DoctorLine[] = [];
   const add = (ok: boolean, text: string, fix?: string) => lines.push({ ok, text, ...(ok || !fix ? {} : { fix }) });
   try {
-    new History(config.repo).assertUsable();
+    // The sprint a review would cover now: a shallow clone that reaches back far enough is fine.
+    new History(config.repo).assertUsable(sprintRange(config.sprint.days));
     add(true, `Git history readable in ${relative(cwd, config.repo) || '.'}`);
   } catch (e) {
     add(false, (e as Error).message, 'Run inside a git repository, or set repo in the config.');

@@ -10,7 +10,7 @@ Run sprint-review on a schedule, so the draft is ready before the meeting.
 2. Optionally commit a `sprint-review.config.yml` to the repository root.
 3. Add a workflow, such as `.github/workflows/sprint-review.yml`.
 
-> **Important:** check out the full history with `fetch-depth: 0`. The default shallow checkout has only the last commit, and the action stops with a clear error if it finds one.
+> **Important:** check out the full history with `fetch-depth: 0`. The default shallow checkout has only the last commit, and the action stops with a clear error when the history doesn't reach back to before the sprint.
 
 ## The simplest workflow: an artifact
 

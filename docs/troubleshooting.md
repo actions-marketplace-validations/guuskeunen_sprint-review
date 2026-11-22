@@ -2,8 +2,8 @@
 
 Start with `npx @guuskeunen/sprint-review doctor`. It checks the config, the git history, the API key and your Node version, and says how to fix each one.
 
-### "This checkout has a shallow history"
-The repository was cloned without its history, which is common in CI. In GitHub Actions:
+### "This checkout's history starts on …" or "has a shallow history"
+The repository was cloned with only part of its history, which is common in CI. A shallow clone is fine as long as it reaches back to before the sprint started (`git clone --shallow-since=<a week before the sprint>`); the error names the date to fetch from. To be safe, fetch everything. In GitHub Actions:
 
 ```yaml
 - uses: actions/checkout@v4

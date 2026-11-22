@@ -94,7 +94,7 @@ export async function callTool(name: string, a: Args, cwd = process.cwd()): Prom
     const config = await withWebsiteBrand(configIn(dir));
     const range = rangeOf(a, config);
     const history = new History(config.repo);
-    history.assertUsable();
+    history.assertUsable(range);
     const commits = history.commits(range, config.productPaths, config.ignore, config.limits.commits, config.nonProductTypes);
     return `${commits.length} commits (${commits.filter((c) => c.product).length} touch product code)\n\n${commitLog(commits).slice(0, 20000)}`;
   }
