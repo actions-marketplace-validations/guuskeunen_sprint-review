@@ -100,6 +100,12 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
   </ul>
   ${review.summaryNotes ? `<aside class="notes">${esc(review.summaryNotes)}</aside>` : ''}
 </section>`;
+      case 'answered':
+        return `<section class="slide" data-ref="answered">
+  ${head(esc(t.answeredLabel), t.answeredTitle)}
+  <ul class="answered">${review.answered!.map((a, i) => `\n    <li class="rise"${rise(i + 2)}><q>${esc(a.ask)}</q><span>${esc(a.did)}</span></li>`).join('')}
+  </ul>
+</section>`;
       case 'lastTime': {
         const said = review.lastTime!;
         const done = said.items.filter((m) => m.done).length;

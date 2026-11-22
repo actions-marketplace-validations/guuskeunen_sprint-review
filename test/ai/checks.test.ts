@@ -138,3 +138,20 @@ test('a headline that lists the themes gets a warning', () => {
   assert.ok(w.checks.some((c) => c.kind === 'warning' && /lists several things/.test(c.reason)));
   assert.ok(!parse({ themes: [], under_the_hood: [], headline: { text: 'The front desk sees a whole customer on one page', commits: ['abc1234'] } }, commits, [], [], config).checks.length);
 });
+
+test('a theme name that joins two topics gets a warning', () => {
+  const theme = (title: string) => ({ title, icon: 'users', screen: 'none', value: 'faster', effect: 'Teams see more', points: [{ text: 'One list', commits: ['abc1234'] }], notes: '' });
+  const w = parse({ themes: [theme('Onboarding & Scoring'), theme('Customer page')], under_the_hood: [] }, commits, [], [], config);
+  assert.deepEqual(w.checks.filter((c) => /joins two topics/.test(c.reason)).map((c) => c.text), ['Onboarding & Scoring']);
+});
+
+test('you asked, we did: the request must exist and a product commit must back what was done', () => {
+  const w = parse({ themes: [], under_the_hood: [], answered: [
+    { item: 0, text: 'Leads now show a direct phone number', commits: ['abc1234'] },
+    { item: 4, text: 'Something nobody asked', commits: ['abc1234'] },
+    { item: 1, text: 'Faster builds', commits: ['def5678'] },
+    { item: 2, text: 'Made up', commits: [] },
+  ] }, commits, [], [], config, 0, 3);
+  assert.deepEqual(w.answered, [{ item: 0, text: 'Leads now show a direct phone number' }]);
+  assert.equal(w.checks.filter((c) => c.kind === 'dropped').length, 3);
+});

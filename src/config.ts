@@ -34,7 +34,7 @@ export const DENSITY = {
 export type Density = keyof typeof DENSITY;
 
 /** The slides that can be left out. The cover and the theme slides always show. */
-export const SECTIONS = ['headline', 'lastTime', 'screens', 'hood', 'roadmap', 'usage', 'questions'] as const;
+export const SECTIONS = ['headline', 'lastTime', 'answered', 'screens', 'hood', 'roadmap', 'usage', 'questions'] as const;
 export type Section = (typeof SECTIONS)[number];
 
 export interface DeckConfig {
@@ -97,6 +97,8 @@ export interface Config {
   areas: Record<string, Area>;
   screenshots: ScreenshotConfig;
   roadmap: string | null;
+  /** A file in the repository with requests from users and stakeholders, one per line ("- ..."). */
+  feedback: string | null;
   usage: string | null;
   limits: { themes: number; themeScreens: number; changedScreens: number; commits: number };
   model: ModelConfig;
@@ -243,6 +245,7 @@ export function normalize(raw: unknown, root: string): Config {
     areas,
     screenshots: screenshots(r.screenshots),
     roadmap: r.roadmap === false ? null : (str(r.roadmap, 'roadmap') ?? 'ROADMAP.md'),
+    feedback: r.feedback === false ? null : (str(r.feedback, 'feedback') ?? 'FEEDBACK.md'),
     usage: str(r.usage, 'usage'),
     limits: {
       themes: int(limits.themes, 'limits.themes', 6, 1, 12),

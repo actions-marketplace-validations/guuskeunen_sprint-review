@@ -89,7 +89,8 @@ export async function generate(config: Config, options: GenerateOptions): Promis
   const { end } = history.ends(range);
   const roadmap = history.milestones(end, config.roadmap);
   const staged = roadmap.filter((m) => m.stage);
-  const { written, usage } = await write(meter, config, commits, changed.map((c) => c.name), [...available.keys()], staged.map((m) => `${m.stage === 'now' ? 'Now' : 'Next'}: ${m.text}`));
+  const requests = history.requests(end, config.feedback);
+  const { written, usage } = await write(meter, config, commits, changed.map((c) => c.name), [...available.keys()], staged.map((m) => `${m.stage === 'now' ? 'Now' : 'Next'}: ${m.text}`), requests);
   const cost = costOf(meter.calls, config.model, today());
   const models = [...new Set(meter.calls.map((c) => c.model))];
 
@@ -119,6 +120,7 @@ export async function generate(config: Config, options: GenerateOptions): Promis
     usage: readUsage(config),
     checks: written.checks,
     ...(said ? { lastTime: said } : {}),
+    ...(written.answered.length ? { answered: written.answered.map((a) => ({ ask: requests[a.item]!, did: a.text })) } : {}),
   };
   step('Building the deck');
   return { review, ...render(review, config), usage, cost, models };

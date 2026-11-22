@@ -133,6 +133,11 @@
   .hood-list { list-style: none; padding: 0; display: grid; gap: 0; font-size: var(--fs-body); max-width: 52ch; }
   .hood-list li { display: grid; grid-template-columns: calc(var(--fs-small) * 10) minmax(0, 1fr); gap: 1.4vw; align-items: baseline; padding: 1.6vh 0; border-top: 1px solid var(--line); color: var(--ink); }
   .hood-list li:first-child { border-top: 0; }
+  /* You asked, we did: the request in quotes, what was done below it */
+  .answered { list-style: none; padding: 0; display: grid; gap: 3.4vh; max-width: 60ch; }
+  .answered li { display: grid; gap: .8vh; padding-left: 1.2vw; border-left: 3px solid var(--accent); }
+  .answered q { font-size: var(--fs-small); color: var(--ink-faint); quotes: "\201C" "\201D"; }
+  .answered span { font-size: var(--fs-body); color: var(--ink); }
   /* A Now / Next roadmap: two columns */
   .stages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5vw; }
   .stage { display: grid; gap: 2vh; align-content: start; }

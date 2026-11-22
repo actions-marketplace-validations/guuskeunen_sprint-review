@@ -114,6 +114,16 @@ export async function renderPptx(review: Review, options: PptxOptions = {}): Pro
         s.addText(review.themes.map((th) => th.title).join('     '), { x: X, y: 5.5, w: CW, h: 0.5, fontFace: body, fontSize: SIZE.small, color: pal.soft, margin: 0 });
         break;
       }
+      case 'answered': {
+        const s = newSlide();
+        head(s, t.answeredLabel, t.answeredTitle);
+        review.answered!.forEach((a, i) => {
+          const y = BODY_Y + i * 1.3;
+          s.addText(`“${a.ask}”`, { x: X, y, w: 10, h: 0.45, fontFace: body, fontSize: SIZE.small, color: pal.faint, margin: 0 });
+          s.addText(a.did, { x: X, y: y + 0.45, w: 10, h: 0.7, fontFace: body, fontSize: SIZE.body, color: pal.ink, valign: 'top', margin: 0 });
+        });
+        break;
+      }
       case 'lastTime': {
         const said = review.lastTime!;
         const s = newSlide();

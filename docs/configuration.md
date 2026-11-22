@@ -211,6 +211,9 @@ A Markdown file in the repository, read as it was at the end of the sprint. Defa
 roadmap: docs/development/ROADMAP.md
 ```
 
+### `feedback`
+A Markdown file in the repository with requests from users and stakeholders, one per line (`- Can we see the direct phone number?`). Default `FEEDBACK.md`; `false` to skip it. The AI matches the requests this sprint's commits answered, three at most, and says what was done; each must point at a real request and be backed by a product commit, or it is dropped. They show on a *You asked* slide before the themes.
+
 ### `usage`
 A JSON file with usage numbers you produce (from your analytics, database or a script):
 
@@ -247,7 +250,7 @@ What goes on the slides and in which order. See [How the deck is designed](desig
 |---|---|---|
 | `density` | by [audience](#audience) | `brief`: two points per theme and two theme slides. `standard`: three and three. `detailed`: four and four. Themes past that share a slide of cards. A slide with more words than the audience reads at a glance (30, 40 or 50) gets a warning in `checks.md`. |
 | `order` | `story` | `story` puts the numbers near the end. `numbers-first` puts them right after the headline, and is the default for `audience: executives`. |
-| `sections` | all on | Turn optional slides off: `headline`, `lastTime` (what the last review said was next), `screens` (before and after), `hood` (also shipped), `roadmap`, `usage`, `questions`. Executives get `hood: false` by default. |
+| `sections` | all on | Turn optional slides off: `headline`, `lastTime` (what the last review said was next), `answered` (you asked, we did), `screens` (before and after), `hood` (also shipped), `roadmap`, `usage`, `questions`. Executives get `hood: false` by default. |
 
 ```yaml
 deck:

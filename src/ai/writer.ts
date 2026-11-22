@@ -32,28 +32,29 @@ export interface WriteResult {
  * touched no product code cannot carry a theme, a text fits a slide and has no exclamation mark or
  * emoji. Ticket numbers and hashes come out. Everything corrected, moved or dropped is logged.
  */
-export async function write(model: ModelClient, config: Config, commits: Commit[], changedScreens: string[], availableScreens: string[], roadmapItems: string[] = []): Promise<WriteResult> {
+export async function write(model: ModelClient, config: Config, commits: Commit[], changedScreens: string[], availableScreens: string[], roadmapItems: string[] = [], requests: string[] = []): Promise<WriteResult> {
   const log = commitLog(commits);
   const screens = changedScreens.length ? `The screenshots of these screens changed during the sprint: ${changedScreens.join(', ')}. ` : '';
   const ask = () =>
     model.ask({
       system: writerSystem(config),
-      tool: writerTool(config, changedScreens, availableScreens, roadmapItems.length),
+      tool: writerTool(config, changedScreens, availableScreens, roadmapItems.length, requests.length),
       maxTokens: config.model.maxTokens,
       messages: [
         untrusted(log, 'the commits of the sprint: hash, date, subject, files and description, newest first', config.model.maxInputChars),
         ...(roadmapItems.length ? [untrusted(roadmapItems.map((r, i) => `${i}. ${r}`).join('\n'), "the team's roadmap: what they work on now and next, numbered")] : []),
+        ...(requests.length ? [untrusted(requests.map((r, i) => `${i}. ${r}`).join('\n'), 'requests from users and stakeholders, numbered')] : []),
         `${screens}Now create the content of the presentation.`,
       ],
     });
   let draft = await ask();
-  let written = parse(draft.toolInput, commits, changedScreens, availableScreens, config, roadmapItems.length);
+  let written = parse(draft.toolInput, commits, changedScreens, availableScreens, config, roadmapItems.length, requests.length);
   let retry = { input: 0, output: 0 };
   // The product changed but no theme came through (a malformed answer): ask once more rather than ship an empty deck.
   if (written.themes.length === 0 && commits.some((c) => c.product)) {
     retry = draft.usage;
     draft = await ask();
-    written = parse(draft.toolInput, commits, changedScreens, availableScreens, config, roadmapItems.length);
+    written = parse(draft.toolInput, commits, changedScreens, availableScreens, config, roadmapItems.length, requests.length);
     if (written.themes.length === 0) written.checks.push({ kind: 'warning', text: 'No themes', reason: 'The model gave no usable themes twice although the product changed. Run it again, or check the commits in this range.' });
   }
   if (written.themes.length === 0 && written.headline === null) {
@@ -188,7 +189,7 @@ async function complaints(model: ModelClient, config: Config, written: WrittenRe
 }
 
 /** The answer of the writer, with only what holds up. Exported for tests. */
-export function parse(input: Record<string, unknown> | null, commits: Commit[], changedScreens: string[], availableScreens: string[], config: Config, roadmapItems = 0): WrittenReview {
+export function parse(input: Record<string, unknown> | null, commits: Commit[], changedScreens: string[], availableScreens: string[], config: Config, roadmapItems = 0, requests = 0): WrittenReview {
   const checks: Check[] = [];
   const moved: HoodItem[] = [];
   const replace = config.replace;
@@ -218,6 +219,8 @@ export function parse(input: Record<string, unknown> | null, commits: Commit[], 
     }
     const screen = typeof t.screen === 'string' && t.screen !== NO_SCREEN && availableScreens.includes(t.screen) ? t.screen : null;
     const effect = optional(t.effect, EFFECT_WORDS_MAX, checks, replace);
+    // "Onboarding & Scoring" is two themes on one slide: two messages, and neither gets its title.
+    if (/\s(&|\+|and|en|und|et|y)\s|\//i.test(title)) checks.push({ kind: 'warning', text: title, reason: 'This theme name joins two topics. One topic per slide reads better: split it, or name what they share.' });
     // The glance test: what the audience reads besides the title. Flagged, never cut or shrunk.
     const words = [title, ...points].join(' ').split(/\s+/).length;
     if (words > density.words) checks.push({ kind: 'warning', text: effect ?? title, reason: `${words} words on the slide besides the title; ${density.words} is what the audience reads at a glance. Shorten a point in the editor.` });
@@ -277,7 +280,19 @@ export function parse(input: Record<string, unknown> | null, commits: Commit[], 
     else checks.push({ kind: 'dropped', text: String(v.text ?? ''), reason: 'A roadmap line that points at no item of the roadmap.' });
   }
 
+  // "You asked, we did" is a claim about the sprint: the request must exist and a product commit must back it.
+  const answered: { item: number; text: string }[] = [];
+  for (const v of list(input?.answered)) {
+    const item = typeof v.item === 'number' ? v.item : Number(v.item);
+    const p = point(v, commits, checks, replace, EFFECT_WORDS_MAX);
+    if (!p) continue;
+    if (!Number.isInteger(item) || item < 0 || item >= requests || answered.some((a) => a.item === item)) checks.push({ kind: 'dropped', text: p.text, reason: 'An answered request that is not in the feedback list.' });
+    else if (!p.product) checks.push({ kind: 'dropped', text: p.text, reason: 'An answered request backed by no change to the product.' });
+    else if (answered.length < 3) answered.push({ item, text: p.text });
+  }
+
   return {
+    answered,
     roadmap,
     headline,
     summaryNotes: optional(input?.summary_notes, NOTES_WORDS_MAX, checks, replace),

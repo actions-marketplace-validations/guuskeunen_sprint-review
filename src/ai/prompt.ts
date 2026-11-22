@@ -86,7 +86,7 @@ export function writerSystem(c: Config): string {
     context(c),
     `Write every text in ${c.language}.`,
     `Group the changes into themes the way a user of the product experiences them. For each theme, pick the icon that fits best, a different one per theme, the most precise one. If none fits, pick other. The icons, with what they suit: ${iconList()}.${areas(c)}`,
-    `Name each theme the way a user would call it: the screen, task or part of ${c.product.name} it is about, in one to three words, never the name of a module, service, file or technique ("Customer page", not "API structure"; "Repair tickets", not "OCR").`,
+    `Name each theme the way a user would call it: the screen, task or part of ${c.product.name} it is about, in one to three words, never the name of a module, service, file or technique ("Customer page", not "API structure"; "Repair tickets", not "OCR"). One topic per theme: two topics joined with "&" are two themes.`,
     `Each theme slide has one message, and its title says it: one full sentence of at most ${HEADLINE_WORDS} words with what a user can do, see or no longer has to do now, so that someone outside the team gets it in three seconds. A statement with a subject, never a command or a label: "The front desk reads repair tickets from a photo", not "Read repair tickets from a photo" and not "Ticket reading". Then ${pointCount(c)} short points that back it up, without repeating the title. Go through every commit without [no product code]: whatever a user can do now belongs in a theme.`,
     `The sprint headline is one sentence of at most ${HEADLINE_WORDS} words with the outcome that matters most to a user this sprint. One outcome, a statement with a subject: "The front desk sees a whole customer on one page", not "Customer page, ticket scanning and planner updates". It is not a list of the themes.`,
     c.goal ? `The sprint goal was: ${c.goal}. Where the work served it, put that first.` : '',
@@ -156,7 +156,7 @@ export function readerTool() {
   };
 }
 
-export function writerTool(c: Config, changedScreens: string[], availableScreens: string[], roadmapItems = 0) {
+export function writerTool(c: Config, changedScreens: string[], availableScreens: string[], roadmapItems = 0, requests = 0) {
   const point = {
     type: 'object',
     properties: {
@@ -199,6 +199,26 @@ export function writerTool(c: Config, changedScreens: string[], availableScreens
                 text: { type: 'string', description: `At most ${HEADLINE_WORDS} words.` },
               },
               required: ['item', 'text'],
+              additionalProperties: false,
+            },
+          },
+        };
+  // Only asked for when the team keeps a feedback file: which requests this sprint answered.
+  const answered =
+    requests === 0
+      ? {}
+      : {
+          answered: {
+            type: 'array',
+            description: `Requests from the feedback list that the commits of this sprint answer, at most three, the clearest first. For each, what was done, as the requester would see it, in at most ${HEADLINE_WORDS} words, and the commits that did it. Leave a request out unless a commit really does what it asks.`,
+            items: {
+              type: 'object',
+              properties: {
+                item: { type: 'integer', description: 'The number of the request, as in the list.' },
+                text: { type: 'string', description: `What was done, at most ${HEADLINE_WORDS} words.` },
+                commits: { type: 'array', description: 'The hashes of the commits that did it.', items: { type: 'string' } },
+              },
+              required: ['item', 'text', 'commits'],
               additionalProperties: false,
             },
           },
@@ -253,8 +273,9 @@ export function writerTool(c: Config, changedScreens: string[], availableScreens
         },
         ...screenChanges,
         ...roadmap,
+        ...answered,
       },
-      required: ['headline', 'summary_notes', 'themes', 'under_the_hood', 'questions', ...Object.keys(screenChanges), ...Object.keys(roadmap)],
+      required: ['headline', 'summary_notes', 'themes', 'under_the_hood', 'questions', ...Object.keys(screenChanges), ...Object.keys(roadmap), ...Object.keys(answered)],
       additionalProperties: false,
     },
   };

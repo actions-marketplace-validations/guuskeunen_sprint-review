@@ -59,6 +59,8 @@ const EN = {
   statusOpen: 'Not yet',
   roadmapNow: 'Now',
   roadmapPlanTitle: 'What we are working on',
+  answeredLabel: 'You asked',
+  answeredTitle: 'What we did with your requests',
 };
 
 export type LabelKey = keyof typeof EN;
@@ -120,6 +122,8 @@ const NL: Labels = {
   statusOpen: 'Nog niet',
   roadmapNow: 'Nu',
   roadmapPlanTitle: 'Waar we aan werken',
+  answeredLabel: 'Jullie vroegen',
+  answeredTitle: 'Wat we met jullie verzoeken deden',
 };
 
 const DE: Labels = {
@@ -178,6 +182,8 @@ const DE: Labels = {
   statusOpen: 'Noch nicht',
   roadmapNow: 'Jetzt',
   roadmapPlanTitle: 'Woran wir arbeiten',
+  answeredLabel: 'Sie haben gefragt',
+  answeredTitle: 'Was wir mit Ihren Wünschen gemacht haben',
 };
 
 const FR: Labels = {
@@ -236,6 +242,8 @@ const FR: Labels = {
   statusOpen: 'Pas encore',
   roadmapNow: 'Maintenant',
   roadmapPlanTitle: 'Ce sur quoi nous travaillons',
+  answeredLabel: 'Vous avez demandé',
+  answeredTitle: 'Ce que nous avons fait de vos demandes',
 };
 
 const ES: Labels = {
@@ -294,6 +302,8 @@ const ES: Labels = {
   statusOpen: 'Todavía no',
   roadmapNow: 'Ahora',
   roadmapPlanTitle: 'En qué estamos trabajando',
+  answeredLabel: 'Ustedes pidieron',
+  answeredTitle: 'Lo que hicimos con sus peticiones',
 };
 
 const NAMES: Record<string, string> = { english: 'en', dutch: 'nl', nederlands: 'nl', german: 'de', deutsch: 'de', french: 'fr', 'français': 'fr', spanish: 'es', 'español': 'es' };

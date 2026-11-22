@@ -120,6 +120,18 @@ export class History {
     return parseRoadmap(text);
   }
 
+  /** The requests in the feedback file at the end of the range: every list item, without checkboxes. */
+  requests(end: string | null, file: string | null): string[] {
+    if (!end || !file) return [];
+    const text = this.show(end, file)?.toString('utf8') ?? '';
+    return text
+      .split(/\r?\n/)
+      .map((l) => /^\s*[-*]\s+(?:\[[ xX]\]\s+)?(.+?)\s*$/.exec(l)?.[1])
+      .filter((x): x is string => !!x)
+      .slice(0, 40)
+      .map((x) => x.slice(0, 200));
+  }
+
   private revisionAt(moment: string): string | null {
     const hash = this.git(['rev-list', '-1', `--before=${moment}`, 'HEAD'], true).trim();
     return hash === '' ? null : hash;
