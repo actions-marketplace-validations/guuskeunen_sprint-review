@@ -17,34 +17,56 @@ import type { Review } from '../types.ts';
 const pkg = JSON.parse(readFileSync(fileURLToPath(new URL('../../package.json', import.meta.url)), 'utf8')) as { version: string };
 const PROTOCOL = '2025-06-18';
 
-const DIR = { type: 'string', description: 'The project folder (with sprint-review.config.yml, or a git repository). Default: the folder the server started in.' };
+const DIR = { type: 'string', description: 'The project folder: a git repository, with or without sprint-review.config.yml. Default: the folder the server started in.' };
+const DAY = '^\\d{4}-\\d{2}-\\d{2}$';
 const RANGE = {
-  since: { type: 'string', description: 'First day of the sprint, YYYY-MM-DD. Default: the configured sprint length back from until.' },
-  until: { type: 'string', description: 'Last day of the sprint, YYYY-MM-DD. Default: today.' },
-  from: { type: 'string', description: 'Start at a tag or commit instead of a date.' },
-  to: { type: 'string', description: 'End at a tag or commit. Default: HEAD.' },
+  since: { type: 'string', pattern: DAY, description: 'First day of the sprint, YYYY-MM-DD. Default: the configured sprint length (two weeks unless set) back from until.' },
+  until: { type: 'string', pattern: DAY, description: 'Last day of the sprint, YYYY-MM-DD. Default: today.' },
+  from: { type: 'string', description: 'Start after this tag or commit instead of a date, e.g. v1.4.0.' },
+  to: { type: 'string', description: 'End at this tag or commit. Default: HEAD.' },
 };
 
 export const TOOLS = [
   {
-    name: 'generate_sprint_review',
-    description: 'Write a sprint review deck from the git history: themes in business language, checked against the real commits, with before-and-after screenshots when configured. Writes deck.html, review.json, review.md and checks.md, and returns the paths and the check log. Calls the configured model (needs ANTHROPIC_API_KEY or OPENAI_API_KEY in the server environment).',
-    inputSchema: { type: 'object', properties: { directory: DIR, ...RANGE, out: { type: 'string', description: 'Folder to write to. Default: sprint-reviews/<last day>.' }, pptx: { type: 'boolean', description: 'Also write deck.pptx.' } }, additionalProperties: false },
+    name: 'check_sprint_review_setup',
+    title: 'Check the setup',
+    description:
+      'Check that a project is ready for a sprint review: git history, the model and its API key, screenshots and brand files. Returns one line per check, each marked ok or with what to fix. Reads only; no model call. Use it first in a new project.',
+    inputSchema: { type: 'object', properties: { directory: DIR }, additionalProperties: false },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   {
     name: 'preview_sprint_commits',
-    description: 'List the commits a sprint review would be written from, without calling a model. Use it to check the range before generating.',
+    title: 'Preview the commits',
+    description:
+      'List the commits a sprint review would be written from, with how many touch product code. Reads only; no model call, no cost. Use it to check the range before generate_sprint_review.',
     inputSchema: { type: 'object', properties: { directory: DIR, ...RANGE }, additionalProperties: false },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: 'generate_sprint_review',
+    title: 'Generate a sprint review',
+    description:
+      'Write a sprint review deck from the git history: themes in business language, each point checked against the real commits, with screenshots when configured. Writes deck.html, review.json, review.md and checks.md (and deck.pptx when asked) and returns their paths, the check log and the cost. Replaces an earlier deck in the same folder. Calls the configured model, so it needs that provider\'s key in the server environment (ANTHROPIC_API_KEY by default, or GEMINI_API_KEY, OPENAI_API_KEY and others); a review costs about $0.02 to $0.30. Reads pull requests from GitHub when GITHUB_TOKEN is set. Takes 20 seconds to 3 minutes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        directory: DIR,
+        ...RANGE,
+        out: { type: 'string', description: 'Folder to write to. Default: sprint-reviews/<last day of the sprint>.' },
+        pptx: { type: 'boolean', description: 'Also write deck.pptx, an editable PowerPoint with speaker notes. Default: false.' },
+      },
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
   },
   {
     name: 'render_sprint_review',
-    description: 'Rebuild deck.html (and review.md) from an edited review.json, with the current brand settings. No model call.',
-    inputSchema: { type: 'object', properties: { file: { type: 'string', description: 'Path to review.json.' }, directory: DIR }, required: ['file'], additionalProperties: false },
-  },
-  {
-    name: 'check_sprint_review_setup',
-    description: 'Check that the project is ready: git history, API key, screenshots, brand files.',
-    inputSchema: { type: 'object', properties: { directory: DIR }, additionalProperties: false },
+    title: 'Rebuild an edited deck',
+    description:
+      'Rebuild deck.html and review.md from a review.json that was edited by hand, with the current brand settings. Returns the path of the deck. No model call, no cost. Use it after changing review.json instead of generating again.',
+    inputSchema: { type: 'object', properties: { file: { type: 'string', description: 'Path to the review.json to render, e.g. sprint-reviews/2026-11-22/review.json.' }, directory: DIR }, required: ['file'], additionalProperties: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
 ];
 

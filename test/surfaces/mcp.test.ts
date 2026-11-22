@@ -30,3 +30,17 @@ test('the MCP server speaks JSON lines over stdio', () => {
   assert.equal(lines.length, 2);
   assert.equal(lines[1].result.tools.length, TOOLS.length);
 });
+
+test('every tool has a title, behavior hints and a described input', () => {
+  for (const tool of TOOLS) {
+    assert.ok(tool.title, `${tool.name} needs a title`);
+    const a = tool.annotations;
+    for (const hint of ['readOnlyHint', 'destructiveHint', 'idempotentHint', 'openWorldHint'] as const) assert.equal(typeof a[hint], 'boolean', `${tool.name}: ${hint}`);
+    for (const [key, p] of Object.entries(tool.inputSchema.properties)) assert.ok((p as { description?: string }).description, `${tool.name}.${key} needs a description`);
+  }
+  const tool = (name: string) => TOOLS.find((t) => t.name === name)!;
+  assert.equal(tool('preview_sprint_commits').annotations.readOnlyHint, true);
+  assert.equal(tool('check_sprint_review_setup').annotations.readOnlyHint, true);
+  assert.equal(tool('generate_sprint_review').annotations.openWorldHint, true);
+  assert.doesNotMatch(tool('generate_sprint_review').description, /OPENAI_API_KEY in the server environment\)/);
+});
