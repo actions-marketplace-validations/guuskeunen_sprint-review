@@ -2,6 +2,23 @@
 
 All notable changes are listed here, written per release from the commit messages ([Conventional Commits](https://www.conventionalcommits.org)). Versions follow [Semantic Versioning](https://semver.org).
 
+## [0.4.0](https://github.com/guuskeunen/sprint-review/compare/sprint-review-v0.3.0...sprint-review-v0.4.0) (2026-11-22)
+
+
+### Added
+
+* component screenshots, embedded fonts, You asked, product cover and zoom ([336c2aa](https://github.com/guuskeunen/sprint-review/commit/336c2aa363f26a4bba8abe9012615c7e83857988))
+* **deck:** fitting close-ups, strips across the slide, a clean cover, and the editor after a review ([e01b488](https://github.com/guuskeunen/sprint-review/commit/e01b488cca4080a686b10f069a9f53604793a2d1))
+* **deck:** fitting close-ups, strips across the slide, a clean cover, the editor after a review ([2731f68](https://github.com/guuskeunen/sprint-review/commit/2731f68e303456347ca14b197f0724dccde856da))
+* **screens:** capture when a review is made, and a login that lasts ([2156ea0](https://github.com/guuskeunen/sprint-review/commit/2156ea058f84991d7025d1cb25f94d42d66b7852))
+* **screens:** take today's pictures when a review is made; a login that lasts ([80119e5](https://github.com/guuskeunen/sprint-review/commit/80119e5b0c44c144191f517a963a53892097512e))
+
+
+### Fixed
+
+* **git:** a shallow clone that reaches back to before the sprint is fine ([ea9cc52](https://github.com/guuskeunen/sprint-review/commit/ea9cc52dcf9ed2b81752071193c2070c3db307be))
+* **git:** a shallow clone that reaches back to before the sprint is fine ([3fe7ebe](https://github.com/guuskeunen/sprint-review/commit/3fe7ebee51d36d5c20c31b4c9c7ba3c4d299f737))
+
 ## [0.3.0](https://github.com/guuskeunen/sprint-review/compare/sprint-review-v0.2.2...sprint-review-v0.3.0) (2026-11-22)
 
 
