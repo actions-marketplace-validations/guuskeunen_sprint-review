@@ -180,7 +180,7 @@ Before and after slides, and pictures on theme slides. See the [screenshots guid
 | `source` | `none` (default), `git`, `folder` or `capture`. |
 | `dir` | `git`: the folder in the repository with the pictures, from the repository root. |
 | `before`, `after` | `folder`: two folders with the pictures at the start and end of the sprint. |
-| `pages`, `baseUrl`, `devices`, `mask`, `storageState`, `wait`, `storage` | `capture`: the tool takes the pictures itself. See [taking screenshots](screenshots.md#option-3-the-tool-takes-them-capture). |
+| `pages`, `baseUrl`, `devices`, `mask`, `storageState`, `login`, `wait`, `storage`, `onReview` | `capture`: the tool takes the pictures itself. See [taking screenshots](screenshots.md#option-3-the-tool-takes-them-capture). |
 | `names` | Readable names per screen key. Also sets the order. |
 | `ignore.left` | Pixels on the left to skip when comparing desktop pictures (a side menu). |
 | `ignore.top` | Pixels at the top to skip (a top bar). |

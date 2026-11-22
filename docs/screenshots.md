@@ -7,6 +7,14 @@ Before and after pictures are what make a sprint review land. sprint-review can 
 
 There are three ways to get them: from your visual tests, from two folders, or taken by the tool from URLs you choose (best on staging with demo data, so no customer data ends up on a slide). Screenshots are always optional: without them, theme slides show an icon instead and the deck still looks complete.
 
+Which to pick:
+
+| | Works best when | The catch |
+|---|---|---|
+| `git` | You have visual tests | Only the screens your tests photograph |
+| `folder` | You'd rather pick the pictures yourself, or the app is hard to reach from a script | Somebody must remember a *before* picture at the start of the sprint, with the same crop |
+| `capture` | The app can be opened from your machine | It needs a login: a saved session, or a test account |
+
 ## Option 1: pictures from your visual tests (`git`)
 
 If your project has visual regression tests (Playwright `toHaveScreenshot`, Cypress, Storybook, Chromatic exports…), the reference pictures live in the repository and change in the same commit as the UI. That makes them perfect: real screens, made-up test data, and a history.
@@ -77,7 +85,7 @@ screenshots:
       selector: "section:has(h2:text-is('Progress'))"
   devices: [desktop, phone]             # default: desktop
   mask: [".email", "[data-private]"]    # painted over before the picture is taken
-  storageState: .auth/staging.json      # optional: a logged-in session
+  storageState: .auth/staging.json      # optional: a logged-in session (see below)
   wait: 800                             # ms after the page settles, default 500
   storage: .sprint-review/screenshots   # default
   names:
@@ -90,11 +98,28 @@ Take today's pictures:
 npx @guuskeunen/sprint-review capture
 ```
 
-Run `capture` at the end of every sprint, right before `generate` (in CI: as a step before it). Keep the storage folder between runs: commit it, or cache it in CI. The first run has nothing to compare with, so its pictures only show on theme slides.
+You rarely need to: making a review takes today's pictures first when its sprint ends today and there are none yet (`onReview: false` turns that off). Those are this review's *after* and the next review's *before*. If they can't be taken (logged out, the app is down), the review says so and goes on with the pictures there are. Keep the storage folder between runs: commit it, or cache it in CI. The first run has nothing to compare with, so its pictures only show on theme slides.
+
+### Logging in
+
+Two ways, pick one:
+
+- **A saved session** (simplest). Log in once in a browser that saves the session: `npx playwright-core codegen --channel=chrome --save-storage=.auth/staging.json https://staging.example.com/login`, log in, close the window. Point `storageState` at the file and keep it out of git. Capture saves the session back after every run, because apps often hand out a new token on each visit and the old one stops working. It lasts as long as the app keeps a session alive between reviews; when it is gone, capture stops with "Not logged in" and you log in again.
+- **A test account** (for CI, or an app that logs you out often). Capture fills in the login form itself. The config names the environment variables that hold the values, never the values. Use an account that can see only demo data. It doesn't work with single sign-on or two-factor login.
+
+```yaml
+  login:
+    url: /login
+    fields:
+      "input[type=email]": SCREENSHOT_EMAIL        # names of environment variables
+      "input[type=password]": SCREENSHOT_PASSWORD
+    submit: "button[type=submit]"
+```
+
+When a page sends capture to a login page (`/login`, `/signin`, `/auth`), it stops right away rather than photographing the login page ten times.
 
 - **Components make the best slides.** A selector crops the picture to one card or panel, which reads far better on a slide than a whole page (any Playwright selector works: CSS, `text=`, `:has()`, `xpath=`). A selector that finds nothing is skipped and named in the output.
 - **Point it at staging with demo data**, never production. `mask` is a safety net, not a plan.
-- **A login?** Save one with `npx playwright codegen --save-storage=.auth/staging.json https://staging.example.com`, and keep that file out of git.
 - **No Playwright browser download?** Set `SPRINT_REVIEW_CHROME` to a Chrome or Chromium binary.
 
 ## File names
