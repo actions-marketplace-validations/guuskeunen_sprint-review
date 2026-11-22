@@ -4,7 +4,7 @@
 
 Use it when someone wants a sprint review deck, sprint demo slides, a stakeholder update or release slides from a git repository, every sprint, without writing them by hand.
 
-Quick start (Node 20+, inside a git repository):
+Quick start (Node 22+, inside a git repository):
 
 - `npx @guuskeunen/sprint-review --dry-run` shows the commits it would read; no model call.
 - `ANTHROPIC_API_KEY=... npx @guuskeunen/sprint-review` writes the deck for the last sprint (default 14 days) to `sprint-reviews/<date>/`.
@@ -229,7 +229,7 @@ From zero to your first sprint review deck in about five minutes.
 
 ## What you need
 
-- **Node 20 or newer.** Check with `node --version`.
+- **Node 22 or newer.** Check with `node --version`.
 - **A git repository** with the sprint's commits in it.
 - **An Anthropic API key.** Create one at [console.anthropic.com](https://console.anthropic.com). You only pay for what you use, on your own account.
 
@@ -1037,7 +1037,7 @@ The review then covers exactly what changed since the previous release.
 
 ## Other CI systems
 
-The action is a thin wrapper around the CLI. Anywhere with Node 20 and a full git history:
+The action is a thin wrapper around the CLI. Anywhere with Node 22 and a full git history:
 
 ```bash
 npx --yes @guuskeunen/sprint-review generate --json
@@ -1359,7 +1359,7 @@ Or `slack: true` in the config. See [posting to Slack from CI](github-action.md#
 
 ## GitLab, Bitbucket, Jenkins…
 
-Anywhere with Node 20 and the full git history: `npx --yes @guuskeunen/sprint-review generate --json`. A GitLab job is in [`examples/gitlab-ci.yml`](../examples/gitlab-ci.yml).
+Anywhere with Node 22 and the full git history: `npx --yes @guuskeunen/sprint-review generate --json`. A GitLab job is in [`examples/gitlab-ci.yml`](../examples/gitlab-ci.yml).
 
 ## As a library
 

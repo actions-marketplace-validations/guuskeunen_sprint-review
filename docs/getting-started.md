@@ -4,7 +4,7 @@ From zero to your first sprint review deck in about five minutes.
 
 ## What you need
 
-- **Node 20 or newer.** Check with `node --version`.
+- **Node 22 or newer.** Check with `node --version`.
 - **A git repository** with the sprint's commits in it.
 - **An Anthropic API key.** Create one at [console.anthropic.com](https://console.anthropic.com). You only pay for what you use, on your own account.
 

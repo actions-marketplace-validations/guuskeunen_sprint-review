@@ -176,7 +176,7 @@ The review then covers exactly what changed since the previous release.
 
 ## Other CI systems
 
-The action is a thin wrapper around the CLI. Anywhere with Node 20 and a full git history:
+The action is a thin wrapper around the CLI. Anywhere with Node 22 and a full git history:
 
 ```bash
 npx --yes @guuskeunen/sprint-review generate --json
