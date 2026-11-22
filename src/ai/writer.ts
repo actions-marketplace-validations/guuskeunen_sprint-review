@@ -221,6 +221,8 @@ export function parse(input: Record<string, unknown> | null, commits: Commit[], 
     const effect = optional(t.effect, EFFECT_WORDS_MAX, checks, replace);
     // "Onboarding & Scoring" is two themes on one slide: two messages, and neither gets its title.
     if (/\s(&|\+|and|en|und|et|y)\s|\//i.test(title)) checks.push({ kind: 'warning', text: title, reason: 'This theme name joins two topics. One topic per slide reads better: split it, or name what they share.' });
+    // A semicolon joins two sentences: two messages under one title.
+    if (effect && effect.includes(';')) checks.push({ kind: 'warning', text: effect, reason: 'This title says two things. One message per slide: keep the one that matters most, and move the other to a point.' });
     // The glance test: what the audience reads besides the title. Flagged, never cut or shrunk.
     const words = [title, ...points].join(' ').split(/\s+/).length;
     if (words > density.words) checks.push({ kind: 'warning', text: effect ?? title, reason: `${words} words on the slide besides the title; ${density.words} is what the audience reads at a glance. Shorten a point in the editor.` });

@@ -292,7 +292,7 @@ export function writerTool(c: Config, changedScreens: string[], availableScreens
                 enum: [...VALUE_KEYS],
                 description: 'What it brings: faster work, better quality, less manual work, less risk or more insight.',
               },
-              effect: { type: 'string', description: `The slide title: one full sentence with a subject, saying what a user can do, see or no longer has to do now. Not a command. At most ${HEADLINE_WORDS} words.` },
+              effect: { type: 'string', description: `The slide title: one full sentence with a subject, saying what a user can do, see or no longer has to do now: one message, never two joined with a semicolon. Not a command. At most ${HEADLINE_WORDS} words.` },
               points: { type: 'array', description: `${pointCount(c)[0]!.toUpperCase()}${pointCount(c).slice(1)} points that back up the title without repeating it.`, items: point },
               notes: { type: 'string', description: 'A note for the presenter: what to show in the demo and how to explain it to this audience, two or three sentences, sixty words at most.' },
             },
