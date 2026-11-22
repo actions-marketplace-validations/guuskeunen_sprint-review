@@ -4,6 +4,7 @@ import type { Review } from '../types.ts';
 import { fill, labelsFor, localeOf, type Labels } from './i18n.ts';
 import { readableOn } from './colors.ts';
 import { themeIcon, valueIcon } from './icons.ts';
+import { imageSize } from './images.ts';
 import { numbers, planDeck } from './plan.ts';
 import type { DeckConfig } from '../config.ts';
 type PlannedSlide = ReturnType<typeof planDeck>[number];
@@ -38,6 +39,18 @@ function fontStack(name: string): string {
 
 /** A picture for an img src: only an image data URI passes (review.json can be edited by hand). */
 export const IMAGE_DATA_URI = /^data:image\/(png|jpeg|webp|gif|svg\+xml);base64,[A-Za-z0-9+/=]+$/;
+/**
+ * A before or after picture in a box with the after picture's shape, so both show the same size
+ * and a frame around the change sits exactly on it at any size. Phones keep their own shape.
+ */
+function shot(uri: string, alt: string, s: Review['screens'][number], frame: boolean): string {
+  const img = `<img src="${picture(uri)}" alt="${esc(alt)}">`;
+  const size = s.device === 'phone' ? null : imageSize(s.after);
+  if (!size) return img;
+  const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
+  const f = frame && s.focus ? `<i class="focus" style="left: ${pct(s.focus.x)}; top: ${pct(s.focus.y)}; width: ${pct(s.focus.w)}; height: ${pct(s.focus.h)}"></i>` : '';
+  return `<span class="shot" style="--r: ${Math.round((size.w / size.h) * 1000) / 1000}">${img}${f}</span>`;
+}
 const picture = (uri: unknown) => (typeof uri === 'string' && IMAGE_DATA_URI.test(uri) ? uri : '');
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -128,11 +141,11 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
   <div class="compare ${s.device === 'phone' ? 'phone' : ''}">
     <figure class="rise"${rise(2)}>
       <figcaption>${esc(t.before)}</figcaption>
-      <img src="${picture(s.before)}" alt="${esc(fill(t.beforeAlt, { name: s.name }))}">
+      ${shot(s.before, fill(t.beforeAlt, { name: s.name }), s, false)}
     </figure>
     <figure class="after rise"${rise(3)}>
       <figcaption>${esc(t.after)}</figcaption>
-      <img src="${picture(s.after)}" alt="${esc(fill(t.afterAlt, { name: s.name }))}">
+      ${shot(s.after, fill(t.afterAlt, { name: s.name }), s, true)}
     </figure>
   </div>
 </section>`;
@@ -273,7 +286,7 @@ function script(t: Labels, lang: string): string {
       var startAt = null;
       function step(now) {
         if (startAt === null) startAt = now;
-        var k = Math.min(1, (now - startAt) / 900);
+        var k = Math.min(1, (now - startAt) / 600);
         el.textContent = nf.format(Math.round(target * (1 - Math.pow(1 - k, 3))));
         if (k < 1) requestAnimationFrame(step);
       }

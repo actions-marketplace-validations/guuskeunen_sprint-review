@@ -1,5 +1,5 @@
 import sharp from 'sharp';
-import type { Device } from '../types.ts';
+import type { Device, Focus } from '../types.ts';
 
 /** How far one color channel may differ before a pixel counts as changed. */
 const TOLERANCE = 40;
@@ -14,14 +14,51 @@ export interface Comparison {
   /** The part to show: the same area of both pictures, or both whole for a phone. */
   before: Buffer;
   after: Buffer;
+  /** The changed area on the pictures shown, when it is small enough to be worth pointing at. */
+  focus?: Focus;
 }
 
+/** Past this share of the picture, a frame around the change points at nothing in particular. */
+const MAX_FOCUS_AREA = 0.6;
+
+/** Unchanged rows that end the band where a change starts. */
+const GAP = 24;
+/** The band never takes more than this share of the picture's height. */
+const MAX_BAND = 0.4;
+
 /**
- * Compares two screenshots pixel by pixel, skipping the parts every screen shares (a side menu
- * on the left, a top bar), so a new menu item doesn't count as a changed screen. On desktop it
- * also finds where the change starts, so the slide can show that part large.
- * Null when a picture can't be read: then nothing is known and the caller keeps both whole.
+ * The box around where the change starts, as fractions of the area shown, with a little room.
+ * A new element pushes everything below it down, so every row under it differs too: the band
+ * runs from the first changed row to the first gap of unchanged rows, which is usually the new
+ * element itself.
  */
+function focusIn(rows: Map<number, [number, number]>, area: { x: number; y: number; w: number; h: number }): Focus | undefined {
+  const ys = [...rows.keys()].filter((y) => y >= area.y && y < area.y + area.h).sort((a, b) => a - b);
+  if (!ys.length) return undefined;
+  const y0 = ys[0]!;
+  let y1 = y0;
+  for (const y of ys) {
+    if (y - y1 > GAP || y - y0 > area.h * MAX_BAND) break;
+    y1 = y;
+  }
+  let x0 = Infinity, x1 = -Infinity;
+  for (const y of ys) {
+    if (y > y1) break;
+    const [from, until] = rows.get(y)!;
+    x0 = Math.min(x0, Math.max(from, area.x));
+    x1 = Math.max(x1, Math.min(until, area.x + area.w - 1));
+  }
+  if (x0 > x1) return undefined;
+  const pad = 14;
+  const fx = Math.max(0, x0 - pad - area.x) / area.w;
+  const fy = Math.max(0, y0 - pad - area.y) / area.h;
+  const fw = Math.min(1 - fx, (x1 - x0 + 2 * pad) / area.w);
+  const fh = Math.min(1 - fy, (y1 - y0 + 2 * pad) / area.h);
+  if (fw * fh > MAX_FOCUS_AREA) return undefined;
+  const r = (n: number) => Math.round(n * 1000) / 1000;
+  return { x: r(fx), y: r(fy), w: r(fw), h: r(fh) };
+}
+
 export async function compareScreens(before: Buffer, after: Buffer, device: Device, ignore: { left: number; top: number }): Promise<Comparison | null> {
   const [a, b] = await Promise.all([decode(before), decode(after)]);
   if (!a || !b) return null;
@@ -54,7 +91,10 @@ export async function compareScreens(before: Buffer, after: Buffer, device: Devi
   // A page that only grew or shrank below what both show did change, at its end.
   const grew = a.height !== b.height;
   if (changed < MIN_CHANGED_PIXELS && !grew) return { changed: false, before, after };
-  if (device !== 'desktop' || changed < MIN_CHANGED_PIXELS || first === null) return { changed: true, before, after };
+  if (device !== 'desktop' || changed < MIN_CHANGED_PIXELS || first === null) {
+    const focus = changed >= MIN_CHANGED_PIXELS ? focusIn(rows, { x: 0, y: 0, w: b.width, h: b.height }) : undefined;
+    return { changed: true, before, after, ...(focus ? { focus } : {}) };
+  }
 
   const focusTop = Math.max(top, first - FOCUS_MARGIN);
   let from = width;
@@ -70,7 +110,9 @@ export async function compareScreens(before: Buffer, after: Buffer, device: Devi
   if (x + focusWidth > width) x = Math.max(left, width - focusWidth);
 
   const [cropBefore, cropAfter] = await Promise.all([crop(before, a.height, x, focusTop, focusWidth), crop(after, b.height, x, focusTop, focusWidth)]);
-  return { changed: true, before: cropBefore ?? before, after: cropAfter ?? after };
+  const shown = cropAfter ? { x, y: focusTop, w: focusWidth, h: Math.min(FOCUS_HEIGHT, b.height - focusTop) } : { x: 0, y: 0, w: b.width, h: b.height };
+  const focus = focusIn(rows, shown);
+  return { changed: true, before: cropBefore ?? before, after: cropAfter ?? after, ...(focus ? { focus } : {}) };
 }
 
 async function decode(png: Buffer): Promise<{ data: Buffer; width: number; height: number } | null> {

@@ -23,22 +23,22 @@
     gap: 3.5vh;
     /* Slides cross-fade: the old one fades out while the new one settles in. */
     opacity: 0; visibility: hidden; transform: scale(.985);
-    transition: opacity .45s ease, transform .6s cubic-bezier(.2, .7, .2, 1), visibility 0s linear .45s;
+    transition: opacity .3s ease, transform .4s cubic-bezier(.2, .7, .2, 1), visibility 0s linear .3s;
   }
-  .slide.active { opacity: 1; visibility: visible; transform: none; transition: opacity .45s ease, transform .6s cubic-bezier(.2, .7, .2, 1); }
+  /* Motion budget: every animation runs once, in 400 ms or less, and only to show what arrives
+     or what changed. Nothing loops. Reduced motion turns it all off. */
+  .slide.active { opacity: 1; visibility: visible; transform: none; transition: opacity .3s ease, transform .4s cubic-bezier(.2, .7, .2, 1); }
   html:not(.js) .slide.active * { animation: none !important; }
-  .slide.active .rise { animation: rise .5s cubic-bezier(.2, .7, .2, 1) both; animation-delay: calc(var(--i, 0) * 90ms + 60ms); }
+  .slide.active .rise { animation: rise .35s cubic-bezier(.2, .7, .2, 1) both; animation-delay: calc(var(--i, 0) * 60ms + 40ms); }
   @keyframes rise { from { opacity: 0; transform: translateY(2.2vh); } to { opacity: 1; transform: none; } }
   @media (prefers-reduced-motion: reduce) { .slide, .slide.active { transition: none; transform: none; } .slide.active .rise { animation: none; } }
 
   /* Icons draw themselves line by line (the script gives their shapes a pathLength of 1). */
-  .slide.active .icon.draw :is(path, circle, rect, line, polyline, polygon, ellipse) { stroke-dasharray: 1; animation: draw 1.1s cubic-bezier(.65, 0, .35, 1) both; animation-delay: calc(var(--i, 0) * 90ms + 250ms); }
+  .slide.active .icon.draw :is(path, circle, rect, line, polyline, polygon, ellipse) { stroke-dasharray: 1; animation: draw .4s cubic-bezier(.65, 0, .35, 1) both; animation-delay: calc(var(--i, 0) * 60ms + 150ms); }
   /* Hidden until its line starts: an empty dash with a round cap would show as a loose dot. */
   @keyframes draw { from { stroke-dashoffset: 1; opacity: 0; } 8% { opacity: 1; } to { stroke-dashoffset: 0; opacity: 1; } }
   /* A small bounce for what appears on its own: tiles, check marks. */
   @keyframes pop { 0% { opacity: 0; transform: scale(.6); } 70% { opacity: 1; transform: scale(1.06); } 100% { opacity: 1; transform: none; } }
-  @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.2vh); } }
-  @keyframes breathe { 0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; } 50% { transform: scale(1.06) rotate(8deg); opacity: .7; } }
   @media (prefers-reduced-motion: reduce) { .slide.active .icon.draw :is(path, circle, rect, line, polyline, polygon, ellipse) { animation: none; } }
 
   /* Four text sizes for the whole deck, nothing in between (at 1920 x 1080: 120, 64, 36 and 24 px).
@@ -70,8 +70,6 @@
   .brand-logo { position: absolute; top: 9vh; left: 8vw; max-height: 7vh; max-width: 22vw; object-fit: contain; filter: drop-shadow(0 2px 8px rgb(0 0 0 / .2)); }
   .brand-logo.plate { background: #fff; padding: 1.2vh 1.2vw; border-radius: 12px; filter: none; max-height: 9vh; }
   .rings { position: absolute; right: -12vw; bottom: -18vh; width: 70vh; height: 70vh; border-radius: 50%; border: 1px solid rgb(255 255 255 / .12); box-shadow: 0 0 0 9vh rgb(255 255 255 / .03), 0 0 0 18vh rgb(255 255 255 / .025); pointer-events: none; }
-  .slide.active .rings { animation: breathe 9s ease-in-out infinite; }
-  @media (prefers-reduced-motion: reduce) { .slide.active .rings { animation: none; } }
   /* Closing: the questions for the audience, numbered */
   .questions { list-style: none; padding: 0; display: grid; gap: 2.6vh; counter-reset: q; font-size: var(--fs-body); max-width: 40ch; }
   .questions li { display: grid; grid-template-columns: 1.6em 1fr; gap: .4em; color: #fff; counter-increment: q; }
@@ -110,14 +108,12 @@
   .theme.layout-icon .body { grid-template-columns: auto minmax(0, 1fr); align-items: center; align-content: center; gap: 5vw; padding-bottom: 6vh; }
   .tile { width: clamp(7rem, 26vh, 16rem); aspect-ratio: 1; border-radius: 28%; display: grid; place-items: center; color: var(--accent); background: linear-gradient(145deg, var(--accent-soft), #fff); border: 1px solid color-mix(in srgb, var(--accent) 18%, #fff); box-shadow: 0 20px 50px -20px color-mix(in srgb, var(--accent) 45%, transparent); }
   .tile .icon { width: 52%; height: 52%; }
-  .slide.active .tile.rise { animation: pop .7s cubic-bezier(.3, 1.3, .5, 1) both, float 6s ease-in-out 1.2s infinite; }
-  .slide.active .theme .screen.rise { animation: slide-in .8s cubic-bezier(.2, .7, .2, 1) .35s both; }
+  .slide.active .tile.rise { animation: pop .4s cubic-bezier(.3, 1.3, .5, 1) both; }
+  .slide.active .theme .screen.rise { animation: slide-in .4s cubic-bezier(.2, .7, .2, 1) .15s both; }
   .slide.active .theme.flip .screen.rise { animation-name: slide-in-left; }
-  .slide.active .theme .screen img { animation: drift 14s ease-in-out 1.2s infinite alternate; }
   @keyframes slide-in { from { opacity: 0; transform: translateX(4vw); } to { opacity: 1; transform: none; } }
   @keyframes slide-in-left { from { opacity: 0; transform: translateX(-4vw); } to { opacity: 1; transform: none; } }
-  @keyframes drift { from { object-position: top left; } to { object-position: bottom left; } }
-  @media (prefers-reduced-motion: reduce) { .slide.active .tile.rise, .slide.active .theme .screen.rise, .slide.active .theme .screen img { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .slide.active .tile.rise, .slide.active .theme .screen.rise { animation: none; } }
 
   /* More changes: one card per theme, its message only */
   .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2.4vw; }
@@ -142,9 +138,16 @@
   figure.after figcaption { color: var(--good); }
   .compare.phone { grid-template-columns: auto auto; justify-content: start; gap: 6vw; }
   .compare.phone figure img { width: auto; height: 50vh; aspect-ratio: 390 / 844; border: .4rem solid var(--ink); border-radius: 1.8rem; }
-  .slide.active figure.after img { animation: wipe 1.1s cubic-bezier(.65, 0, .35, 1) .7s both; }
+  /* The change on the after picture: a frame in the accent, the rest dimmed, once the picture is in. */
+  .shot { position: relative; display: block; overflow: hidden; width: min(100%, calc(52vh * var(--r))); aspect-ratio: var(--r); border-radius: 10px; border: 1px solid var(--line); box-shadow: 0 24px 48px -24px rgb(15 23 42 / .35); }
+  .compare .shot img { width: 100%; height: 100%; max-height: none; aspect-ratio: auto; border: 0; border-radius: 0; box-shadow: none; }
+  .compare .shot img { object-fit: cover; object-position: top left; }
+  .focus { position: absolute; border: 3px solid var(--accent); border-radius: 8px; box-shadow: 0 0 0 100vmax rgb(15 23 42 / .32); pointer-events: none; }
+  .slide.active .focus { animation: focus-in .3s ease-out .85s both; }
+  @keyframes focus-in { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: none; } }
+  .slide.active figure.after img { animation: wipe .4s cubic-bezier(.65, 0, .35, 1) .4s both; }
   @keyframes wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
-  @media (prefers-reduced-motion: reduce) { .slide.active figure.after img { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .slide.active figure.after img, .slide.active .focus { animation: none; } }
 
   /* Numbers: one big number per idea, its label below */
   .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 3vw; }
@@ -165,7 +168,7 @@
   .timeline li.next { color: var(--ink); }
   .timeline li.next::before { border-color: var(--accent); box-shadow: 0 0 0 6px var(--accent-soft); }
   .timeline b { font-size: var(--fs-small); text-transform: uppercase; letter-spacing: .12em; color: var(--accent); }
-  .slide.active .timeline li.rise::before { animation: pop .45s cubic-bezier(.3, 1.4, .5, 1) both; animation-delay: calc(var(--i, 0) * 90ms + 280ms); }
+  .slide.active .timeline li.rise::before { animation: pop .3s cubic-bezier(.3, 1.4, .5, 1) both; animation-delay: calc(var(--i, 0) * 60ms + 150ms); }
   @media (prefers-reduced-motion: reduce) { .slide.active .timeline li.rise::before { animation: none; } }
 
   /* Progress and counter */
@@ -177,7 +180,7 @@
   body.show-notes .slide.active .notes { display: block; position: fixed; left: 2vw; right: 2vw; bottom: 3.5vh; padding: 1.6vh 1.4vw; border-radius: 14px; background: rgb(15 23 42 / .92); color: #e2e8f0; font-size: var(--fs-small); line-height: 1.45; z-index: 5; white-space: pre-line; }
   .notes::before { content: var(--notes-label); display: block; font-size: .7em; letter-spacing: .14em; text-transform: uppercase; color: #94a3b8; margin-bottom: .4em; }
   /* The keys, at the start and again when the mouse moves; out of the way while presenting. */
-  .hint { position: fixed; left: 2vw; bottom: 2vh; font-size: .75rem; color: var(--ink-faint); transition: opacity .6s; }
+  .hint { position: fixed; left: 2vw; bottom: 2vh; font-size: .75rem; color: var(--ink-faint); transition: opacity .4s; }
   .hint.quiet { opacity: 0; }
   .edit-button { position: fixed; top: 2vh; right: 2vw; z-index: 10; font: 500 .8rem/1 var(--font-body, inherit); padding: .5em .9em; border-radius: 99px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-faint); cursor: pointer; opacity: .55; transition: opacity .2s, color .2s; }
   .edit-button:hover, .edit-button:focus-visible { opacity: 1; color: var(--accent); }

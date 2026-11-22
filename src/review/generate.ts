@@ -151,7 +151,7 @@ function explained(changed: ChangedScreen[], captions: Record<string, string>, m
   return changed
     .filter((s) => captions[s.name])
     .slice(0, max)
-    .map((s) => ({ name: s.name, device: s.device, before: dataUri(s.before), after: dataUri(s.after), caption: captions[s.name] ?? null }));
+    .map((s) => ({ name: s.name, device: s.device, before: dataUri(s.before), after: dataUri(s.after), caption: captions[s.name] ?? null, ...(s.focus ? { focus: s.focus } : {}) }));
 }
 
 /**

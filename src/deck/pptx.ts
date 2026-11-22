@@ -7,6 +7,7 @@ type Slide = ReturnType<InstanceType<PptxClass>['addSlide']>;
 import { numbers, planDeck } from './plan.ts';
 import type { DeckConfig } from '../config.ts';
 import { readableOn } from './colors.ts';
+import { imageSize } from './images.ts';
 
 export class PptxError extends Error {}
 
@@ -18,19 +19,6 @@ export interface PptxOptions {
   theme?: 'dark' | 'light';
   fonts?: { heading?: string | null; body?: string | null };
   deck?: DeckConfig;
-}
-
-/** Width and height of a PNG or JPEG data URI, so pictures keep their shape. */
-function imageSize(uri: string): { w: number; h: number } | null {
-  const b = Buffer.from(uri.slice(uri.indexOf(',') + 1), 'base64');
-  if (b.length > 24 && b.readUInt32BE(0) === 0x89504e47) return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
-  for (let i = 2; i < b.length - 9; ) {
-    if (b[i] !== 0xff) return null;
-    const marker = b[i + 1]!;
-    if (marker >= 0xc0 && marker <= 0xc3) return { w: b.readUInt16BE(i + 7), h: b.readUInt16BE(i + 5) };
-    i += 2 + b.readUInt16BE(i + 2);
-  }
-  return null;
 }
 
 /** Place a picture inside a box: whole and centered (fit), or filling it from the top (cover). */
@@ -171,7 +159,14 @@ export async function renderPptx(review: Review, options: PptxOptions = {}): Pro
         for (const [i, side] of (['before', 'after'] as const).entries()) {
           const x = X + i * (w + 0.4);
           s.addText((side === 'before' ? t.before : t.after).toUpperCase(), { x, y: BODY_Y, w, h: 0.3, fontFace: body, fontSize: SIZE.small, bold: true, color: side === 'after' ? pal.accent : pal.faint, charSpacing: 3, margin: 0 });
-          s.addImage(place(sc[side], { x, y: BODY_Y + 0.45, w, h: BODY_H - 0.45 }, sc.device === 'phone' ? 'fit' : 'cover'));
+          const pic = place(sc[side], { x, y: BODY_Y + 0.45, w, h: BODY_H - 0.45 }, sc.device === 'phone' ? 'fit' : 'cover');
+          s.addImage(pic);
+          // The change, framed on the after picture where it falls inside what is shown.
+          const f = side === 'after' ? sc.focus : undefined;
+          const shown = 'sizing' in pic && pic.sizing ? pic.sizing.h : pic.h;
+          if (f && sc.device !== 'phone' && (f.y + f.h) * pic.h <= shown) {
+            s.addShape('roundRect', { x: pic.x + f.x * pic.w, y: pic.y + f.y * pic.h, w: f.w * pic.w, h: f.h * pic.h, fill: { type: 'none' }, line: { color: pal.accent, width: 2.25 }, rectRadius: 0.06 });
+          }
         }
         break;
       }

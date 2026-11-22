@@ -22,6 +22,8 @@ export function validReview(v: unknown): Review {
     if (t.layout !== undefined && !(THEME_LAYOUTS as readonly string[]).includes(t.layout)) throw new Error(`The layout of theme "${t.title}" must be one of ${THEME_LAYOUTS.join(', ')}.`);
     if (t.screen && !IMAGE_DATA_URI.test(String(t.screen.image))) throw new Error(`The picture of theme "${t.title}" must be an image (a data:image URI).`);
   }
+  const fraction = (n: unknown) => typeof n === 'number' && n >= 0 && n <= 1;
+  for (const s of r.screens) if (s?.focus !== undefined && !(['x', 'y', 'w', 'h'] as const).every((k) => fraction(s.focus?.[k]))) throw new Error(`The focus of "${s?.name}" must have x, y, w and h from 0 to 1.`);
   for (const s of r.screens) if (!IMAGE_DATA_URI.test(String(s?.before)) || !IMAGE_DATA_URI.test(String(s?.after))) throw new Error(`The before and after picture of "${s?.name}" must be images (data:image URIs).`);
   return {
     ...r,

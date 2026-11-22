@@ -125,7 +125,7 @@ export function screens(config: ScreenshotConfig, root: string, history: History
         if (!before || !after || before.equals(after)) continue;
         const cmp = await compareScreens(before, after, device, config.ignore);
         if (cmp && !cmp.changed) continue;
-        out.push({ name: label(key, device), key, device, before: cmp?.before ?? before, after: cmp?.after ?? after });
+        out.push({ name: label(key, device), key, device, before: cmp?.before ?? before, after: cmp?.after ?? after, ...(cmp?.focus ? { focus: cmp.focus } : {}) });
         if (out.length === MAX_SCREENS) break;
       }
       return out;

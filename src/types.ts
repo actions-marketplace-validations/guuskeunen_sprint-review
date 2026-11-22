@@ -27,6 +27,16 @@ export interface ChangedScreen {
   device: Device;
   before: Buffer;
   after: Buffer;
+  /** Where the change is on the pictures, as fractions of their size. */
+  focus?: Focus;
+}
+
+/** An area of a picture as fractions of its width and height, 0 to 1. */
+export interface Focus {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
 export interface Milestone {
@@ -109,6 +119,8 @@ export interface ReviewScreen {
   before: string;
   after: string;
   caption: string | null;
+  /** The changed area, framed on the after picture while the rest dims. Remove it to show the pictures plain. */
+  focus?: Focus;
 }
 
 /** Everything the deck is rendered from. Editing a review means editing this, then rendering again. */
