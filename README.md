@@ -127,7 +127,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0            # the full history is needed
+          fetch-depth: 0            # history back to before the sprint
       - uses: guuskeunen/sprint-review@v0
         id: review
         with:

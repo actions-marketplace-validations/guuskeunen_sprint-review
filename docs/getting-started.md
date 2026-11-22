@@ -105,7 +105,7 @@ All set. Run sprint-review generate.
 
 Before you present, open `checks.md`. It lists:
 
-- **Look at:** lines the second reader got stuck on, and commits that didn't fit in a very long sprint.
+- **Look at:** lines the second reader got stuck on, titles that say two things, and in a very long sprint how many commits didn't fit (one line with a count and a few examples).
 - **Dropped:** points that named no real commit, or broke a rule (too long, an exclamation mark, an emoji).
 - **Moved under the hood:** points that came from tooling changes.
 

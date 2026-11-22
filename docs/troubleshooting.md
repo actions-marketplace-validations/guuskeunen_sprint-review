@@ -19,6 +19,12 @@ In GitLab CI set `GIT_DEPTH: 0`. Locally: `git fetch --unshallow`.
 - Commits matching `ignore` are left out.
 - In CI, make sure the branch you want is checked out, usually your main branch.
 
+### "… of … commits not read" in checks.md
+The sprint is longer than the model reads at once (`model.maxInputChars`). Every product commit still gets a line, so what's left out is usually docs and chores. If product commits are left out too, narrow `productPaths` or `ignore`, or raise `model.maxInputChars` when your model takes more.
+
+### "Only the newest … commits were read"
+The sprint has more commits than `limits.commits` (3,000), so its first days are missing. Raise the limit, or leave noise out with `ignore`.
+
 ### "ANTHROPIC_API_KEY is not set"
 Create a key at [console.anthropic.com](https://console.anthropic.com), then `export ANTHROPIC_API_KEY=sk-ant-...` in your shell or add it as a repository secret in CI.
 

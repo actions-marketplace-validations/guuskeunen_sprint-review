@@ -64,7 +64,7 @@ limits:
   themes: 6
   themeScreens: 4
   changedScreens: 4
-  commits: 1000
+  commits: 3000
 
 model:
   name: claude-opus-5-5
@@ -280,7 +280,7 @@ A theme's layout (beside its screenshot, a large screenshot, the icon, or a card
 | `maxTokens` | `16000` | Room for each answer. Thinking models count their thinking against it too; when it runs out, the error says so. |
 | `baseUrl` | per provider | The endpoint, for `azure` (required), a gateway or a local server on another port. |
 | `mode` | `tools` | `json` asks for JSON matching the schema instead of forcing a tool call. Default `json` for `ollama` and `lmstudio`. |
-| `maxInputChars` | `120000` | How much of the commit log the model gets. `24000` for local models. |
+| `maxInputChars` | `120000` | How much of the commit log the model gets. `24000` for local models. A longer sprint is fitted to it: a line for every product commit first, then details as far as they fit; `checks.md` counts what was left out. |
 | `region` | `AWS_REGION` | `bedrock` only. |
 | `price` | list price | `{ input, output }`: US dollars per million tokens, for the cost of each run. Built in for Claude on the Anthropic API and for Gemini; set it for Bedrock, Azure, OpenRouter, a gateway, or a model the list doesn't know. |
 

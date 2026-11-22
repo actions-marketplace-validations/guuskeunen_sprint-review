@@ -38,6 +38,9 @@ git history ──► commits (+ pull requests), changed screenshots, roadmap
 - Commits matching `ignore` are left out.
 - With a GitHub token, the pull request behind each product commit is looked up; its title (and, on its first commit, its description, cut at 800 characters and without HTML comments) is added to the log.
 - Each commit is marked as product work or not: it must touch a file under `productPaths` (if set) and must not be a `ci:`, `build:`, `test:`, `docs:` or `chore:` commit (`nonProductTypes`).
+- A long sprint is fitted to what the model can read (`model.maxInputChars`) without losing its first days: a line for every product commit first, then up to 15% of the room for lines of the other commits, then the details of product commits as far as they fit. What's still left out is counted in one warning in `checks.md`. A sprint of 1,300 commits (VS Code over two weeks) fits this way with every product commit in view.
+- At most `limits.commits` commits are read (3,000), newest first; a sprint past it gets a warning that its first days are missing.
+- A shallow clone is fine when its history reaches back to before the sprint starts.
 
 ### 2. The writer
 

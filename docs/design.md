@@ -6,7 +6,7 @@ The deck follows rules from presentation research: Apple's keynotes and Human In
 
 | Rule | Where it comes from | How the deck keeps it |
 |---|---|---|
-| One message per slide, stated in the title as a full sentence | Alley, Duarte | A theme's title is what a user can do now, in 12 words at most; the theme's name sits small above it. |
+| One message per slide, stated in the title as a full sentence | Alley, Duarte | A theme's title is what a user can do now, in 12 words at most; the theme's name sits small above it. A title that joins two messages with a semicolon gets a warning. |
 | Readable at a glance: about 40 words besides the title | Duarte's glance test | The writer is asked for two to four points (depending on `deck.density`). A slide over the budget gets a warning in the check log. The text is never shrunk to fit. |
 | Four text sizes for the whole deck | Butterick, Apple | 120, 64, 36 and 24 px at 1920 x 1080. They scale with the window. |
 | Nothing under 24 px; body text 36 px | Apple tvOS, Alley | The smallest text is 24 px: labels, captions, the cards' sentences. |
@@ -26,7 +26,7 @@ The deck follows rules from presentation research: Apple's keynotes and Human In
 3. **Last sprint**: what the previous review showed as next on the roadmap, and whether it is done now. Only when there is a previous review in the output folder and a roadmap; the audience checks promises before hearing new ones (GitLab publishes its kickoff and retrospective as a pair for the same reason).
 4. **You asked**: requests from `FEEDBACK.md` that this sprint answered, each with what was done, backed by a commit.
 5. **Theme slides**: the biggest themes, one slide each. `deck.density` sets how many: 2, 3 or 4.
-6. **More changes**: the remaining themes as cards, one message each. Their points go into the speaker notes.
+6. **More changes**: the remaining themes as cards, one message each, across the slide's width. Their points go into the speaker notes.
 7. **Before and after**: one slide per changed screen, the change framed. When it is small, one press of → zooms into it (Tversky et al.: animation helps most for moving from overview to detail) and the next moves on.
 8. **Also shipped**: work behind the scenes, with a label per line (security, reliability, speed, maintenance).
 9. **Roadmap**: how many milestones are reached, as a line through the last ones reached and the next ones.
