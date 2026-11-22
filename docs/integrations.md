@@ -77,7 +77,7 @@ Or `slack: true` in the config. See [posting to Slack from CI](github-action.md#
 
 ## GitLab, Bitbucket, Jenkins…
 
-Anywhere with Node 22 and the full git history: `npx --yes @guuskeunen/sprint-review generate --json`. A GitLab job is in [`examples/gitlab-ci.yml`](../examples/gitlab-ci.yml).
+Anywhere with Node 22 and a git history that reaches back to before the sprint: `npx --yes @guuskeunen/sprint-review generate --json`. A GitLab job is in [`examples/gitlab-ci.yml`](../examples/gitlab-ci.yml).
 
 ## As a library
 

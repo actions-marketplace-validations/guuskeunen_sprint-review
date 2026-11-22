@@ -156,3 +156,14 @@ test('clear messages, before any model call, for an empty repository, an unknown
   await assert.rejects(generate(normalize({ productPaths: ['src/'] }, docsOnly), { model, range }), /None of the 1 commit.*src\//);
   assert.equal(model.requests.length, 0, 'no model call was paid for');
 });
+
+test('a sprint past limits.commits says its first days are missing', async () => {
+  const dir = demoRepo();
+  const config = demoConfig(dir);
+  config.limits.commits = 5;
+  const { review } = await generate(config, { model: new FakeModel(), range });
+  assert.equal(review.checks[0]?.text, 'Only the newest 5 commits were read');
+  assert.match(review.checks[0]!.reason, /first days are missing/);
+  const { review: all } = await generate(demoConfig(dir), { model: new FakeModel(), range });
+  assert.ok(!all.checks.some((c) => /Only the newest/.test(c.text)));
+});

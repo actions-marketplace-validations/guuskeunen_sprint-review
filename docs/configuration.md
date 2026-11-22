@@ -64,7 +64,7 @@ limits:
   themes: 6
   themeScreens: 4
   changedScreens: 4
-  commits: 1000
+  commits: 3000
 
 model:
   name: claude-opus-5-5
@@ -268,7 +268,7 @@ A theme's layout (beside its screenshot, a large screenshot, the icon, or a card
 | `themes` | `6` | The most themes. The first ones get a slide each (see [`deck.density`](#deck)), the rest share a slide of cards. |
 | `themeScreens` | `4` | The most theme slides with a screenshot. |
 | `changedScreens` | `4` | The most before and after slides. |
-| `commits` | `1000` | The most commits read. Very long sprints are also cut to what the AI can read; `checks.md` names the commits it skipped. |
+| `commits` | `3000` | The most commits read, newest first; past it, `checks.md` says the sprint's first days are missing. What the AI reads is fitted to `model.maxInputChars`: a line for every product commit first, then details as far as they fit; `checks.md` counts what was left out. |
 
 ### `model`
 
@@ -280,7 +280,7 @@ A theme's layout (beside its screenshot, a large screenshot, the icon, or a card
 | `maxTokens` | `16000` | Room for each answer. Thinking models count their thinking against it too; when it runs out, the error says so. |
 | `baseUrl` | per provider | The endpoint, for `azure` (required), a gateway or a local server on another port. |
 | `mode` | `tools` | `json` asks for JSON matching the schema instead of forcing a tool call. Default `json` for `ollama` and `lmstudio`. |
-| `maxInputChars` | `120000` | How much of the commit log the model gets. `24000` for local models. |
+| `maxInputChars` | `120000` | How much of the commit log the model gets. `24000` for local models. A longer sprint is fitted to it: a line for every product commit first, then details as far as they fit; `checks.md` counts what was left out. |
 | `region` | `AWS_REGION` | `bedrock` only. |
 | `price` | list price | `{ input, output }`: US dollars per million tokens, for the cost of each run. Built in for Claude on the Anthropic API and for Gemini; set it for Bedrock, Azure, OpenRouter, a gateway, or a model the list doesn't know. |
 

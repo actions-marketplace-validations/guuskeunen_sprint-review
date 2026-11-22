@@ -258,7 +258,7 @@ export function normalize(raw: unknown, root: string): Config {
       themes: int(limits.themes, 'limits.themes', 6, 1, 12),
       themeScreens: int(limits.themeScreens, 'limits.themeScreens', 4, 0, 12),
       changedScreens: int(limits.changedScreens, 'limits.changedScreens', 4, 0, 12),
-      commits: int(limits.commits, 'limits.commits', 1000, 1, 100000),
+      commits: int(limits.commits, 'limits.commits', 3000, 1, 100000),
     },
     model: modelConfig(model),
     output: {

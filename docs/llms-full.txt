@@ -84,6 +84,19 @@ Most AI summary tools hand your history to a model and hope for the best. sprint
 
 The deck tells the sprint as a story: a cover with your logo and color, the sprint in one sentence, one slide per big theme whose title says what users can do now (with a screenshot when one fits), the smaller themes as cards, before and after slides, what else shipped, the roadmap, usage numbers, and questions for your audience. It follows presentation research: four text sizes, nothing under 24 px, one message per slide. See [how the deck is designed](docs/design.md).
 
+## Real decks from real repositories
+
+The same two weeks (November 9 to 22, 2026) of four well-known open-source projects, written by Claude Sonnet and not edited by hand:
+
+| Project | Commits | Deck | Cost |
+|---|---|---|---|
+| VS Code | 1,298 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/vscode/) | $0.21 |
+| Next.js | 252 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/nextjs/) | $0.28 |
+| Supabase | 355 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/supabase/) | $0.22 |
+| Excalidraw | 16 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/excalidraw/) | $0.12 |
+
+Made from each project's public git history and pull requests, as examples; not affiliated with or endorsed by these projects. How they were made and what they found: [the benchmark](docs/benchmark.md#real-repositories).
+
 ## Quick start
 
 ```bash
@@ -129,7 +142,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0            # the full history is needed
+          fetch-depth: 0            # history back to before the sprint
       - uses: guuskeunen/sprint-review@v0
         id: review
         with:
@@ -331,7 +344,7 @@ All set. Run sprint-review generate.
 
 Before you present, open `checks.md`. It lists:
 
-- **Look at:** lines the second reader got stuck on, and commits that didn't fit in a very long sprint.
+- **Look at:** lines the second reader got stuck on, titles that say two things, and in a very long sprint how many commits didn't fit (one line with a count and a few examples).
 - **Dropped:** points that named no real commit, or broke a rule (too long, an exclamation mark, an emoji).
 - **Moved under the hood:** points that came from tooling changes.
 
@@ -441,7 +454,7 @@ limits:
   themes: 6
   themeScreens: 4
   changedScreens: 4
-  commits: 1000
+  commits: 3000
 
 model:
   name: claude-opus-5-5
@@ -645,7 +658,7 @@ A theme's layout (beside its screenshot, a large screenshot, the icon, or a card
 | `themes` | `6` | The most themes. The first ones get a slide each (see [`deck.density`](#deck)), the rest share a slide of cards. |
 | `themeScreens` | `4` | The most theme slides with a screenshot. |
 | `changedScreens` | `4` | The most before and after slides. |
-| `commits` | `1000` | The most commits read. Very long sprints are also cut to what the AI can read; `checks.md` names the commits it skipped. |
+| `commits` | `3000` | The most commits read, newest first; past it, `checks.md` says the sprint's first days are missing. What the AI reads is fitted to `model.maxInputChars`: a line for every product commit first, then details as far as they fit; `checks.md` counts what was left out. |
 
 ### `model`
 
@@ -657,7 +670,7 @@ A theme's layout (beside its screenshot, a large screenshot, the icon, or a card
 | `maxTokens` | `16000` | Room for each answer. Thinking models count their thinking against it too; when it runs out, the error says so. |
 | `baseUrl` | per provider | The endpoint, for `azure` (required), a gateway or a local server on another port. |
 | `mode` | `tools` | `json` asks for JSON matching the schema instead of forcing a tool call. Default `json` for `ollama` and `lmstudio`. |
-| `maxInputChars` | `120000` | How much of the commit log the model gets. `24000` for local models. |
+| `maxInputChars` | `120000` | How much of the commit log the model gets. `24000` for local models. A longer sprint is fitted to it: a line for every product commit first, then details as far as they fit; `checks.md` counts what was left out. |
 | `region` | `AWS_REGION` | `bedrock` only. |
 | `price` | list price | `{ input, output }`: US dollars per million tokens, for the cost of each run. Built in for Claude on the Anthropic API and for Gemini; set it for Bedrock, Azure, OpenRouter, a gateway, or a model the list doesn't know. |
 
@@ -1038,7 +1051,7 @@ The review then covers exactly what changed since the previous release.
 
 ## Other CI systems
 
-The action is a thin wrapper around the CLI. Anywhere with Node 22 and a full git history:
+The action is a thin wrapper around the CLI. Anywhere with Node 22 and a git history that reaches back to before the sprint:
 
 ```bash
 npx --yes @guuskeunen/sprint-review generate --json
@@ -1235,7 +1248,7 @@ The deck follows rules from presentation research: Apple's keynotes and Human In
 
 | Rule | Where it comes from | How the deck keeps it |
 |---|---|---|
-| One message per slide, stated in the title as a full sentence | Alley, Duarte | A theme's title is what a user can do now, in 12 words at most; the theme's name sits small above it. |
+| One message per slide, stated in the title as a full sentence | Alley, Duarte | A theme's title is what a user can do now, in 12 words at most; the theme's name sits small above it. A title that joins two messages with a semicolon gets a warning. |
 | Readable at a glance: about 40 words besides the title | Duarte's glance test | The writer is asked for two to four points (depending on `deck.density`). A slide over the budget gets a warning in the check log. The text is never shrunk to fit. |
 | Four text sizes for the whole deck | Butterick, Apple | 120, 64, 36 and 24 px at 1920 x 1080. They scale with the window. |
 | Nothing under 24 px; body text 36 px | Apple tvOS, Alley | The smallest text is 24 px: labels, captions, the cards' sentences. |
@@ -1255,7 +1268,7 @@ The deck follows rules from presentation research: Apple's keynotes and Human In
 3. **Last sprint**: what the previous review showed as next on the roadmap, and whether it is done now. Only when there is a previous review in the output folder and a roadmap; the audience checks promises before hearing new ones (GitLab publishes its kickoff and retrospective as a pair for the same reason).
 4. **You asked**: requests from `FEEDBACK.md` that this sprint answered, each with what was done, backed by a commit.
 5. **Theme slides**: the biggest themes, one slide each. `deck.density` sets how many: 2, 3 or 4.
-6. **More changes**: the remaining themes as cards, one message each. Their points go into the speaker notes.
+6. **More changes**: the remaining themes as cards, one message each, across the slide's width. Their points go into the speaker notes.
 7. **Before and after**: one slide per changed screen, the change framed. When it is small, one press of → zooms into it (Tversky et al.: animation helps most for moving from overview to detail) and the next moves on.
 8. **Also shipped**: work behind the scenes, with a label per line (security, reliability, speed, maintenance).
 9. **Roadmap**: how many milestones are reached, as a line through the last ones reached and the next ones.
@@ -1362,7 +1375,7 @@ Or `slack: true` in the config. See [posting to Slack from CI](github-action.md#
 
 ## GitLab, Bitbucket, Jenkins…
 
-Anywhere with Node 22 and the full git history: `npx --yes @guuskeunen/sprint-review generate --json`. A GitLab job is in [`examples/gitlab-ci.yml`](../examples/gitlab-ci.yml).
+Anywhere with Node 22 and a git history that reaches back to before the sprint: `npx --yes @guuskeunen/sprint-review generate --json`. A GitLab job is in [`examples/gitlab-ci.yml`](../examples/gitlab-ci.yml).
 
 ## As a library
 
@@ -1531,7 +1544,7 @@ model:
 | Setting | What it does |
 |---|---|
 | `model.mode: json` | Ask for JSON matching the schema instead of forcing a tool call. The default for Ollama and LM Studio; try it for any server whose tool calling is unreliable. |
-| `model.maxInputChars` | How much of the commit log the model gets. Default 120,000 characters, 24,000 for local models. Commits past it are listed in `checks.md`. |
+| `model.maxInputChars` | How much of the commit log the model gets. Default 120,000 characters, 24,000 for local models. A longer sprint is fitted to it, every product commit first; `checks.md` counts what was left out. |
 | `model.maxTokens` | Room for the answer, thinking included. Default 16,000. |
 | `model.fallback` | A second model when the first fails. Default Sonnet for Anthropic, none for others. |
 
@@ -1682,6 +1695,36 @@ A report is printed and saved in `bench/results/`, named by date and model. Comm
 
 A full run is three cases, two or three calls each. With Claude that's a few dimes.
 
+## Real repositories
+
+The sample sprints check the words. Real repositories check everything else: size, noise, pull requests, a product the writer has never seen. We ran sprint-review on the same two weeks (November 9 to 22, 2026) of four open-source projects, with Claude Sonnet 5.5, a short product description and `productPaths` in the config, and nothing edited afterwards. The decks are [in the README](../README.md#real-decks-from-real-repositories).
+
+| Project | Commits | Pull requests | Read | Time | Tokens | Cost | Checks |
+|---|---|---|---|---|---|---|---|
+| VS Code | 1,298 | not counted | all product commits; 52 docs and chores left out | 109 s | 68,000 | $0.21 | 14 |
+| Next.js | 252 | 80 | all but 1 without product code | 167 s | 72,838 | $0.28 | 23 |
+| Supabase | 355 | 114 | all | 146 s | 67,659 | $0.22 | 9 |
+| Excalidraw | 16 | 15 | all | 77 s | 25,704 | $0.12 | 11 |
+
+What the first round found, and what changed:
+
+- **Shallow clones were refused**, even ones that held the whole sprint. A shallow clone is now fine when it reaches back to before the sprint starts.
+- **Big sprints were read from the end.** The commit log was cut at the input limit, newest first, so on VS Code the writer saw only the last days. Each commit past the cut was also its own warning: 916 checks on VS Code, 164 on Next.js, 247 on Supabase. Now every product commit gets a line first, then details as far as they fit, and what's left out is one warning. On VS Code this changed the headline: the biggest change of the sprint (a new launcher for agent sessions) landed early and had been missed.
+- **`limits.commits` quietly dropped the oldest commits** (1,000 by default). The default is now 3,000, and a sprint past it gets a warning.
+- **Two cards sat on half the slide**, and a title joined two messages with a semicolon. Two cards now use the full width, and such a title gets a warning.
+
+To run one yourself:
+
+```bash
+git clone --shallow-since=2026-11-01 https://github.com/excalidraw/excalidraw && cd excalidraw
+cat > sprint-review.config.yml <<'YML'
+product: { name: Excalidraw, description: "A virtual whiteboard for hand-drawn-like diagrams." }
+productPaths: [packages/, excalidraw-app/]
+model: { name: claude-sonnet-5-5 }
+YML
+GITHUB_TOKEN=$(gh auth token) npx @guuskeunen/sprint-review --until 2026-11-22
+```
+
 ## Adding a case
 
 Copy a file in `bench/cases/`, change the commits and the expectations, run it. A good case is a sprint where a careless writer would go wrong: vague messages, noise, a tempting thing to invent. Keep the expected words loose ("ticket", "photo", "handwritten"), so a good answer in other words still counts.
@@ -1730,6 +1773,9 @@ git history ──► commits (+ pull requests), changed screenshots, roadmap
 - Commits matching `ignore` are left out.
 - With a GitHub token, the pull request behind each product commit is looked up; its title (and, on its first commit, its description, cut at 800 characters and without HTML comments) is added to the log.
 - Each commit is marked as product work or not: it must touch a file under `productPaths` (if set) and must not be a `ci:`, `build:`, `test:`, `docs:` or `chore:` commit (`nonProductTypes`).
+- A long sprint is fitted to what the model can read (`model.maxInputChars`) without losing its first days: a line for every product commit first, then up to 15% of the room for lines of the other commits, then the details of product commits as far as they fit. What's still left out is counted in one warning in `checks.md`. A sprint of 1,300 commits (VS Code over two weeks) fits this way with every product commit in view.
+- At most `limits.commits` commits are read (3,000), newest first; a sprint past it gets a warning that its first days are missing.
+- A shallow clone is fine when its history reaches back to before the sprint starts.
 
 ### 2. The writer
 
@@ -1900,6 +1946,12 @@ In GitLab CI set `GIT_DEPTH: 0`. Locally: `git fetch --unshallow`.
 - Merge commits are skipped. With squash or rebase merges that's fine. With merge commits, the work is in the merged branch's commits, which are included.
 - Commits matching `ignore` are left out.
 - In CI, make sure the branch you want is checked out, usually your main branch.
+
+### "… of … commits not read" in checks.md
+The sprint is longer than the model reads at once (`model.maxInputChars`). Every product commit still gets a line, so what's left out is usually docs and chores. If product commits are left out too, narrow `productPaths` or `ignore`, or raise `model.maxInputChars` when your model takes more.
+
+### "Only the newest … commits were read"
+The sprint has more commits than `limits.commits` (3,000), so its first days are missing. Raise the limit, or leave noise out with `ignore`.
 
 ### "ANTHROPIC_API_KEY is not set"
 Create a key at [console.anthropic.com](https://console.anthropic.com), then `export ANTHROPIC_API_KEY=sk-ant-...` in your shell or add it as a repository secret in CI.

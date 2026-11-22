@@ -157,7 +157,7 @@ model:
 | Setting | What it does |
 |---|---|
 | `model.mode: json` | Ask for JSON matching the schema instead of forcing a tool call. The default for Ollama and LM Studio; try it for any server whose tool calling is unreliable. |
-| `model.maxInputChars` | How much of the commit log the model gets. Default 120,000 characters, 24,000 for local models. Commits past it are listed in `checks.md`. |
+| `model.maxInputChars` | How much of the commit log the model gets. Default 120,000 characters, 24,000 for local models. A longer sprint is fitted to it, every product commit first; `checks.md` counts what was left out. |
 | `model.maxTokens` | Room for the answer, thinking included. Default 16,000. |
 | `model.fallback` | A second model when the first fails. Default Sonnet for Anthropic, none for others. |
 
