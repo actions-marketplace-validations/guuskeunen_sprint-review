@@ -17,3 +17,12 @@ test('the same picture twice has nothing to frame', async () => {
   assert.equal(cmp?.changed, false);
   assert.equal(cmp?.focus, undefined);
 });
+
+test('a picture taken at twice the sharpness is not a change', async () => {
+  const sharp = (await import('sharp')).default;
+  const before = png('planner-desktop.before');
+  const { width } = await sharp(before).metadata();
+  const sharper = await sharp(before).resize({ width: width! * 2 }).png().toBuffer();
+  const cmp = await compareScreens(before, sharper, 'desktop', { left: 0, top: 0 });
+  assert.equal(cmp?.changed, false);
+});

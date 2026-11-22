@@ -8,11 +8,13 @@ The deck is a draft, but it's written to be presented as it is. Read it through 
 
 ### In the editor
 
+Making a review in a terminal opens it in the editor right away. Later, or for an older review:
+
 ```bash
 npx @guuskeunen/sprint-review edit sprint-reviews/2026-11-16/review.json
 ```
 
-This opens a local editor in your browser: the content on the left, the live deck on the right. Every change shows in the deck as you type, before you save. Click into a theme and the preview jumps to its slide. Word counts show the same limits the checks use. **Save and rebuild** (or Ctrl/⌘ + S) writes `review.json` and rebuilds `deck.html` next to it. Ctrl+C in the terminal stops the editor.
+`--no-edit` skips the editor; it never opens in CI or without a terminal. The editor opens a local editor in your browser: the content on the left, the live deck on the right. Every change shows in the deck as you type, before you save. Click into a theme and the preview jumps to its slide. Word counts show the same limits the checks use. **Save and rebuild** (or Ctrl/⌘ + S) writes `review.json` and rebuilds `deck.html` next to it (and `deck.pptx` when `output.pptx` is on). Ctrl+C in the terminal stops the editor.
 
 **Open live view** shows the deck on its own in a new window, for a second screen or a call: it follows every edit as you type and the slide you're working on.
 

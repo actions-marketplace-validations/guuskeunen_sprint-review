@@ -11,7 +11,7 @@ The deck follows rules from presentation research: Apple's keynotes and Human In
 | Four text sizes for the whole deck | Butterick, Apple | 120, 64, 36 and 24 px at 1920 x 1080. They scale with the window. |
 | Nothing under 24 px; body text 36 px | Apple tvOS, Alley | The smallest text is 24 px: labels, captions, the cards' sentences. |
 | Margins of at least 96 px | Apple, Duarte | 154 px left and right, 97 px top. |
-| Evidence over text | Alley, Reynolds | A screenshot takes most of a theme slide. Without one, the icon is shown at hero size. |
+| Evidence over text | Alley, Reynolds | A screenshot takes most of a theme slide, but only one that shows the theme's change: a picture of something nearby is worse than the icon, which is then shown at hero size. Close-ups of one card or panel are preferred over whole pages, whose text is too small on a slide. |
 | Screenshots cropped, with no device frame unless the device is the point | Reynolds, documentation style guides | Rounded corners of 10 px and a soft shadow (a hairline border and slight dimming in the dark theme). A phone frame appears only for a theme about the phone. |
 | Before and after: the same crop and size, labeled | Alley | Both pictures share one size and crop. The title says what changed. |
 | One brand color becomes the whole palette, every color measured | Radix, Material, WCAG | Grays and lines take a little of the brand's hue; body text is at least 4.5:1, labels and the accent at least 3:1, in both themes (`src/deck/colors.ts`). |
@@ -21,7 +21,7 @@ The deck follows rules from presentation research: Apple's keynotes and Human In
 
 ## The story
 
-1. **Cover**: title, period, the sprint goal when `goal` is set, and the sprint's strongest screenshot running off the right edge.
+1. **Cover**: the product's name, "Sprint review" and the period (the date isn't repeated in the title), the sprint goal when `goal` is set, and the sprint's strongest screenshot running off the right edge.
 2. **The sprint headline**: one sentence with the outcome that matters most, and a row with the theme names. A sprint goal is set before the sprint and can't be read from git, so the headline describes what was done.
 3. **Last sprint**: what the previous review showed as next on the roadmap, and whether it is done now. Only when there is a previous review in the output folder and a roadmap; the audience checks promises before hearing new ones (GitLab publishes its kickoff and retrospective as a pair for the same reason).
 4. **You asked**: requests from `FEEDBACK.md` that this sprint answered, each with what was done, backed by a commit.
@@ -42,7 +42,7 @@ The deck picks a layout from what a theme has. You can override it per theme in 
 | Layout | When | |
 |---|---|---|
 | `split` | The theme has a desktop screenshot | Points beside the picture. |
-| `full` | Chosen by hand | The screenshot fills the slide, with the points in a row below it. |
+| `full` | The screenshot is at least 2.4 times as wide as it is tall (a row of cards), or chosen by hand | The screenshot fills the slide's width, with the points in a row below it. Beside the points a strip would shrink to a thin band. |
 | `phone` | The screenshot is a phone screen | Points beside an upright phone. |
 | `icon` | No screenshot | The icon at hero size beside the points. |
 | `card` | Chosen by hand | The theme goes on the shared *More changes* slide. |

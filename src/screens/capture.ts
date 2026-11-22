@@ -5,7 +5,8 @@ import type { CaptureConfig } from '../config.ts';
 export class CaptureError extends Error {}
 
 const VIEWPORTS = {
-  desktop: { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, isMobile: false, hasTouch: false },
+  // 2x so a component shown large on a slide stays sharp; whole pages are saved at 1x (scale: 'css').
+  desktop: { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, isMobile: false, hasTouch: false },
   phone: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
 } as const;
 
@@ -81,7 +82,8 @@ export async function capture(config: CaptureConfig, root: string, day = new Dat
           }
           await element.screenshot({ path: file, animations: 'disabled', mask, maskColor: '#1f2937' });
         } else {
-          await page.screenshot({ path: file, fullPage: true, animations: 'disabled', mask, maskColor: '#1f2937' });
+          // A whole page is shown small on a slide: twice the pixels would only make the deck heavier.
+          await page.screenshot({ path: file, fullPage: true, animations: 'disabled', mask, maskColor: '#1f2937', scale: device === 'desktop' ? 'css' : 'device' });
         }
         written.push(file);
       }

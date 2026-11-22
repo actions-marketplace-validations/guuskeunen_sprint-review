@@ -45,7 +45,7 @@ test('a page entry with a selector photographs just that element; one that is mi
   }
   assert.deepEqual(files.map((f) => f.split('/').pop()), ['app-desktop.png', 'signals-desktop.png']);
   const { width, height } = await sharp(readFileSync(files[1]!)).metadata();
-  assert.deepEqual([width, height], [320, 180], 'only the element');
+  assert.deepEqual([width, height], [640, 360], 'only the element, at twice the sharpness');
   assert.ok(steps.some((m) => m.includes('Not found on gone')));
 });
 

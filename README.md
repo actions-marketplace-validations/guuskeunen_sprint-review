@@ -88,6 +88,7 @@ sprint-review --from v1.4.0 --to v1.5.0              # between two tags
 sprint-review edit sprint-reviews/2026-11-16/review.json   # editor beside the live deck
 sprint-review render sprint-reviews/2026-11-16/review.json # rebuild after a hand edit
 sprint-review --pptx --slack                          # also PowerPoint, and post to Slack
+sprint-review --no-edit                               # don't open the editor afterwards
 sprint-review capture                                 # photograph your staging pages
 sprint-review doctor                                  # check the setup
 ```

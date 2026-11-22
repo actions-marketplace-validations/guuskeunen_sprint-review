@@ -105,3 +105,37 @@ test('a small change gets a zoom step on its before and after slide; a wide one 
   assert.match(html, /--zx: 72.5%; --zy: 20%; --zs: 2.5; --tx: -22.5%; --ty: 30%;/);
   assert.doesNotMatch(html, /data-ref="screen-1" data-steps/);
 });
+
+test('a very wide picture (a strip of cards) gets the width of the slide; a layout picked by hand wins', async () => {
+  const sharp = (await import('sharp')).default;
+  const strip = `data:image/png;base64,${(await sharp({ create: { width: 1200, height: 100, channels: 3, background: '#eee' } }).png().toBuffer()).toString('base64')}`;
+  const r = sample();
+  r.themes[0]!.screen = { name: 'Contacts', device: 'desktop', image: strip };
+  r.themes[1]!.screen = { name: 'Contacts', device: 'desktop', image: strip };
+  r.themes[1]!.layout = 'split';
+  assert.deepEqual(kinds(r).slice(2, 4), ['theme-0:full', 'theme-1:split']);
+});
+
+test('the cover title is the review, the period under it has the date, the product is the eyebrow', async () => {
+  const { renderDeck } = await import('../../src/deck/render.ts');
+  const html = renderDeck({ ...sample(), title: 'Sprint review', organization: 'Northside Cycles' });
+  assert.match(html, /<p class="eyebrow rise">Northside Cycles<\/p>\s*<h1 class="rise"[^>]*>Sprint review<\/h1>/);
+  assert.match(html, /<title>Sprint review · Northside Cycles<\/title>/);
+});
+
+test('a strip never goes on the cover, and keeps its points right under it', async () => {
+  const sharp = (await import('sharp')).default;
+  const png = async (width: number, height: number) => `data:image/png;base64,${(await sharp({ create: { width, height, channels: 3, background: '#eee' } }).png().toBuffer()).toString('base64')}`;
+  const { coverPicture } = await import('../../src/deck/plan.ts');
+  const { renderDeck } = await import('../../src/deck/render.ts');
+  const r = sample();
+  const strip = await png(1200, 100);
+  const page = await png(1440, 900);
+  r.themes[0]!.screen = { name: 'Contacts', device: 'desktop', image: strip };
+  r.themes[1]!.screen = { name: 'Companies', device: 'desktop', image: page };
+  assert.equal(coverPicture(r), page);
+  assert.match(renderDeck(r), /class="slide theme layout-full strip" data-ref="theme-0"/);
+  r.themes[1]!.screen = null;
+  r.screens = [];
+  assert.equal(coverPicture(r), null, 'only strips: the cover keeps its rings');
+});

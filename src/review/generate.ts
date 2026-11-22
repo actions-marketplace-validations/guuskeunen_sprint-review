@@ -105,7 +105,8 @@ export async function generate(config: Config, options: GenerateOptions): Promis
   const said = lastTime(previousReview(config, until), milestones);
   const review: Review = {
     version: 1,
-    title: `${t.sprintReview} ${longDate(until, config.language)}`,
+    // The period sits right under the title, so the title doesn't repeat the date.
+    title: t.sprintReview,
     period: fill(t.period, { from: shortDate(from, config.language), until: longDate(until, config.language) }),
     from,
     until,
