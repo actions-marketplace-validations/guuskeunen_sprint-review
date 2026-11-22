@@ -19,5 +19,6 @@
   ],
   "icon": "./.claude-plugin/icon.png",
   "documentationUrl": "https://github.com/guuskeunen/sprint-review/blob/main/docs/getting-started.md",
-  "supportUrl": "https://github.com/guuskeunen/sprint-review/issues"
+  "supportUrl": "https://github.com/guuskeunen/sprint-review/issues",
+  "privacyPolicyUrl": "https://github.com/guuskeunen/sprint-review/blob/main/plugin/PRIVACY.md"
 }

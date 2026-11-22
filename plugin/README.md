@@ -29,6 +29,9 @@ https://github.com/guuskeunen/sprint-review/blob/main/docs/integrations.md.
 - **Keeps nothing elsewhere.** There is no sprint-review service: nothing goes to the author, and
   there is no tracking.
 
+The plugin contains no code: the skill runs only the `sprint-review` command you installed. Full
+privacy policy: [PRIVACY.md](PRIVACY.md).
+
 Screenshots show whatever your app shows. Photograph demo data, or black out fields with
 `screenshots.mask`, before you share a deck.
 
