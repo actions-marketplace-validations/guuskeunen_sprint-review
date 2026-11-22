@@ -1,4 +1,4 @@
-import { isLocal, PROVIDERS, type ProviderName } from './providers.ts';
+import { isLocal, PROVIDERS, type ProviderName } from './ai/providers.ts';
 import { readFileSync, existsSync } from 'node:fs';
 import { dirname, resolve, extname } from 'node:path';
 import YAML from 'yaml';

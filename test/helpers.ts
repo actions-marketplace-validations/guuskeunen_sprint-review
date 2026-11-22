@@ -1,9 +1,10 @@
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { ModelClient, ModelRequest, ModelAnswer } from '../src/model.ts';
+import type { ModelClient, ModelRequest, ModelAnswer } from '../src/ai/model.ts';
+import type { Review } from '../src/types.ts';
 
 const SCREENS = join(dirname(fileURLToPath(import.meta.url)), 'fixtures', 'screens');
 const SHOTS = 'e2e/__screenshots__';
@@ -168,3 +169,6 @@ export class FakeModel implements ModelClient {
     };
   }
 }
+
+/** The demo review (docs/demo/review.json): a complete review to render, edit and check. */
+export const sample = (): Review => JSON.parse(readFileSync(new URL('../docs/demo/review.json', import.meta.url), 'utf8')) as Review;

@@ -1,14 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
+import { sample } from './helpers.ts';
+import { writeFileSync, mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
-import { renderDeck } from '../src/render.ts';
-import { validReview } from '../src/editor.ts';
-import type { Review } from '../src/types.ts';
+import { renderDeck } from '../src/deck/render.ts';
+import { validReview } from '../src/surfaces/editor.ts';
 
-const sample = (): Review => JSON.parse(readFileSync(new URL('../docs/demo/review.json', import.meta.url), 'utf8')) as Review;
 const PNG = 'data:image/png;base64,iVBORw0KGgo=';
 
 test('a picture that is not an image data URI never reaches the deck', () => {
@@ -43,7 +42,7 @@ test('render refuses a broken review.json with a clear message, not a crash', ()
 });
 
 test('an API key never goes to another host in plain text, nor to a remote "local" server', async () => {
-  const { clientFor } = await import('../src/providers.ts');
+  const { clientFor } = await import('../src/ai/providers.ts');
   const { normalize } = await import('../src/config.ts');
   const sent: { url: string; auth?: string }[] = [];
   const impl = (async (url: string, init: RequestInit) => {
@@ -59,9 +58,9 @@ test('an API key never goes to another host in plain text, nor to a remote "loca
 });
 
 test('a made-up hash does not count as a commit, and Markdown output carries no links or HTML from the text', async () => {
-  const { parse } = await import('../src/writer.ts');
+  const { parse } = await import('../src/ai/writer.ts');
   const { normalize } = await import('../src/config.ts');
-  const { renderMarkdown, renderChecks } = await import('../src/markdown.ts');
+  const { renderMarkdown, renderChecks } = await import('../src/deck/markdown.ts');
   const commits = [{ hash: 'abc1234', date: '2026-11-10', subject: 'feat: x', body: '', files: ['src/a.ts'], product: true }];
   const w = parse({ themes: [{ title: 'Pay', icon: 'wallet', screen: 'none', value: null, effect: 'e', points: [{ text: 'Pay with a new partner', commits: ['abc1234zzzz'] }] }], summary: [], under_the_hood: [] }, commits as never, [], [], normalize({}, '/tmp'));
   assert.equal(w.themes.length, 0, 'the point cites no real commit');
@@ -72,7 +71,7 @@ test('a made-up hash does not count as a commit, and Markdown output carries no 
 });
 
 test('the editor cannot be framed by another site, and sends no referrer', async () => {
-  const { startEditor } = await import('../src/editor.ts');
+  const { startEditor } = await import('../src/surfaces/editor.ts');
   const { normalize } = await import('../src/config.ts');
   const dir = mkdtempSync(join(tmpdir(), 'frame-'));
   writeFileSync(join(dir, 'review.json'), JSON.stringify(sample()));
@@ -95,7 +94,7 @@ test('labels from the config cannot break out into HTML or CSS', () => {
 });
 
 test('the MCP server only reads and writes inside the project', async () => {
-  const { callTool } = await import('../src/mcp.ts');
+  const { callTool } = await import('../src/surfaces/mcp.ts');
   const dir = mkdtempSync(join(tmpdir(), 'mcp-'));
   execFileSync('git', ['init', '-q', dir]);
   writeFileSync(join(dir, 'review.json'), JSON.stringify(sample()));
@@ -105,7 +104,7 @@ test('the MCP server only reads and writes inside the project', async () => {
 });
 
 test('a .pptx that unpacks to more than its limit is refused', async () => {
-  const { readZip } = await import('../src/zip.ts');
+  const { readZip } = await import('../src/brand/zip.ts');
   const { deflateRawSync } = await import('node:zlib');
   const big = deflateRawSync(Buffer.alloc(80_000_000));
   const name = Buffer.from('ppt/x.xml');
@@ -119,7 +118,7 @@ test('a .pptx that unpacks to more than its limit is refused', async () => {
 });
 
 test('the library render function refuses a broken review with a clear error too', async () => {
-  const { render } = await import('../src/generate.ts');
+  const { render } = await import('../src/review/generate.ts');
   const { normalize } = await import('../src/config.ts');
   for (const bad of [{ version: 1 }, { ...sample(), themes: 'x' }, { ...sample(), themes: [{ title: null, points: null }] }]) {
     assert.throws(() => render(bad as never, normalize({}, '/tmp')), (e: Error) => !(e instanceof TypeError));

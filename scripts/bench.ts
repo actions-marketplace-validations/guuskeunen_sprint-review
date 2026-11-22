@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { EchoModel, loadCases, report, runCase, type Score } from '../bench/bench.ts';
 import { normalize } from '../src/config.ts';
-import { clientFor } from '../src/providers.ts';
+import { clientFor } from '../src/ai/providers.ts';
 
 const { values } = parseArgs({ options: { provider: { type: 'string' }, model: { type: 'string' }, cases: { type: 'string' }, echo: { type: 'boolean' }, label: { type: 'string' } } });
 const modelConfig: Record<string, unknown> = { ...(values.provider ? { provider: values.provider } : {}), ...(values.model ? { name: values.model } : {}), fallback: null };
