@@ -145,6 +145,12 @@ test('a theme name that joins two topics gets a warning', () => {
   assert.deepEqual(w.checks.filter((c) => /joins two topics/.test(c.reason)).map((c) => c.text), ['Onboarding & Scoring']);
 });
 
+test('a title with two messages joined by a semicolon gets a warning', () => {
+  const theme = (effect: string) => ({ title: 'Editor', icon: 'users', screen: 'none', value: 'faster', effect, points: [{ text: 'One list', commits: ['abc1234'] }], notes: '' });
+  const w = parse({ themes: [theme('The editor accepts three settings; the panel is readable in dark mode.'), theme('The editor accepts three settings.')], under_the_hood: [] }, commits, [], [], config);
+  assert.equal(w.checks.filter((c) => /says two things/.test(c.reason)).length, 1);
+});
+
 test('you asked, we did: the request must exist and a product commit must back what was done', () => {
   const w = parse({ themes: [], under_the_hood: [], answered: [
     { item: 0, text: 'Leads now show a direct phone number', commits: ['abc1234'] },

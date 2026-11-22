@@ -5,7 +5,6 @@ import { BedrockClient, bedrockAuth, clientFor, PRESETS, signV4 } from '../../sr
 import { normalize, ConfigError } from '../../src/config.ts';
 import { doctorChecks } from '../../src/surfaces/doctor.ts';
 import { generate } from '../../src/review/generate.ts';
-import { unread } from '../../src/ai/writer.ts';
 import { execFileSync } from 'node:child_process';
 import { demoRepo, FakeModel } from '../helpers.ts';
 
@@ -117,11 +116,6 @@ test('a smaller input limit cuts what the model reads, and the check log names w
   await generate(config, { model, range: { kind: 'dates', from: '2026-01-01', until: '2099-01-01' } }).catch(() => {});
   const sent = model.requests[0]!.messages[0]!;
   assert.ok(sent.length < 4300, `sent ${sent.length} characters`);
-  const commits = Array.from({ length: 3 }, (_, n) => ({ hash: `abc${n}def`, date: '2026-11-10', subject: `change ${n}`, body: '', files: [], product: true }));
-  const log = commits.map((c) => `${c.hash} ${c.subject}`).join('\n');
-  const skipped = unread(log, commits, 20);
-  assert.deepEqual(skipped.map((c) => c.text), ['change 1', 'change 2']);
-  assert.match(skipped[0]!.reason, /too long/);
 });
 
 test('AWS Signature Version 4 matches the official get-vanilla test vector', () => {

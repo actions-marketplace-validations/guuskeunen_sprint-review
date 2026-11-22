@@ -17,7 +17,7 @@ import { postToSlack } from './surfaces/slack.ts';
 import { PptxError } from './deck/pptx.ts';
 import { withWebsiteBrand } from './brand/website.ts';
 import { costLine, dollars, priceOf, recordRun } from './ai/costs.ts';
-import { commitLog, writerSystem } from './ai/prompt.ts';
+import { fitLog, writerSystem } from './ai/prompt.ts';
 import { ICONS } from './deck/icons-data.ts';
 import { WriterError } from './ai/writer.ts';
 import type { Review } from './types.ts';
@@ -192,7 +192,7 @@ function dryRun(config: Config, range: Range): number {
   history.assertUsable(range);
   const commits = history.commits(range, config.productPaths, config.ignore, config.limits.commits, config.nonProductTypes);
   const prompt = writerSystem(config);
-  const log = commitLog(commits);
+  const log = fitLog(commits, config.model.maxInputChars).log;
   const tokens = Math.round((prompt.length + log.length) / 3.5) + 3000;
   out(`${bold('Dry run')} ${dim('nothing is sent')}\n`);
   out(`${bold('Range')}     ${range.kind === 'dates' ? `${range.from} to ${range.until}` : `${range.from}..${range.to}`}`);
