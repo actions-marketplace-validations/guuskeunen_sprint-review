@@ -4,25 +4,40 @@ _November 3 to November 16, 2026 · Northside Cycles_
 
 **The front desk sees a whole customer on one page**
 
-## Customer profile
+## You asked
+
+- "Can the front desk see everything a customer had done, in one place?": One customer page with every purchase, repair and service
+- "Typing in the paper repair tickets takes forever": A photo of the ticket becomes a repair, no typing
+
+## Last sprint
+
+- [x] One customer page for online store, register and workshop
+- [x] Read repair tickets from a photo
+- [ ] Text message when the bike is ready
+
+## Customer page
 
 Front desk staff see everything a customer bought or had repaired on one page.
 
-- Purchases, repairs and services sit in one list with their source
+- Purchases, repairs and services sit in one list, each with its source
 - Every bike has its own card with the next service
+- A card turns amber when a service is due within a month
 
-## Repair ticket scanning
+## Repair tickets
 
 A photo of a handwritten repair ticket becomes a repair, with no retyping.
 
-- Fields that are hard to read are flagged
+- Customer and bike are matched from the photo
+- Fields that are hard to read are flagged to check
+- One click creates the repair, ready for the planner
 
 ## Workshop planner
 
 The planner shows at a glance how many jobs are done and where work is stuck.
 
 - A bar shows how much of today is done
-- Status counts load with less work
+- Jobs waiting for parts stand out in amber
+- The counts per status show without slowing the planner down
 
 ## Duplicate customers
 
@@ -46,7 +61,6 @@ Labels look the same everywhere, and tables work on a phone.
 ## Also shipped
 
 - Maintenance: Vite is up to date
-- Maintenance: Caches playwright browsers in CI
 
 ## Roadmap
 
@@ -63,3 +77,4 @@ Labels look the same everywhere, and tables work on a phone.
 
 - Which repairs would you still type in by hand?
 - What is missing on the customer page?
+- Which bikes should get a service reminder first?

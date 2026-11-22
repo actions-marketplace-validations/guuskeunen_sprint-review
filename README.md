@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/demo.gif" alt="A generated sprint review deck: cover, what the sprint brings, usage, themes, before and after screenshots, roadmap" width="860">
+  <img src="docs/assets/demo.gif" alt="A generated sprint review deck: the cover, the sprint headline, what users asked for and what was done, theme slides with close-ups of the app, before and after screenshots, the numbers and questions for the audience" width="860">
 </p>
 
 ---
