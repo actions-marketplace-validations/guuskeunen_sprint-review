@@ -2,6 +2,28 @@
 
 All notable changes are listed here, written per release from the commit messages ([Conventional Commits](https://www.conventionalcommits.org)). Versions follow [Semantic Versioning](https://semver.org).
 
+## [0.4.1](https://github.com/guuskeunen/sprint-review/compare/sprint-review-v0.4.0...sprint-review-v0.4.1) (2026-11-22)
+
+
+### Fixed
+
+* **deck:** a strip is scaled to fit its slide, never cropped or run into its points ([6a454aa](https://github.com/guuskeunen/sprint-review/commit/6a454aa0932ae5a1a1ff6e8631377cbffea9174c))
+* **deck:** two cards use the slide's width; a title with two messages gets a warning ([8c4e5cf](https://github.com/guuskeunen/sprint-review/commit/8c4e5cf27eae7ca87b87855320d4c99b921275ee))
+* **review:** a sprint past limits.commits says its first days are missing ([81db4c0](https://github.com/guuskeunen/sprint-review/commit/81db4c0946971ec13b580fd4fa8bd714d5bbb15e))
+* **writer:** a long sprint is read across all of it, and what's left out is one check ([9820335](https://github.com/guuskeunen/sprint-review/commit/9820335a0903b07ed211dd0514b7df17db791f77))
+* **writer:** read long sprints across all of their days; one check for what's left out ([7825401](https://github.com/guuskeunen/sprint-review/commit/78254017b9f1373a11b14cb05c7cfeb07da03d6a))
+
+
+### Docs
+
+* a demo deck that shows every kind of slide, and a new animation for the README ([e50f98b](https://github.com/guuskeunen/sprint-review/commit/e50f98bbb6040db030fc6c4431b31f176c193427))
+* a demo deck that shows every kind of slide; strips are never cropped ([b27dd76](https://github.com/guuskeunen/sprint-review/commit/b27dd76d8f249f27cc4efcbe46eb421c6f898818))
+* link the Marketplace listing; remove the separate listing repo's files ([2c1d81a](https://github.com/guuskeunen/sprint-review/commit/2c1d81a935700ba30256d5197465222fd64ab715))
+* link the Marketplace listing; remove the separate listing repo's files ([d7c2015](https://github.com/guuskeunen/sprint-review/commit/d7c2015db27ca6103cfe337de89f6fe52910975a))
+* real decks from VS Code, Next.js, Supabase and Excalidraw, and what they found ([ac26a64](https://github.com/guuskeunen/sprint-review/commit/ac26a64d72d4c676e15858a9ef9a49b9b2482bed))
+* real decks from VS Code, Next.js, Supabase and Excalidraw; limits.commits 3,000 with a warning ([fc214eb](https://github.com/guuskeunen/sprint-review/commit/fc214eb7b9b6d33549b98640b1b9d83947cade99))
+* what the open-source runs changed: long sprints, the commit limit, shallow clones ([2fd8283](https://github.com/guuskeunen/sprint-review/commit/2fd8283c1959e8fbe61deb937e32528071e30b71))
+
 ## [0.4.0](https://github.com/guuskeunen/sprint-review/compare/sprint-review-v0.3.0...sprint-review-v0.4.0) (2026-11-22)
 
 
