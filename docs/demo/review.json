@@ -7,20 +7,7 @@
   "language": "English",
   "organization": "Northside Cycles",
   "product": "Spoke",
-  "summary": [
-    {
-      "text": "One customer page shows online store, register and workshop history",
-      "icon": "users"
-    },
-    {
-      "text": "A photo of a paper ticket fills in the repair",
-      "icon": "clipboard-list"
-    },
-    {
-      "text": "The workshop planner shows progress per status",
-      "icon": "calendar"
-    }
-  ],
+  "headline": "The front desk sees a whole customer on one page",
   "summaryNotes": "Open with the customer page: it is what the front desk asked for most.",
   "themes": [
     {
@@ -97,8 +84,18 @@
     }
   ],
   "underTheHood": [
-    "Vite is up to date",
-    "Caches playwright browsers in CI"
+    {
+      "text": "Vite is up to date",
+      "kind": "maintenance"
+    },
+    {
+      "text": "Caches playwright browsers in CI",
+      "kind": "maintenance"
+    }
+  ],
+  "questions": [
+    "Which repairs would you still type in by hand?",
+    "What is missing on the customer page?"
   ],
   "screens": [
     {
@@ -193,8 +190,8 @@
     },
     {
       "kind": "dropped",
-      "text": "Bumped Vite to the latest version",
-      "reason": "No change to the product itself."
+      "text": "Is this amazing!",
+      "reason": "Too long, or has an exclamation mark or emoji."
     }
   ]
 }

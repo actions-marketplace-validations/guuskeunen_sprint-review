@@ -2,11 +2,7 @@
 
 _November 3 to November 16, 2026 · Northside Cycles_
 
-## This sprint
-
-- One customer page shows online store, register and workshop history
-- A photo of a paper ticket fills in the repair
-- The workshop planner shows progress per status
+**The front desk sees a whole customer on one page**
 
 ## Customer profile
 
@@ -47,12 +43,12 @@ Labels look the same everywhere, and tables work on a phone.
 - **Workshop planner**: Look at the progress bar and the counts per status.
 - **Repairs (phone)**: The table now scrolls sideways instead of squeezing its columns.
 
-## Under the hood
+## Also shipped
 
-- Vite is up to date
-- Caches playwright browsers in CI
+- Maintenance: Vite is up to date
+- Maintenance: Caches playwright browsers in CI
 
-## Milestones
+## Roadmap
 
 4 of 6 milestones reached
 
@@ -62,3 +58,8 @@ Labels look the same everywhere, and tables work on a phone.
 - [x] Read repair tickets from a photo
 - [ ] Text message when the bike is ready
 - [ ] Reorder parts automatically
+
+## What we would like to hear from you
+
+- Which repairs would you still type in by hand?
+- What is missing on the customer page?

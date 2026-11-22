@@ -4,7 +4,7 @@ sprint-review splits the work between an AI, code and a person, and gives each t
 
 | | Does |
 |---|---|
-| **The AI** | Groups the changes into themes and writes the words: summary, themes, points, captions, speaker notes. Then a second call reads the slides like your audience would. |
+| **The AI** | Groups the changes into themes and writes the words: the sprint headline, themes, points, captions, speaker notes and questions for the audience. Then a second call reads the slides like your audience would. |
 | **Code** | Reads the history, checks every line the AI wrote, counts every number, picks and crops every picture, builds the page. |
 | **A person** | Reads the draft, changes something if needed, presents it. |
 
@@ -41,7 +41,7 @@ git history ──► commits (+ pull requests), changed screenshots, roadmap
 
 ### 2. The writer
 
-One call with a fixed answer shape: the model fills in fields (summary, themes, under the hood, captions) instead of writing free text. The prompt holds principles and examples, nothing about one particular sprint, so it never needs editing between reviews. It includes your product description, audience, language, team words and rules.
+One call with a fixed answer shape: the model fills in fields (headline, themes, under the hood, captions, questions) instead of writing free text. The prompt holds principles and examples, nothing about one particular sprint, so it never needs editing between reviews. It includes your product description, audience, language, team words and rules.
 
 Commit messages are written by people, so they go in between unique markers, and the model is told that whatever is between them is data, never instructions. A commit that says "ignore your rules" is just a commit.
 
@@ -54,13 +54,14 @@ Every line the writer returned goes through code:
 | Check | What happens |
 |---|---|
 | Each point names commit hashes, and they exist in this sprint | Otherwise the point is **dropped**. |
-| A point only backed by non-product commits | **Moved** under the hood; dropped from the summary. |
+| A point only backed by non-product commits | **Moved** under the hood; a headline about one is dropped. |
 | Points ≤ 16 words, effects and captions ≤ 25, notes ≤ 70, titles ≤ 4 | Otherwise **dropped**. |
 | No `!`, no emoji | Otherwise **dropped**. |
 | Ticket numbers (`#42`, `ABC-81`) and hashes | **Removed** from the text. |
 | Long dashes | Become a comma. |
 | Your `replace` words | **Applied**, keeping the capital. |
-| At most `limits.themes` themes, 4 points per theme, 4 summary points, 5 under the hood | The rest is **dropped**. |
+| At most `limits.themes` themes, 2 to 4 points per theme (`deck.density`), 5 under the hood, 3 questions | The rest is **dropped**. |
+| A theme slide with more words than the audience reads at a glance | A **warning**: shorten it in the editor. |
 | A theme with no points left | **Dropped**. |
 | Unknown icon | Becomes `other`. |
 | A screenshot that doesn't exist | Removed from the theme. |

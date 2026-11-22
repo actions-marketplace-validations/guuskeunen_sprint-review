@@ -29,19 +29,21 @@ Everything on the slides is in `review.json`, next to the deck:
   "version": 1,
   "title": "Sprint review November 16, 2026",
   "period": "November 3 to November 16, 2026",
-  "summary": [{ "text": "One customer page shows online store, register and workshop history", "icon": "users" }],
+  "headline": "The front desk sees a whole customer on one page",
   "themes": [
     {
       "title": "Customer profile",
       "icon": "users",
       "value": "quality",
       "effect": "Front desk staff see everything a customer bought or had repaired on one page.",
+      "layout": "auto",
       "points": ["Purchases, repairs and services sit in one list with their source"],
       "notes": "Open the customer page for Sarah Mitchell and point at the source labels.",
       "screen": null
     }
   ],
-  "underTheHood": ["Vite is up to date"],
+  "underTheHood": [{ "text": "Vite is up to date", "kind": "maintenance" }],
+  "questions": ["Which repairs would you still type in by hand?"],
   "screens": [],
   "milestones": [{ "text": "Book a repair online", "done": true }],
   "usage": [{ "label": "repairs booked", "value": 312, "previous": 268 }]
@@ -52,12 +54,14 @@ What you can change:
 
 | To… | Edit |
 |---|---|
-| Fix a word | Any `text`, `title`, `effect`, `points` or `notes`. |
+| Fix a word | Any `headline`, `text`, `title`, `effect` (the slide's title), `points`, `notes` or `questions`. |
 | Reorder themes | Move items in `themes`. |
 | Drop a slide | Remove the theme, the screen from `screens`, or empty `underTheHood`. |
 | Change an icon | `icon`, see `sprint-review icons`. |
 | Change what a theme brings | `value`: `faster`, `quality`, `less_manual_work`, `less_risk`, `insight`, or `null`. |
 | Remove a theme's picture | Set `screen` to `null`. |
+| Change a slide's layout | `layout`: `auto`, `split`, `full`, `icon` or `card` (see [design](design.md#theme-layouts)). |
+| Label a line under the hood | `kind`: `security`, `reliability`, `speed` or `maintenance`. |
 | Fix a number | `usage`. |
 
 Then rebuild:
