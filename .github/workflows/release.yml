@@ -2,7 +2,8 @@ name: Release
 
 # Every push to main updates a release pull request with the next version and its changelog,
 # written from the Conventional Commit messages. Merging that pull request tags the release,
-# publishes to npm with provenance, and moves the v0 tag that `uses: guuskeunen/sprint-review@v0` follows.
+# publishes to npm with provenance, attaches the MCP bundle (sprint-review.mcpb), publishes to the MCP
+# registry, and moves the v0 tag that `uses: guuskeunen/sprint-review@v0` follows.
 
 on:
   push:
@@ -32,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      id-token: write   # npm trusted publishing: signs in with a short-lived GitHub token, and adds provenance
+      id-token: write   # npm trusted publishing and the MCP registry: sign in with a short-lived GitHub token
     steps:
       - uses: actions/checkout@v7
         with:
@@ -47,6 +48,20 @@ jobs:
       - run: npm run build
       # No token: npm trusts this workflow (set up on npmjs.com under the package's trusted publishers).
       - run: npm publish --access public
+      - name: Attach the MCP bundle (.mcpb) to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.release-please.outputs.tag }}
+        run: |
+          node scripts/build-mcpb.ts
+          gh release upload "$TAG" sprint-review.mcpb --clobber
+      # The registry lists the npm package, so it goes after npm publish. No token: it trusts this workflow.
+      - name: Publish to the MCP registry
+        run: |
+          curl -sL https://github.com/modelcontextprotocol/registry/releases/download/v1.8.12/mcp-publisher_linux_amd64.tar.gz | tar xz mcp-publisher
+          ./mcp-publisher login github-oidc
+          for i in 1 2 3 4 5; do ./mcp-publisher publish && exit 0; echo "npm may not show the new version yet; retrying"; sleep 30; done
+          exit 1
       - name: Move the major version tag
         env:
           MAJOR: v${{ needs.release-please.outputs.major }}
