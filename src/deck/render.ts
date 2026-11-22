@@ -2,8 +2,10 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { Review } from '../types.ts';
 import { fill, labelsFor, localeOf, type Labels } from './i18n.ts';
-import { readableOn } from './colors.ts';
+import { palette } from './colors.ts';
 import { themeIcon, valueIcon } from './icons.ts';
+import { imageSize } from './images.ts';
+import { change, trendPoints } from './numbers.ts';
 import { numbers, planDeck } from './plan.ts';
 import type { DeckConfig } from '../config.ts';
 type PlannedSlide = ReturnType<typeof planDeck>[number];
@@ -37,7 +39,21 @@ function fontStack(name: string): string {
 }
 
 /** A picture for an img src: only an image data URI passes (review.json can be edited by hand). */
+/** A clip for a video src: only an mp4 or webm data URI passes. */
+export const VIDEO_DATA_URI = /^data:video\/(mp4|webm);base64,[A-Za-z0-9+/=]+$/;
 export const IMAGE_DATA_URI = /^data:image\/(png|jpeg|webp|gif|svg\+xml);base64,[A-Za-z0-9+/=]+$/;
+/**
+ * A before or after picture in a box with the after picture's shape, so both show the same size
+ * and a frame around the change sits exactly on it at any size. Phones keep their own shape.
+ */
+function shot(uri: string, alt: string, s: Review['screens'][number], frame: boolean): string {
+  const img = `<img src="${picture(uri)}" alt="${esc(alt)}">`;
+  const size = s.device === 'phone' ? null : imageSize(s.after);
+  if (!size) return img;
+  const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
+  const f = frame && s.focus ? `<i class="focus" style="left: ${pct(s.focus.x)}; top: ${pct(s.focus.y)}; width: ${pct(s.focus.w)}; height: ${pct(s.focus.h)}"></i>` : '';
+  return `<span class="shot" style="--r: ${Math.round((size.w / size.h) * 1000) / 1000}">${img}${f}</span>`;
+}
 const picture = (uri: unknown) => (typeof uri === 'string' && IMAGE_DATA_URI.test(uri) ? uri : '');
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -81,12 +97,26 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
   </ul>
   ${review.summaryNotes ? `<aside class="notes">${esc(review.summaryNotes)}</aside>` : ''}
 </section>`;
+      case 'lastTime': {
+        const said = review.lastTime!;
+        const done = said.items.filter((m) => m.done).length;
+        return `<section class="slide" data-ref="lastTime">
+  ${head(esc(t.lastTimeLabel), fill(t.lastTimeTitle, { n: done, total: said.items.length }))}
+  <ul class="promises">${said.items.map((m, i) => `\n    <li class="rise ${m.done ? 'done' : ''}"${rise(i + 2)}><span class="tag">${esc(m.done ? t.statusDone : t.statusOpen)}</span><span>${esc(m.text)}</span></li>`).join('')}
+  </ul>
+</section>`;
+      }
       case 'theme': {
         const th = review.themes[p.index]!;
         const chip = th.value ? ` <span class="chip">${valueIcon(th.value)}${esc(t[`value_${th.value}` as keyof Labels] ?? th.value)}</span>` : '';
-        const shot = th.screen
-          ? `<figure class="screen ${p.layout === 'phone' ? 'phone ' : ''}rise"${rise(3)}><img src="${picture(th.screen.image)}" alt="${esc(p.layout === 'phone' ? fill(t.onPhone, { name: th.screen.name }) : th.screen.name)}"></figure>`
-          : '';
+        const alt = th.screen ? (p.layout === 'phone' ? fill(t.onPhone, { name: th.screen.name }) : th.screen.name) : '';
+        // A clip plays muted in a loop while its slide is open; the picture is its poster, and what prints.
+        const media = !th.screen
+          ? ''
+          : th.screen.video && VIDEO_DATA_URI.test(th.screen.video)
+            ? `<video src="${th.screen.video}" poster="${picture(th.screen.image)}" muted loop playsinline preload="auto" aria-label="${esc(alt)}"></video>`
+            : `<img src="${picture(th.screen.image)}" alt="${esc(alt)}">`;
+        const shot = th.screen ? `<figure class="screen ${p.layout === 'phone' ? 'phone ' : ''}rise"${rise(3)}>${media}</figure>` : '';
         const body =
           p.layout === 'icon'
             ? `<div class="tile rise"${rise(2)}>${themeIcon(th.icon)}</div>\n    ${points(th.points, 3)}`
@@ -128,11 +158,11 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
   <div class="compare ${s.device === 'phone' ? 'phone' : ''}">
     <figure class="rise"${rise(2)}>
       <figcaption>${esc(t.before)}</figcaption>
-      <img src="${picture(s.before)}" alt="${esc(fill(t.beforeAlt, { name: s.name }))}">
+      ${shot(s.before, fill(t.beforeAlt, { name: s.name }), s, false)}
     </figure>
     <figure class="after rise"${rise(3)}>
       <figcaption>${esc(t.after)}</figcaption>
-      <img src="${picture(s.after)}" alt="${esc(fill(t.afterAlt, { name: s.name }))}">
+      ${shot(s.after, fill(t.afterAlt, { name: s.name }), s, true)}
     </figure>
   </div>
 </section>`;
@@ -144,6 +174,17 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
   </ul>
 </section>`;
       case 'roadmap': {
+        if (p.milestones.some((m) => m.stage)) {
+          // A Now / Next roadmap: two columns, no percentage, since such a roadmap counts nothing done.
+          const column = (stage: 'now' | 'next', label: string, i0: number) => {
+            const items = p.milestones.filter((m) => m.stage === stage);
+            return items.length ? `<div class="stage ${stage} rise"${rise(i0)}><b>${esc(label)}</b><ul>${items.map((m) => `<li>${esc(m.text)}</li>`).join('')}</ul></div>` : '';
+          };
+          return `<section class="slide" data-ref="roadmap">
+  ${head(esc(t.roadmapLabel), t.roadmapPlanTitle)}
+  <div class="stages">${column('now', t.roadmapNow, 2)}${column('next', t.roadmapNext, 3)}</div>
+</section>`;
+        }
         const reached = review.milestones.filter((m) => m.done).length;
         const next = p.milestones.findIndex((m) => !m.done);
         return `<section class="slide" data-ref="roadmap">
@@ -154,6 +195,15 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
       }
       case 'usage': {
         const tiles = numbers(review);
+        const delta = (u: (typeof tiles)[number]) => {
+          const c = change(u, localeOf(review.language));
+          const before = u.previous ?? u.history?.at(-1);
+          const line = trendPoints(u);
+          const svgLine = line
+            ? `<svg class="trend" viewBox="0 0 120 30" aria-hidden="true"><polyline points="${line.map((p) => `${p.x},${p.y}`).join(' ')}"/><circle cx="${line.at(-1)!.x}" cy="${line.at(-1)!.y}" r="3"/></svg>`
+            : '';
+          return `${c && before !== undefined ? `<small class="${c.good ? 'good' : 'bad'}"><b>${esc(c.text)}</b> · ${esc(t.previous)}: ${nf.format(before)}</small>` : ''}${svgLine}`;
+        };
         return `<section class="slide" data-ref="usage">
   ${head(esc(t.usageLabel), fill(t.usageTitle, { product: review.product }))}
   <div class="tiles${tiles.length === 1 ? ' one' : ''}">${tiles
@@ -162,7 +212,7 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
     <div class="tile-number rise"${rise(i + 2)}>
       <b data-count="${u.value}">${nf.format(u.value)}</b>
       <p>${esc(u.label)}</p>
-      ${u.previous !== undefined && u.previous > 0 ? `<small class="${u.value > u.previous ? 'up' : ''}">${esc(t.previous)}: ${nf.format(u.previous)}</small>` : ''}
+      ${delta(u)}
     </div>`,
     )
     .join('')}
@@ -192,13 +242,10 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
 
   const hasNotes = slides.some((x) => x.includes('<aside class="notes">'));
   const theme = options.theme === 'dark' ? 'dark' : 'light';
-  // The brand color as text and icons must read on the theme's background; readableOn shifts it only when it doesn't.
-  const accent = color ? readableOn(color, theme === 'dark' ? '#0a0a0d' : '#ffffff') : null;
-  const brandCss = !color
-    ? ''
-    : theme === 'dark'
-      ? `html[data-theme="dark"] { --accent: ${accent}; --accent-deep: color-mix(in srgb, ${accent} 65%, #000); --accent-soft: color-mix(in srgb, ${accent} 12%, transparent); --accent-glow: color-mix(in srgb, ${accent} 24%, transparent); }`
-      : `:root { --accent: ${accent}; --accent-deep: color-mix(in srgb, ${accent} 70%, #0f172a); --accent-soft: color-mix(in srgb, ${accent} 9%, #fff); }`;
+  // Every color comes from the brand color (or the theme's own accent), measured against the background.
+  const p = palette(color ?? (theme === 'dark' ? '#d6b36a' : '#4f46e5'), theme);
+  const scope = theme === 'dark' ? 'html[data-theme="dark"]' : ':root';
+  const brandCss = `${scope} { --accent: ${p.accent}; --accent-deep: ${p.accentDeep}; --accent-soft: ${p.accentSoft}; --ink: ${p.ink}; --ink-soft: ${p.inkSoft}; --ink-faint: ${p.inkFaint}; --line: ${p.line}; --surface-soft: ${p.surfaceSoft};${theme === 'dark' ? ` --accent-glow: color-mix(in srgb, ${p.accent} 24%, transparent);` : ''} }`;
   const fontCss = [
     options.fonts?.heading ? `--font-heading: ${fontStack(options.fonts.heading)};` : '',
     options.fonts?.body ? `--font-body: ${fontStack(options.fonts.body)};` : '',
@@ -273,7 +320,7 @@ function script(t: Labels, lang: string): string {
       var startAt = null;
       function step(now) {
         if (startAt === null) startAt = now;
-        var k = Math.min(1, (now - startAt) / 900);
+        var k = Math.min(1, (now - startAt) / 600);
         el.textContent = nf.format(Math.round(target * (1 - Math.pow(1 - k, 3))));
         if (k < 1) requestAnimationFrame(step);
       }
@@ -291,6 +338,11 @@ function script(t: Labels, lang: string): string {
     counter.textContent = (current + 1) + ' / ' + slides.length;
     try { if (history.replaceState) history.replaceState(null, '', '#' + (current + 1)); } catch (e) { /* not allowed in an embedded preview */ }
     countUp(slides[current]);
+    // Only the open slide's clips play, and none with reduced motion: the poster stays.
+    Array.prototype.forEach.call(document.querySelectorAll('video'), function (v) {
+      if (!reducedMotion && slides[current].contains(v)) { var p = v.play(); if (p && p.catch) p.catch(function () {}); }
+      else v.pause();
+    });
     tellPresenter();
     // Embedded (the editor's preview, a landing page): tell the page around it where we are.
     if (window.parent !== window) window.parent.postMessage({ type: 'sprint-review:slide', n: current + 1, total: slides.length }, '*');

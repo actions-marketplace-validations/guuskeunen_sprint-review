@@ -7,6 +7,7 @@ export type ThemeSlideLayout = 'split' | 'full' | 'phone' | 'icon';
 export type PlannedSlide =
   | { kind: 'cover' }
   | { kind: 'headline' }
+  | { kind: 'lastTime' }
   | { kind: 'theme'; index: number; layout: ThemeSlideLayout; flip: boolean }
   | { kind: 'cards'; indexes: number[] }
   | { kind: 'screen'; index: number }
@@ -24,7 +25,7 @@ const MAX_MILESTONES = 6;
  * Which slides the deck has, in which order, and how each theme slide is laid out. The HTML deck,
  * the PowerPoint file and the editor all follow this, so they never disagree.
  *
- * The story: cover, the sprint headline, the biggest themes one slide each, the rest on one slide
+ * The story: cover, the sprint headline, what the last review said was next, the biggest themes one slide each, the rest on one slide
  * of cards, before and after, what else shipped, the roadmap, the numbers, and questions for the
  * audience. Executives get the numbers right after the headline (deck.order).
  */
@@ -32,6 +33,8 @@ export function planDeck(review: Review, deck: DeckConfig = defaultDeck()): Plan
   const on = deck.sections;
   const plan: PlannedSlide[] = [{ kind: 'cover' }];
   if (on.headline && review.headline) plan.push({ kind: 'headline' });
+  // What we said last time comes first: the audience checks promises before hearing new ones.
+  if (on.lastTime && review.lastTime?.items.length) plan.push({ kind: 'lastTime' });
   const usage = on.usage && numbers(review).length ? [{ kind: 'usage' } as const] : [];
   if (deck.order === 'numbers-first') plan.push(...usage);
 
@@ -80,7 +83,7 @@ function themeLayout(th: ReviewTheme): ThemeSlideLayout {
 
 /** Up to six milestones around where the team is: the last three reached and what comes next. */
 function window(milestones: Milestone[]): Milestone[] {
-  if (milestones.length <= MAX_MILESTONES) return milestones;
+  if (milestones.length <= MAX_MILESTONES || milestones.some((m) => m.stage)) return milestones.slice(0, MAX_MILESTONES);
   const next = milestones.findIndex((m) => !m.done);
   const at = next === -1 ? milestones.length : next;
   const start = Math.max(0, Math.min(at - 3, milestones.length - MAX_MILESTONES));

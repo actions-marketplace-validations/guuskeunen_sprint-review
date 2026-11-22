@@ -7,6 +7,8 @@ type Slide = ReturnType<InstanceType<PptxClass>['addSlide']>;
 import { numbers, planDeck } from './plan.ts';
 import type { DeckConfig } from '../config.ts';
 import { readableOn } from './colors.ts';
+import { imageSize } from './images.ts';
+import { change } from './numbers.ts';
 
 export class PptxError extends Error {}
 
@@ -18,19 +20,6 @@ export interface PptxOptions {
   theme?: 'dark' | 'light';
   fonts?: { heading?: string | null; body?: string | null };
   deck?: DeckConfig;
-}
-
-/** Width and height of a PNG or JPEG data URI, so pictures keep their shape. */
-function imageSize(uri: string): { w: number; h: number } | null {
-  const b = Buffer.from(uri.slice(uri.indexOf(',') + 1), 'base64');
-  if (b.length > 24 && b.readUInt32BE(0) === 0x89504e47) return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
-  for (let i = 2; i < b.length - 9; ) {
-    if (b[i] !== 0xff) return null;
-    const marker = b[i + 1]!;
-    if (marker >= 0xc0 && marker <= 0xc3) return { w: b.readUInt16BE(i + 7), h: b.readUInt16BE(i + 5) };
-    i += 2 + b.readUInt16BE(i + 2);
-  }
-  return null;
 }
 
 /** Place a picture inside a box: whole and centered (fit), or filling it from the top (cover). */
@@ -125,6 +114,17 @@ export async function renderPptx(review: Review, options: PptxOptions = {}): Pro
         s.addText(review.themes.map((th) => th.title).join('     '), { x: X, y: 5.5, w: CW, h: 0.5, fontFace: body, fontSize: SIZE.small, color: pal.soft, margin: 0 });
         break;
       }
+      case 'lastTime': {
+        const said = review.lastTime!;
+        const s = newSlide();
+        head(s, t.lastTimeLabel, fill(t.lastTimeTitle, { n: said.items.filter((m) => m.done).length, total: said.items.length }));
+        said.items.forEach((m, i) => {
+          const y = BODY_Y + i * 0.85;
+          s.addText((m.done ? t.statusDone : t.statusOpen).toUpperCase(), { x: X, y, w: 1.7, h: 0.8, fontFace: body, fontSize: SIZE.small, bold: true, color: m.done ? '059669' : pal.faint, charSpacing: 2, valign: 'top', margin: 0 });
+          s.addText(m.text, { x: X + 1.8, y, w: Math.min(CW - 1.8, 8.5), h: 0.8, fontFace: body, fontSize: SIZE.body, color: pal.ink, valign: 'top', margin: 0 });
+        });
+        break;
+      }
       case 'theme': {
         const th = review.themes[p.index]!;
         const s = newSlide(th.notes);
@@ -171,7 +171,14 @@ export async function renderPptx(review: Review, options: PptxOptions = {}): Pro
         for (const [i, side] of (['before', 'after'] as const).entries()) {
           const x = X + i * (w + 0.4);
           s.addText((side === 'before' ? t.before : t.after).toUpperCase(), { x, y: BODY_Y, w, h: 0.3, fontFace: body, fontSize: SIZE.small, bold: true, color: side === 'after' ? pal.accent : pal.faint, charSpacing: 3, margin: 0 });
-          s.addImage(place(sc[side], { x, y: BODY_Y + 0.45, w, h: BODY_H - 0.45 }, sc.device === 'phone' ? 'fit' : 'cover'));
+          const pic = place(sc[side], { x, y: BODY_Y + 0.45, w, h: BODY_H - 0.45 }, sc.device === 'phone' ? 'fit' : 'cover');
+          s.addImage(pic);
+          // The change, framed on the after picture where it falls inside what is shown.
+          const f = side === 'after' ? sc.focus : undefined;
+          const shown = 'sizing' in pic && pic.sizing ? pic.sizing.h : pic.h;
+          if (f && sc.device !== 'phone' && (f.y + f.h) * pic.h <= shown) {
+            s.addShape('roundRect', { x: pic.x + f.x * pic.w, y: pic.y + f.y * pic.h, w: f.w * pic.w, h: f.h * pic.h, fill: { type: 'none' }, line: { color: pal.accent, width: 2.25 }, rectRadius: 0.06 });
+          }
         }
         break;
       }
@@ -188,6 +195,20 @@ export async function renderPptx(review: Review, options: PptxOptions = {}): Pro
       }
       case 'roadmap': {
         const s = newSlide();
+        if (p.milestones.some((m) => m.stage)) {
+          head(s, t.roadmapLabel, t.roadmapPlanTitle);
+          (['now', 'next'] as const).forEach((stage, i) => {
+            const items = p.milestones.filter((m) => m.stage === stage);
+            if (!items.length) return;
+            const x = X + i * 5.2;
+            s.addText((stage === 'now' ? t.roadmapNow : t.roadmapNext).toUpperCase(), { x, y: BODY_Y, w: 4.8, h: 0.35, fontFace: body, fontSize: SIZE.small, bold: true, color: stage === 'now' ? pal.accent : pal.faint, charSpacing: 3, margin: 0 });
+            s.addText(
+              items.map((m, j) => ({ text: m.text, options: { breakLine: j < items.length - 1, paraSpaceAfter: 14 } })),
+              { x, y: BODY_Y + 0.5, w: 4.8, h: BODY_H - 0.5, fontFace: body, fontSize: SIZE.body, color: pal.ink, valign: 'top', margin: 0 },
+            );
+          });
+          break;
+        }
         const reached = review.milestones.filter((m) => m.done).length;
         head(s, t.roadmapLabel, fill(t.roadmapReached, { n: reached, total: review.milestones.length }));
         const n = p.milestones.length;
@@ -213,7 +234,16 @@ export async function renderPptx(review: Review, options: PptxOptions = {}): Pro
           const x = X + i * (w + 0.4);
           s.addText(nf.format(u.value), { x, y: BODY_Y, w, h: 1.1, fontFace: heading, fontSize: SIZE.display, bold: true, color: pal.accent, margin: 0 });
           s.addText(u.label, { x, y: BODY_Y + 1.2, w, h: 0.6, fontFace: body, fontSize: SIZE.body, color: pal.ink, valign: 'top', margin: 0 });
-          if (u.previous) s.addText(`${t.previous}: ${nf.format(u.previous)}`, { x, y: BODY_Y + 1.85, w, h: 0.4, fontFace: body, fontSize: SIZE.small, color: pal.faint, margin: 0 });
+          const c = change(u, localeOf(review.language));
+          const before = u.previous ?? u.history?.at(-1);
+          if (c && before !== undefined)
+            s.addText(
+              [
+                { text: c.text, options: { bold: true, color: c.good ? '059669' : 'DC2626' } },
+                { text: ` · ${t.previous}: ${nf.format(before)}`, options: { color: pal.faint } },
+              ],
+              { x, y: BODY_Y + 1.85, w, h: 0.4, fontFace: body, fontSize: SIZE.small, margin: 0 },
+            );
         });
         break;
       }

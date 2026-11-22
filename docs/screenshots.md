@@ -107,6 +107,29 @@ The screen key turns into a readable name ("customer-page" → "Customer page") 
 
 Phone pictures are shown upright, in a phone frame.
 
+## Short video clips
+
+A feature you click through shows better moving. Record a few seconds of it with any screen recorder, save it as `.mp4` or `.webm` (8 MB at most, since it goes inside the deck), and name it per screen key:
+
+```yaml
+screenshots:
+  source: git
+  dir: e2e/__screenshots__
+  videos:
+    planner: docs/clips/planner.mp4
+```
+
+A theme showing that screen plays the clip muted in a loop while its slide is open, with the screenshot as its first frame. With reduced motion, in PowerPoint and on paper, the screenshot shows.
+
+## Dark mode
+
+With `brand.theme: dark`, a light screenshot glares on the black slides. If your app has a dark mode, give the deck dark pictures too:
+
+- **Capture:** set `screenshots.darkMode: true` and every page is also photographed in the app's dark mode (Playwright's `colorScheme: dark`). It only works when the app follows the system setting.
+- **Git or folders:** add the dark picture next to the light one with `-dark` in the name: `planner-desktop-dark.png`.
+
+The dark deck uses a dark pair when both the before and the after picture have one, and the light pair otherwise, so a comparison never mixes the two (that would count every screen as changed). A light picture on the dark deck is dimmed a little.
+
 ## Tips
 
 - **Use made-up data in your test fixtures.** Then the pictures are safe to show anywhere.

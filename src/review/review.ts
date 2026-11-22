@@ -1,5 +1,5 @@
 import { HOOD_KINDS, THEME_LAYOUTS, type HoodItem, type Review } from '../types.ts';
-import { IMAGE_DATA_URI } from '../deck/render.ts';
+import { IMAGE_DATA_URI, VIDEO_DATA_URI } from '../deck/render.ts';
 
 /**
  * Enough of a check that a broken edit can't produce a broken deck. A review from an older version
@@ -12,6 +12,7 @@ export function validReview(v: unknown): Review {
   if (!r || r.version !== 1) throw new Error('Not a review made by sprint-review.');
   if (typeof r.title !== 'string' || typeof r.period !== 'string') throw new Error('The review needs a title and a period.');
   if (r.headline !== null && typeof r.headline !== 'string') throw new Error('The headline must be text.');
+  if (r.lastTime !== undefined && !(typeof r.lastTime?.until === 'string' && Array.isArray(r.lastTime.items) && r.lastTime.items.every((m) => typeof m?.text === 'string' && typeof m.done === 'boolean'))) throw new Error('lastTime needs until and a list of items with text and done.');
   if (!strings(r.questions)) throw new Error('Questions must be a list of lines.');
   if (!Array.isArray(r.themes) || !r.themes.every((t) => typeof t?.title === 'string' && strings(t.points))) throw new Error('Every theme needs a title and a list of points.');
   if (!Array.isArray(r.underTheHood) || !r.underTheHood.every((x) => typeof x?.text === 'string' && (HOOD_KINDS as readonly string[]).includes(x.kind))) throw new Error(`Every line under the hood needs text and a kind (${HOOD_KINDS.join(', ')}).`);
@@ -20,8 +21,11 @@ export function validReview(v: unknown): Review {
   for (const t of r.themes) {
     for (const k of ['effect', 'notes', 'icon', 'value'] as const) if (!text(t[k])) throw new Error(`The ${k} of theme "${t.title}" must be text.`);
     if (t.layout !== undefined && !(THEME_LAYOUTS as readonly string[]).includes(t.layout)) throw new Error(`The layout of theme "${t.title}" must be one of ${THEME_LAYOUTS.join(', ')}.`);
+    if (t.screen?.video !== undefined && !VIDEO_DATA_URI.test(String(t.screen.video))) throw new Error(`The video of theme "${t.title}" must be a data:video/mp4 or data:video/webm URI.`);
     if (t.screen && !IMAGE_DATA_URI.test(String(t.screen.image))) throw new Error(`The picture of theme "${t.title}" must be an image (a data:image URI).`);
   }
+  const fraction = (n: unknown) => typeof n === 'number' && n >= 0 && n <= 1;
+  for (const s of r.screens) if (s?.focus !== undefined && !(['x', 'y', 'w', 'h'] as const).every((k) => fraction(s.focus?.[k]))) throw new Error(`The focus of "${s?.name}" must have x, y, w and h from 0 to 1.`);
   for (const s of r.screens) if (!IMAGE_DATA_URI.test(String(s?.before)) || !IMAGE_DATA_URI.test(String(s?.after))) throw new Error(`The before and after picture of "${s?.name}" must be images (data:image URIs).`);
   return {
     ...r,

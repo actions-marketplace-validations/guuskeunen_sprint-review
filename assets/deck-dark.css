@@ -13,6 +13,7 @@
     --accent-soft: color-mix(in srgb, var(--accent) 10%, transparent);
     --accent-glow: color-mix(in srgb, var(--accent) 22%, transparent);
     --good: #8fd1aa;
+    --bad: #f0a097;
     --font-heading: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", "Hoefler Text", Georgia, serif;
     color-scheme: dark;
   }

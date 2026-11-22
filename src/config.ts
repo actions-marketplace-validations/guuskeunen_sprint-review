@@ -34,7 +34,7 @@ export const DENSITY = {
 export type Density = keyof typeof DENSITY;
 
 /** The slides that can be left out. The cover and the theme slides always show. */
-export const SECTIONS = ['headline', 'screens', 'hood', 'roadmap', 'usage', 'questions'] as const;
+export const SECTIONS = ['headline', 'lastTime', 'screens', 'hood', 'roadmap', 'usage', 'questions'] as const;
 export type Section = (typeof SECTIONS)[number];
 
 export interface DeckConfig {
@@ -125,9 +125,16 @@ export interface ModelConfig {
 
 export type ScreenshotConfig =
   | { source: 'none' }
-  | { source: 'git'; dir: string; names: Record<string, string>; ignore: { left: number; top: number } }
-  | { source: 'folder'; before: string; after: string; names: Record<string, string>; ignore: { left: number; top: number } }
-  | { source: 'capture'; capture: CaptureConfig; names: Record<string, string>; ignore: { left: number; top: number } };
+  | ({ source: 'git'; dir: string } & ScreenCommon)
+  | ({ source: 'folder'; before: string; after: string } & ScreenCommon)
+  | ({ source: 'capture'; capture: CaptureConfig } & ScreenCommon);
+
+interface ScreenCommon {
+  names: Record<string, string>;
+  ignore: { left: number; top: number };
+  /** A short clip per screen key (an .mp4 or .webm of a few seconds), shown looping instead of its picture. */
+  videos: Record<string, string>;
+}
 
 export interface CaptureConfig {
   /** The pages to photograph, by screen key. Relative URLs are resolved against baseUrl. */
@@ -142,6 +149,8 @@ export interface CaptureConfig {
   wait: number;
   /** Where the pictures are kept, one folder per day. Keep it between runs (commit it or cache it in CI). */
   dir: string;
+  /** Also photograph every page in the app's dark mode, for the dark deck. Only useful when the app follows the system's dark mode. */
+  darkMode: boolean;
 }
 
 const DEFAULT_FILES = ['sprint-review.config.yml', 'sprint-review.config.yaml', 'sprint-review.config.json'];
@@ -275,17 +284,19 @@ function screenshots(value: unknown): ScreenshotConfig {
   const names = strMap(s.names, 'screenshots.names');
   const ig = obj(s.ignore ?? {}, 'screenshots.ignore');
   const ignore = { left: int(ig.left, 'screenshots.ignore.left', 0, 0, 4000), top: int(ig.top, 'screenshots.ignore.top', 0, 0, 4000) };
+  const videos = strMap(s.videos, 'screenshots.videos');
+  for (const [k, v] of Object.entries(videos)) if (!/\.(mp4|webm)$/i.test(v)) throw new ConfigError(`screenshots.videos.${k} must be an .mp4 or .webm file.`);
   if (source === 'none') return { source: 'none' };
   if (source === 'git') {
     const dir = str(s.dir, 'screenshots.dir');
     if (!dir) throw new ConfigError('screenshots.dir is required when screenshots.source is git.');
-    return { source: 'git', dir: dir.replace(/\/+$/, ''), names, ignore };
+    return { source: 'git', dir: dir.replace(/\/+$/, ''), names, ignore, videos };
   }
   if (source === 'folder') {
     const before = str(s.before, 'screenshots.before');
     const after = str(s.after, 'screenshots.after');
     if (!before || !after) throw new ConfigError('screenshots.before and screenshots.after are required when screenshots.source is folder.');
-    return { source: 'folder', before, after, names, ignore };
+    return { source: 'folder', before, after, names, ignore, videos };
   }
   if (source === 'capture') {
     const pages = strMap(s.pages, 'screenshots.pages');
@@ -296,6 +307,7 @@ function screenshots(value: unknown): ScreenshotConfig {
       source: 'capture',
       names,
       ignore,
+      videos,
       capture: {
         pages,
         baseUrl: str(s.baseUrl, 'screenshots.baseUrl'),
@@ -304,6 +316,7 @@ function screenshots(value: unknown): ScreenshotConfig {
         storageState: str(s.storageState, 'screenshots.storageState'),
         wait: int(s.wait, 'screenshots.wait', 500, 0, 60000),
         dir: str(s.storage, 'screenshots.storage') ?? '.sprint-review/screenshots',
+        darkMode: s.darkMode === undefined ? false : bool(s.darkMode, 'screenshots.darkMode'),
       },
     };
   }

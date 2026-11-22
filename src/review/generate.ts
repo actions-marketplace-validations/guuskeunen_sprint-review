@@ -1,7 +1,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
 import type { Config } from '../config.ts';
-import type { ChangedScreen, Review, ReviewScreen, ReviewTheme, UsageMetric, WrittenTheme } from '../types.ts';
+import type { ChangedScreen, Milestone, Review, ReviewScreen, ReviewTheme, UsageMetric, WrittenTheme } from '../types.ts';
 import { History, type Range } from '../git/history.ts';
 import { screens as openScreens, type Screens } from '../screens/screenshots.ts';
 import { write } from '../ai/writer.ts';
@@ -14,6 +14,7 @@ import { renderMarkdown } from '../deck/markdown.ts';
 import { brandFromPptx, type Brand } from '../brand/brand.ts';
 import { isWebsite, withWebsiteBrand } from '../brand/website.ts';
 import { costOf, metered, type Cost } from '../ai/costs.ts';
+import { lastTime, previousReview } from './previous.ts';
 
 export class NothingToReview extends Error {}
 
@@ -76,7 +77,7 @@ export async function generate(config: Config, options: GenerateOptions): Promis
   }
 
   const t = labelsFor(config.language, config.labels);
-  const shots = openScreens(config.screenshots, config.root, history, range, { phone: t.phone, desktop: t.desktop });
+  const shots = openScreens(config.screenshots, config.root, history, range, { phone: t.phone, desktop: t.desktop }, config.brand.theme);
   if (config.screenshots.source !== 'none') step('Comparing screenshots');
   const changed = await shots.changed();
   const available = shots.available();
@@ -84,16 +85,20 @@ export async function generate(config: Config, options: GenerateOptions): Promis
 
   step(`Writing the slides with ${config.model.name}${config.model.provider === 'anthropic' ? '' : ` via ${config.model.provider}`}`);
   const meter = metered(options.model);
-  const { written, usage } = await write(meter, config, commits, changed.map((c) => c.name), [...available.keys()]);
+  const { end } = history.ends(range);
+  const roadmap = history.milestones(end, config.roadmap);
+  const staged = roadmap.filter((m) => m.stage);
+  const { written, usage } = await write(meter, config, commits, changed.map((c) => c.name), [...available.keys()], staged.map((m) => `${m.stage === 'now' ? 'Now' : 'Next'}: ${m.text}`));
   const cost = costOf(meter.calls, config.model, today());
   const models = [...new Set(meter.calls.map((c) => c.model))];
 
   const reviewScreens = explained(changed, written.screenCaptions, config.limits.changedScreens);
-  const themes = withScreens(written.themes, reviewScreens, available, shots, config.limits.themeScreens);
-  const { end } = history.ends(range);
+  const themes = withVideos(withScreens(written.themes, reviewScreens, available, shots, config.limits.themeScreens), config, step);
   const until = range.kind === 'dates' ? range.until : (commits[0]?.date ?? today());
   const from = range.kind === 'dates' ? range.from : (commits.at(-1)?.date ?? until);
 
+  const milestones = staged.length ? plannedItems(staged, written.roadmap) : roadmap;
+  const said = lastTime(previousReview(config, until), milestones);
   const review: Review = {
     version: 1,
     title: `${t.sprintReview} ${longDate(until, config.language)}`,
@@ -109,9 +114,10 @@ export async function generate(config: Config, options: GenerateOptions): Promis
     underTheHood: written.underTheHood,
     questions: written.questions,
     screens: reviewScreens,
-    milestones: history.milestones(end, config.roadmap),
+    milestones,
     usage: readUsage(config),
     checks: written.checks,
+    ...(said ? { lastTime: said } : {}),
   };
   step('Building the deck');
   return { review, ...render(review, config), usage, cost, models };
@@ -151,7 +157,7 @@ function explained(changed: ChangedScreen[], captions: Record<string, string>, m
   return changed
     .filter((s) => captions[s.name])
     .slice(0, max)
-    .map((s) => ({ name: s.name, device: s.device, before: dataUri(s.before), after: dataUri(s.after), caption: captions[s.name] ?? null }));
+    .map((s) => ({ name: s.name, device: s.device, before: dataUri(s.before), after: dataUri(s.after), caption: captions[s.name] ?? null, ...(s.focus ? { focus: s.focus } : {}) }));
 }
 
 /**
@@ -178,6 +184,34 @@ function withScreens(themes: WrittenTheme[], shown: ReviewScreen[], available: M
   });
 }
 
+/**
+ * A Now / Next roadmap on the slide: the items the writer picked, in its words, three per section.
+ * Without an answer, the first three of each section as the team wrote them.
+ */
+function plannedItems(staged: Milestone[], picked: { item: number; text: string }[]): Milestone[] {
+  const chosen = picked.length ? picked.map((p) => ({ ...staged[p.item]!, text: p.text })) : staged;
+  return (['now', 'next'] as const).flatMap((stage) => chosen.filter((m) => m.stage === stage).slice(0, 3));
+}
+
+/** A video is embedded in the deck, so it stays short: a few seconds of screen. */
+const MAX_VIDEO_BYTES = 8 * 1024 * 1024;
+
+/** A theme's screenshot gets the clip of the same screen from screenshots.videos, when there is one. */
+function withVideos(themes: ReviewTheme[], config: Config, step: (m: string) => void): ReviewTheme[] {
+  if (config.screenshots.source === 'none') return themes;
+  const videos = config.screenshots.videos;
+  return themes.map((th) => {
+    const path = th.screen && th.screenKey ? videos[th.screenKey] : undefined;
+    if (!path || !th.screen) return th;
+    const file = resolve(config.root, path);
+    if (!existsSync(file)) return step(`Video not found: ${path}`), th;
+    const data = readFileSync(file);
+    if (data.length > MAX_VIDEO_BYTES) return step(`Video left out, over 8 MB: ${path}`), th;
+    const type = extname(file).toLowerCase() === '.webm' ? 'video/webm' : 'video/mp4';
+    return { ...th, screen: { ...th.screen, video: `data:${type};base64,${data.toString('base64')}` } };
+  });
+}
+
 /** Usage numbers come from the team, as a JSON file: `[{ "label": "orders placed", "value": 312, "previous": 268 }]`. */
 function readUsage(config: Config): UsageMetric[] {
   if (!config.usage) return [];
@@ -186,9 +220,18 @@ function readUsage(config: Config): UsageMetric[] {
   const raw = JSON.parse(readFileSync(file, 'utf8')) as unknown;
   if (!Array.isArray(raw)) return [];
   return raw
-    .filter((u): u is { label: string; value: number; previous?: number } => typeof u?.label === 'string' && typeof u?.value === 'number')
+    .filter((u): u is { label: string; value: number; previous?: unknown; history?: unknown; better?: unknown } => typeof u?.label === 'string' && typeof u?.value === 'number')
     .slice(0, 6)
-    .map((u) => ({ label: u.label, value: u.value, ...(typeof u.previous === 'number' ? { previous: u.previous } : {}) }));
+    .map((u) => {
+      const history = Array.isArray(u.history) ? u.history.filter((n): n is number => typeof n === 'number' && Number.isFinite(n)).slice(-11) : [];
+      return {
+        label: u.label,
+        value: u.value,
+        ...(typeof u.previous === 'number' ? { previous: u.previous } : {}),
+        ...(history.length ? { history } : {}),
+        ...(u.better === 'down' ? { better: 'down' as const } : {}),
+      };
+    });
 }
 
 const MIME: Record<string, string> = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.gif': 'image/gif' };

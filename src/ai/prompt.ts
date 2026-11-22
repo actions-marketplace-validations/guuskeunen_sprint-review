@@ -156,7 +156,7 @@ export function readerTool() {
   };
 }
 
-export function writerTool(c: Config, changedScreens: string[], availableScreens: string[]) {
+export function writerTool(c: Config, changedScreens: string[], availableScreens: string[], roadmapItems = 0) {
   const point = {
     type: 'object',
     properties: {
@@ -180,6 +180,25 @@ export function writerTool(c: Config, changedScreens: string[], availableScreens
               type: 'object',
               properties: { screen: { type: 'string', enum: changedScreens }, ...point.properties },
               required: ['screen', 'text', 'commits'],
+              additionalProperties: false,
+            },
+          },
+        };
+  // Only asked for when the roadmap is written as Now and Next sections, in the team's own words.
+  const roadmap =
+    roadmapItems === 0
+      ? {}
+      : {
+          roadmap: {
+            type: 'array',
+            description: `From the roadmap items you got, at most three per section that a user of ${c.product.name} would notice when they arrive, each rewritten for this audience in at most ${HEADLINE_WORDS} words. Leave out internal work. Keep the meaning; promise nothing the item doesn't say.`,
+            items: {
+              type: 'object',
+              properties: {
+                item: { type: 'integer', description: 'The number of the roadmap item, as in the list.' },
+                text: { type: 'string', description: `At most ${HEADLINE_WORDS} words.` },
+              },
+              required: ['item', 'text'],
               additionalProperties: false,
             },
           },
@@ -233,8 +252,9 @@ export function writerTool(c: Config, changedScreens: string[], availableScreens
           items: { type: 'string' },
         },
         ...screenChanges,
+        ...roadmap,
       },
-      required: ['headline', 'summary_notes', 'themes', 'under_the_hood', 'questions', ...Object.keys(screenChanges)],
+      required: ['headline', 'summary_notes', 'themes', 'under_the_hood', 'questions', ...Object.keys(screenChanges), ...Object.keys(roadmap)],
       additionalProperties: false,
     },
   };

@@ -14,6 +14,8 @@ The deck follows rules from presentation research: Apple's keynotes and Human In
 | Evidence over text | Alley, Reynolds | A screenshot takes most of a theme slide. Without one, the icon is shown at hero size. |
 | Screenshots cropped, with no device frame unless the device is the point | Reynolds, documentation style guides | Rounded corners of 10 px and a soft shadow (a hairline border and slight dimming in the dark theme). A phone frame appears only for a theme about the phone. |
 | Before and after: the same crop and size, labeled | Alley | Both pictures share one size and crop. The title says what changed. |
+| One brand color becomes the whole palette, every color measured | Radix, Material, WCAG | Grays and lines take a little of the brand's hue; body text is at least 4.5:1, labels and the accent at least 3:1, in both themes (`src/deck/colors.ts`). |
+| Motion only to show what arrives or changed | NN/g, Tversky et al. | Every animation runs once, in 400 ms or less. The frame around a change appears after the after picture is in. |
 | No logo or chrome on every slide | Reynolds | The logo appears on the cover and the closing slide only. |
 | The same slide type looks the same every time; the deck still has rhythm | Duarte, Pitch, Keynote masters | The title always sits in the same place. A screenshot layout used twice in a row is mirrored the second time. |
 
@@ -21,13 +23,14 @@ The deck follows rules from presentation research: Apple's keynotes and Human In
 
 1. **Cover**: title, period, the sprint goal when `goal` is set.
 2. **The sprint headline**: one sentence with the outcome that matters most, and a row with the theme names. A sprint goal is set before the sprint and can't be read from git, so the headline describes what was done.
-3. **Theme slides**: the biggest themes, one slide each. `deck.density` sets how many: 2, 3 or 4.
-4. **More changes**: the remaining themes as cards, one message each. Their points go into the speaker notes.
-5. **Before and after**: one slide per changed screen.
-6. **Also shipped**: work behind the scenes, with a label per line (security, reliability, speed, maintenance).
-7. **Roadmap**: how many milestones are reached, as a line through the last ones reached and the next ones.
-8. **Numbers**: one big number per idea, at most four.
-9. **Questions**: two or three specific questions for the audience, in place of a bare "Questions?" slide.
+3. **Last sprint**: what the previous review showed as next on the roadmap, and whether it is done now. Only when there is a previous review in the output folder and a roadmap; the audience checks promises before hearing new ones (GitLab publishes its kickoff and retrospective as a pair for the same reason).
+4. **Theme slides**: the biggest themes, one slide each. `deck.density` sets how many: 2, 3 or 4.
+5. **More changes**: the remaining themes as cards, one message each. Their points go into the speaker notes.
+6. **Before and after**: one slide per changed screen.
+7. **Also shipped**: work behind the scenes, with a label per line (security, reliability, speed, maintenance).
+8. **Roadmap**: how many milestones are reached, as a line through the last ones reached and the next ones.
+9. **Numbers**: one big number per idea, at most four.
+10. **Questions**: two or three specific questions for the audience, in place of a bare "Questions?" slide.
 
 The audience sets the defaults: executives get a brief deck with the numbers right after the headline and no slide about work behind the scenes, the team gets a detailed deck, everyone else a standard one. `deck.density`, `deck.order` and `deck.sections` change that.
 

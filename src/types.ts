@@ -27,17 +27,33 @@ export interface ChangedScreen {
   device: Device;
   before: Buffer;
   after: Buffer;
+  /** Where the change is on the pictures, as fractions of their size. */
+  focus?: Focus;
+}
+
+/** An area of a picture as fractions of its width and height, 0 to 1. */
+export interface Focus {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
 export interface Milestone {
   text: string;
   done: boolean;
+  /** From a roadmap written as Now and Next sections instead of a checklist. */
+  stage?: 'now' | 'next';
 }
 
 export interface UsageMetric {
   label: string;
   value: number;
   previous?: number;
+  /** Earlier sprints, oldest first, for the trend line. */
+  history?: number[];
+  /** down when less is better (errors, waiting time): the change is colored the other way. */
+  better?: 'up' | 'down';
 }
 
 export type CheckKind = 'corrected' | 'moved' | 'dropped' | 'warning';
@@ -85,6 +101,8 @@ export interface WrittenReview {
   questions: string[];
   /** What changed per changed screen, by the screen's label. */
   screenCaptions: Record<string, string>;
+  /** Roadmap items a user would notice, by their number in the roadmap, in the audience's words. */
+  roadmap: { item: number; text: string }[];
   checks: Check[];
 }
 
@@ -93,6 +111,8 @@ export interface StoredPicture {
   name: string;
   device: Device;
   image: string;
+  /** A short muted loop of the same screen (a data URI, mp4 or webm), played instead of the picture. */
+  video?: string;
 }
 
 export interface ReviewTheme extends Omit<WrittenTheme, 'screen'> {
@@ -109,6 +129,8 @@ export interface ReviewScreen {
   before: string;
   after: string;
   caption: string | null;
+  /** The changed area, framed on the after picture while the rest dims. Remove it to show the pictures plain. */
+  focus?: Focus;
 }
 
 /** Everything the deck is rendered from. Editing a review means editing this, then rendering again. */
@@ -129,6 +151,8 @@ export interface Review {
   underTheHood: HoodItem[];
   /** Asked on the closing slide instead of a bare "Questions". */
   questions: string[];
+  /** What the previous review said was next, and whether it is done now. */
+  lastTime?: { until: string; items: Milestone[] };
   screens: ReviewScreen[];
   milestones: Milestone[];
   usage: UsageMetric[];

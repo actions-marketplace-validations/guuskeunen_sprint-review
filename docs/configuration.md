@@ -201,19 +201,27 @@ One API request per commit with product code (at most 150). Any failure leaves t
 `true` to post the summary to Slack after every run. The webhook URL comes from the `SLACK_WEBHOOK_URL` environment variable, never the config. Set `SPRINT_REVIEW_DECK_URL` (or pass `--deck-url`) to add an *Open the deck* button. Default `false`; `--slack` does the same for one run.
 
 ### `roadmap`
-A Markdown file in the repository, read as it was at the end of the sprint. Every line `- [x] text` is a reached milestone, `- [ ] text` an open one. Default `ROADMAP.md`. Set `false` to skip it. No file: no roadmap slide.
+A Markdown file in the repository, read as it was at the end of the sprint. Default `ROADMAP.md`. Set `false` to skip it. No file: no roadmap slide. Two ways to write it:
+
+- **A checklist:** every line `- [x] text` is a reached milestone, `- [ ] text` an open one. The slide shows how many are reached and marks the next one, and the next review shows whether what was next got done (*Last sprint*).
+- **`## Now` and `## Next` sections**, as many teams keep a roadmap. Only the lead of each top-level item counts (its bold opening, or its first sentence); other sections such as tech debt or ideas are left out. The AI picks up to three per section that your audience would notice and rewords them for it; each line must point at a real item of the file, or it is dropped. The slide shows Now and Next side by side, without a percentage.
+
+```yaml
+roadmap: docs/development/ROADMAP.md
+```
 
 ### `usage`
 A JSON file with usage numbers you produce (from your analytics, database or a script):
 
 ```json
 [
-  { "label": "repairs booked", "value": 312, "previous": 268 },
+  { "label": "repairs booked", "value": 312, "previous": 268, "history": [190, 221, 240, 268] },
+  { "label": "minutes until a bike is ready", "value": 52, "previous": 61, "better": "down" },
   { "label": "repair tickets read", "value": 41 }
 ]
 ```
 
-At most six. Numbers of zero are left out. `previous` shows under the number. The AI never sees or makes up these numbers.
+The slide shows four at most, one big number each. Numbers of zero are left out. With `previous` the number shows how much it changed ("+16%"), green when it went the better way: up, or down for a number with `"better": "down"` (errors, waiting time). `history` holds earlier sprints, oldest first; with two or more, a small trend line shows under the number. The AI never sees or makes up these numbers.
 
 ### `labels`
 Override any fixed label on the slides. Keys:
@@ -238,7 +246,7 @@ What goes on the slides and in which order. See [How the deck is designed](desig
 |---|---|---|
 | `density` | by [audience](#audience) | `brief`: two points per theme and two theme slides. `standard`: three and three. `detailed`: four and four. Themes past that share a slide of cards. A slide with more words than the audience reads at a glance (30, 40 or 50) gets a warning in `checks.md`. |
 | `order` | `story` | `story` puts the numbers near the end. `numbers-first` puts them right after the headline, and is the default for `audience: executives`. |
-| `sections` | all on | Turn optional slides off: `headline`, `screens` (before and after), `hood` (also shipped), `roadmap`, `usage`, `questions`. Executives get `hood: false` by default. |
+| `sections` | all on | Turn optional slides off: `headline`, `lastTime` (what the last review said was next), `screens` (before and after), `hood` (also shipped), `roadmap`, `usage`, `questions`. Executives get `hood: false` by default. |
 
 ```yaml
 deck:
