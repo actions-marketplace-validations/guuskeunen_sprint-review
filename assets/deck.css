@@ -75,6 +75,10 @@
   .brand-logo { position: absolute; top: 9vh; left: 8vw; max-height: 7vh; max-width: 22vw; object-fit: contain; filter: drop-shadow(0 2px 8px rgb(0 0 0 / .2)); }
   .brand-logo.plate { background: #fff; padding: 1.2vh 1.2vw; border-radius: 12px; filter: none; max-height: 9vh; }
   .rings { position: absolute; right: -12vw; bottom: -18vh; width: 70vh; height: 70vh; border-radius: 50%; border: 1px solid rgb(255 255 255 / .12); box-shadow: 0 0 0 9vh rgb(255 255 255 / .03), 0 0 0 18vh rgb(255 255 255 / .025); pointer-events: none; }
+  /* The cover with the product: the title on the left, a screenshot large on the right, running off the slide */
+  .cover.with-product > :not(.product):not(.brand-logo) { max-width: 46%; }
+  .cover .product { position: absolute; left: 54%; top: 16vh; width: 62vw; border-radius: 14px; box-shadow: 0 40px 90px -30px rgb(0 0 0 / .55); border: 1px solid rgb(255 255 255 / .18); }
+  @media (max-width: 700px) { .cover .product { display: none; } .cover.with-product > * { max-width: none; } }
   /* Closing: the questions for the audience, numbered */
   .questions { list-style: none; padding: 0; display: grid; gap: 2.6vh; counter-reset: q; font-size: var(--fs-body); max-width: 40ch; }
   .questions li { display: grid; grid-template-columns: 1.6em 1fr; gap: .4em; color: #fff; counter-increment: q; }
@@ -167,11 +171,18 @@
   .compare .shot img { width: 100%; height: 100%; max-height: none; aspect-ratio: auto; border: 0; border-radius: 0; box-shadow: none; }
   .compare .shot img { object-fit: cover; object-position: top left; }
   .focus { position: absolute; border: 3px solid var(--accent); border-radius: 8px; box-shadow: 0 0 0 100vmax rgb(15 23 42 / .32); pointer-events: none; }
+  /* Zoomed in (→ on a before and after slide): the after picture grows around the change, the before steps back. */
+  .shot > img { transition: transform .4s cubic-bezier(.2, .7, .2, 1); transform-origin: var(--zx, 50%) var(--zy, 50%); }
+  /* The change's center moves to the middle of the picture while it grows. */
+  .slide.zoomed .after .shot > img { transform: translate(var(--tx, 0%), var(--ty, 0%)) scale(var(--zs, 1)); }
+  .slide.zoomed .after .shot > .focus { animation: none; opacity: 0; transition: opacity .2s; }
+  .compare figure:not(.after) .shot { transition: opacity .3s; }
+  .slide.zoomed .compare figure:not(.after) .shot { opacity: .25; }
   .slide.active .focus { animation: focus-in .3s ease-out .85s both; }
   @keyframes focus-in { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: none; } }
   .slide.active figure.after img { animation: wipe .4s cubic-bezier(.65, 0, .35, 1) .4s both; }
   @keyframes wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
-  @media (prefers-reduced-motion: reduce) { .slide.active figure.after img, .slide.active .focus { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .slide.active figure.after img, .slide.active .focus { animation: none; } .shot > img, .shot > .focus { transition: none; } }
 
   /* Numbers: one big number per idea, its label below */
   .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 3vw; }

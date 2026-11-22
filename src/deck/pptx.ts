@@ -100,9 +100,11 @@ export async function renderPptx(review: Review, options: PptxOptions = {}): Pro
     switch (p.kind) {
       case 'cover': {
         const s = newSlide();
+        const hero = review.themes.find((th) => th.screen?.device === 'desktop')?.screen?.image ?? review.screens.find((x) => x.device === 'desktop')?.after;
+        if (hero) s.addImage(place(hero, { x: 7.0, y: 1.2, w: 6.33, h: 5.0 }, 'cover'));
         await logoAt(s);
         eyebrow(s, `${t.sprintReview}${review.organization ? ` ${review.organization}` : ''}`, 2.2);
-        s.addText(review.title, { x: X, y: 2.6, w: CW, h: 2.0, fontFace: heading, fontSize: SIZE.display, bold: true, color: pal.ink, valign: 'top', margin: 0 });
+        s.addText(review.title, { x: X, y: 2.6, w: hero ? 5.6 : CW, h: 2.6, fontFace: heading, fontSize: hero ? SIZE.title + 12 : SIZE.display, bold: true, color: pal.ink, valign: 'top', margin: 0 });
         s.addText(review.period, { x: X, y: 4.75, w: CW, h: 0.5, fontFace: body, fontSize: SIZE.body, color: pal.soft, margin: 0 });
         if (options.goal) s.addText(`${t.goalLabel.toUpperCase()}   ${options.goal}`, { x: X, y: 5.5, w: 8, h: 0.5, fontFace: body, fontSize: SIZE.small, color: pal.ink, fill: { color: pal.panel }, line: { color: pal.line } });
         break;

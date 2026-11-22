@@ -1,6 +1,7 @@
 - **Look at:** Status counts load with less work (The reader got stuck here: What is a status count?)
 - **Moved under the hood:** Caches playwright browsers in CI (No change to the product itself: moved under the hood.)
 - **Dropped:** This is amazing! (Too long, or has an exclamation mark or emoji.)
+- **Look at:** Look and feel (This theme name joins two topics. One topic per slide reads better: split it, or name what they share.)
 - **Dropped:** Invented (Names no change from this sprint.)
 - **Dropped:** Theme A theme without points (No points left.)
 - **Dropped:** Is this amazing! (Too long, or has an exclamation mark or emoji.)

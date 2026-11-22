@@ -87,3 +87,21 @@ test('a Now / Next roadmap shows two columns, only the lead of each item, and no
   assert.doesNotMatch(html, /milestones reached/);
   assert.equal(parseRoadmap('- [x] Done\n- [ ] Open\n## Now\n- **Ignored**').length, 2, 'a checklist wins');
 });
+
+test('you asked, we did comes before the themes, with the request quoted', async () => {
+  const { renderDeck } = await import('../../src/deck/render.ts');
+  const html = renderDeck({ ...sample(), answered: [{ ask: 'Can we see the phone number?', did: 'Leads now show a direct phone number' }] });
+  assert.ok(html.indexOf('data-ref="answered"') < html.indexOf('data-ref="theme-0"'));
+  assert.match(html, /<q>Can we see the phone number\?<\/q><span>Leads now show a direct phone number<\/span>/);
+});
+
+test('a small change gets a zoom step on its before and after slide; a wide one does not', async () => {
+  const { renderDeck } = await import('../../src/deck/render.ts');
+  const r = sample();
+  r.screens[0]!.focus = { x: 0.6, y: 0.1, w: 0.25, h: 0.2 };
+  r.screens[1]!.focus = { x: 0.02, y: 0.03, w: 0.96, h: 0.35 };
+  const html = renderDeck(r);
+  assert.match(html, /data-ref="screen-0" data-steps="1"/);
+  assert.match(html, /--zx: 72.5%; --zy: 20%; --zs: 2.5; --tx: -22.5%; --ty: 30%;/);
+  assert.doesNotMatch(html, /data-ref="screen-1" data-steps/);
+});

@@ -56,7 +56,8 @@ async function measure(html: string, width: number, height: number): Promise<Mea
       out.push(
         await page.evaluate(() => {
           const slide = document.querySelector('.slide.active')!;
-          const visible = (e: Element) => !e.closest('.notes, .rings') && e.getBoundingClientRect().width > 0;
+          // The product on the cover runs off the slide on purpose.
+          const visible = (e: Element) => !e.closest('.notes, .rings, .product') && e.getBoundingClientRect().width > 0;
           const all = [...slide.querySelectorAll('*')].filter(visible);
           const text = all.filter((e) => [...e.childNodes].some((c) => c.nodeType === 3 && c.textContent!.trim()));
           const boxes = all.filter((e) => e.children.length === 0).map((e) => e.getBoundingClientRect());
