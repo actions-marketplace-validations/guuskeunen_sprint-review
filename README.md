@@ -68,17 +68,17 @@ The deck tells the sprint as a story: a cover with your logo and color, the spri
 ## Real decks from real repositories
 
 <p align="center">
-  <img src="docs/assets/examples.png" alt="Theme slides from sprint reviews of VS Code, Next.js, Supabase and Excalidraw" width="860">
+  <a href="https://guuskeunen.github.io/sprint-review/examples/excalidraw/"><img src="docs/assets/example-slide.png" alt="A theme slide from the Excalidraw sprint review: the title 'Navigate large drawings with an interactive mini map preview', two points, and a screenshot of Excalidraw with a drawing and the new minimap" width="860"></a>
 </p>
 
-The same two weeks (November 9 to 22, 2026) of four well-known open-source projects, written by Claude Sonnet and not edited by hand:
+A slide from the Excalidraw review, with a screenshot sprint-review took of the live app. The same two weeks (November 9 to 22, 2026) of four well-known open-source projects, not edited by hand:
 
-| Project | Commits | Deck | Cost |
-|---|---|---|---|
-| VS Code | 1,298 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/vscode/) | $0.21 |
-| Next.js | 252 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/nextjs/) | $0.28 |
-| Supabase | 355 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/supabase/) | $0.22 |
-| Excalidraw | 16 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/excalidraw/) | $0.12 |
+| Project | Commits | Deck | Written by | Cost |
+|---|---|---|---|---|
+| VS Code | 1,298 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/vscode/) | Claude Sonnet 5.5 | $0.21 |
+| Next.js | 252 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/nextjs/) | Claude Sonnet 5.5 | $0.28 |
+| Supabase | 355 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/supabase/) | Claude Sonnet 5.5 | $0.22 |
+| Excalidraw | 16 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/excalidraw/) (with a screenshot) | Gemini 3.6 Flash | $0.02 |
 
 Made from each project's public git history and pull requests, as examples; not affiliated with or endorsed by these projects. How they were made and what they found: [the benchmark](docs/benchmark.md#real-repositories).
 
