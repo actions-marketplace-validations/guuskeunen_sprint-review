@@ -1,6 +1,6 @@
 # GitHub Action
 
-The action is `guuskeunen/sprint-review@v0`. On GitHub Marketplace it's listed as [Sprint Review Deck](https://github.com/marketplace/actions/sprint-review-deck) (`guuskeunen/sprint-review-action@v0`, which runs the same thing).
+The action is `guuskeunen/sprint-review@v0`, listed on GitHub Marketplace as [Sprint Review Deck](https://github.com/marketplace/actions/sprint-review-deck).
 
 Run sprint-review on a schedule, so the draft is ready before the meeting.
 

@@ -20,8 +20,6 @@ The plan from "it works" to "people use it". Work top to bottom.
 - [ ] Issue labels: `good first issue`, `help wanted`, `idea`. Open three or four `good first issue`s from the roadmap (a German label set, a French label set, a GitLab CI example).
 - [ ] Turn on Discussions for questions and ideas.
 
-> **Keep `.github/workflows/` empty in this repository.** GitHub lists actions in the Marketplace without review only when the repository has no workflow files. Run CI from a fork or a separate repository, or accept a manual review.
-
 ### First release
 - [ ] Test it on two or three real repositories, including one with screenshots. Fix what feels rough.
 - [ ] `npm run build && npm test`
