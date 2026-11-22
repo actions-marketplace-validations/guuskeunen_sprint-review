@@ -137,8 +137,11 @@ interface ScreenCommon {
 }
 
 export interface CaptureConfig {
-  /** The pages to photograph, by screen key. Relative URLs are resolved against baseUrl. */
-  pages: Record<string, string>;
+  /**
+   * What to photograph, by screen key: a page, or one element on it (a card, a panel) when a
+   * selector is given. Relative URLs are resolved against baseUrl.
+   */
+  pages: Record<string, { url: string; selector: string | null }>;
   baseUrl: string | null;
   devices: ('desktop' | 'phone')[];
   /** CSS selectors to black out before the picture is taken: a safety net for real data. */
@@ -299,7 +302,16 @@ function screenshots(value: unknown): ScreenshotConfig {
     return { source: 'folder', before, after, names, ignore, videos };
   }
   if (source === 'capture') {
-    const pages = strMap(s.pages, 'screenshots.pages');
+    const pages: CaptureConfig['pages'] = {};
+    for (const [key, v] of Object.entries(obj(s.pages ?? {}, 'screenshots.pages'))) {
+      if (typeof v === 'string') pages[key] = { url: v, selector: null };
+      else {
+        const page = obj(v, `screenshots.pages.${key}`);
+        const url = str(page.url, `screenshots.pages.${key}.url`);
+        if (!url) throw new ConfigError(`screenshots.pages.${key} needs a url.`);
+        pages[key] = { url, selector: str(page.selector, `screenshots.pages.${key}.selector`) };
+      }
+    }
     if (!Object.keys(pages).length) throw new ConfigError('screenshots.pages is required when screenshots.source is capture: a screen key per URL.');
     const devices = s.devices === undefined ? (['desktop'] as ('desktop' | 'phone')[]) : strList(s.devices, 'screenshots.devices');
     for (const d of devices) if (d !== 'desktop' && d !== 'phone') throw new ConfigError('screenshots.devices can hold desktop and phone.');
