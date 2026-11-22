@@ -2,6 +2,36 @@
 
 All notable changes are listed here, written per release from the commit messages ([Conventional Commits](https://www.conventionalcommits.org)). Versions follow [Semantic Versioning](https://semver.org).
 
+## [0.5.0](https://github.com/guuskeunen/sprint-review/compare/sprint-review-v0.4.2...sprint-review-v0.5.0) (2026-11-22)
+
+
+### Added
+
+* **deck:** a Download button on decks opened from a website ([e426ce8](https://github.com/guuskeunen/sprint-review/commit/e426ce8b24987d5903ca695161f97b165fddeea6))
+* **deck:** a Download button on decks opened from a website ([eabe3e8](https://github.com/guuskeunen/sprint-review/commit/eabe3e856f1814a1a04842f91fbf26a60f4d8471))
+* **mcp:** tool titles, behavior hints and fuller descriptions ([5daca57](https://github.com/guuskeunen/sprint-review/commit/5daca57ad04e43e05cf33167e311ed8498f0a245))
+* **mcp:** tool titles, behavior hints and fuller descriptions; glama.json ([3790175](https://github.com/guuskeunen/sprint-review/commit/37901757fcfb080b77ce2ad210e1ca5af380c82b))
+* **plugin:** a skill-only plugin in plugin/ for Anthropic's plugin directory ([f4a189c](https://github.com/guuskeunen/sprint-review/commit/f4a189c54afc44c20bdc84a53ba738ce84da9094))
+* **plugin:** a skill-only plugin in plugin/ for Anthropic's plugin directory ([a2c0090](https://github.com/guuskeunen/sprint-review/commit/a2c00901dd6df1ab28cea80ddde67f7b2a737451))
+
+
+### Fixed
+
+* **brand:** a website's own logo, not the first client logo on the page ([10e8eeb](https://github.com/guuskeunen/sprint-review/commit/10e8eebc23ef6a2cf51cfa0928524a06f38c2518))
+* **brand:** a website's own logo, not the first client logo on the page ([71e14d2](https://github.com/guuskeunen/sprint-review/commit/71e14d2ccb925c8e453389a465ed4eb8310460fb))
+* **writer:** a short sprint headline about one change, and je/jij in Dutch ([09cce75](https://github.com/guuskeunen/sprint-review/commit/09cce7567004f0310de7e1936ecec0e881c244c0))
+* **writer:** a short sprint headline about one change, and je/jij in Dutch ([6ada1a7](https://github.com/guuskeunen/sprint-review/commit/6ada1a7f197a74916566c230a9fc9c052218cfdc))
+
+
+### Docs
+
+* one real slide with a screenshot in the README ([8abba23](https://github.com/guuskeunen/sprint-review/commit/8abba2315165066b53ee7cab33b5ecac440ac494))
+* one real slide with a screenshot in the README instead of four text slides ([ac6eb7b](https://github.com/guuskeunen/sprint-review/commit/ac6eb7b6c32013db4dcfd6ccc45c50f66bb3769e))
+* **plugin:** a privacy policy, linked from plugin.json ([7b68a20](https://github.com/guuskeunen/sprint-review/commit/7b68a20d4d9a3de2f87046d3369feb98c5d47311))
+* **plugin:** a privacy policy, linked from plugin.json ([5a9dc9a](https://github.com/guuskeunen/sprint-review/commit/5a9dc9a2eb04637035f262225b1a0d9283b40bf4))
+* **plugin:** what the plugin reads, sends and keeps ([30dca99](https://github.com/guuskeunen/sprint-review/commit/30dca99a051c6c579076015dfb002d691ba2ab19))
+* **plugin:** what the plugin reads, sends and keeps ([1410497](https://github.com/guuskeunen/sprint-review/commit/1410497598d8f73f1f55955f39396ad738597e21))
+
 ## [0.4.2](https://github.com/guuskeunen/sprint-review/compare/sprint-review-v0.4.1...sprint-review-v0.4.2) (2026-11-22)
 
 
