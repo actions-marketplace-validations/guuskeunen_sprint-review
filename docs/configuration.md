@@ -201,7 +201,14 @@ One API request per commit with product code (at most 150). Any failure leaves t
 `true` to post the summary to Slack after every run. The webhook URL comes from the `SLACK_WEBHOOK_URL` environment variable, never the config. Set `SPRINT_REVIEW_DECK_URL` (or pass `--deck-url`) to add an *Open the deck* button. Default `false`; `--slack` does the same for one run.
 
 ### `roadmap`
-A Markdown file in the repository, read as it was at the end of the sprint. Every line `- [x] text` is a reached milestone, `- [ ] text` an open one. Default `ROADMAP.md`. Set `false` to skip it. No file: no roadmap slide.
+A Markdown file in the repository, read as it was at the end of the sprint. Default `ROADMAP.md`. Set `false` to skip it. No file: no roadmap slide. Two ways to write it:
+
+- **A checklist:** every line `- [x] text` is a reached milestone, `- [ ] text` an open one. The slide shows how many are reached and marks the next one, and the next review shows whether what was next got done (*Last sprint*).
+- **`## Now` and `## Next` sections**, as many teams keep a roadmap. Only the lead of each top-level item counts (its bold opening, or its first sentence); other sections such as tech debt or ideas are left out. The AI picks up to three per section that your audience would notice and rewords them for it; each line must point at a real item of the file, or it is dropped. The slide shows Now and Next side by side, without a percentage.
+
+```yaml
+roadmap: docs/development/ROADMAP.md
+```
 
 ### `usage`
 A JSON file with usage numbers you produce (from your analytics, database or a script):

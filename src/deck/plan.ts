@@ -83,7 +83,7 @@ function themeLayout(th: ReviewTheme): ThemeSlideLayout {
 
 /** Up to six milestones around where the team is: the last three reached and what comes next. */
 function window(milestones: Milestone[]): Milestone[] {
-  if (milestones.length <= MAX_MILESTONES) return milestones;
+  if (milestones.length <= MAX_MILESTONES || milestones.some((m) => m.stage)) return milestones.slice(0, MAX_MILESTONES);
   const next = milestones.findIndex((m) => !m.done);
   const at = next === -1 ? milestones.length : next;
   const start = Math.max(0, Math.min(at - 3, milestones.length - MAX_MILESTONES));

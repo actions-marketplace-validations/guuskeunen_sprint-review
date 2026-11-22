@@ -57,6 +57,8 @@ const EN = {
   lastTimeTitle: '{n} of {total} things we said were next are done',
   statusDone: 'Done',
   statusOpen: 'Not yet',
+  roadmapNow: 'Now',
+  roadmapPlanTitle: 'What we are working on',
 };
 
 export type LabelKey = keyof typeof EN;
@@ -116,6 +118,8 @@ const NL: Labels = {
   lastTimeTitle: '{n} van de {total} dingen die we als volgende noemden zijn klaar',
   statusDone: 'Klaar',
   statusOpen: 'Nog niet',
+  roadmapNow: 'Nu',
+  roadmapPlanTitle: 'Waar we aan werken',
 };
 
 const DE: Labels = {
@@ -172,6 +176,8 @@ const DE: Labels = {
   lastTimeTitle: '{n} von {total} angekündigten nächsten Schritten sind erledigt',
   statusDone: 'Erledigt',
   statusOpen: 'Noch nicht',
+  roadmapNow: 'Jetzt',
+  roadmapPlanTitle: 'Woran wir arbeiten',
 };
 
 const FR: Labels = {
@@ -228,6 +234,8 @@ const FR: Labels = {
   lastTimeTitle: '{n} sur {total} des prochaines étapes annoncées sont faites',
   statusDone: 'Fait',
   statusOpen: 'Pas encore',
+  roadmapNow: 'Maintenant',
+  roadmapPlanTitle: 'Ce sur quoi nous travaillons',
 };
 
 const ES: Labels = {
@@ -284,6 +292,8 @@ const ES: Labels = {
   lastTimeTitle: '{n} de {total} próximos pasos anunciados están hechos',
   statusDone: 'Hecho',
   statusOpen: 'Todavía no',
+  roadmapNow: 'Ahora',
+  roadmapPlanTitle: 'En qué estamos trabajando',
 };
 
 const NAMES: Record<string, string> = { english: 'en', dutch: 'nl', nederlands: 'nl', german: 'de', deutsch: 'de', french: 'fr', 'français': 'fr', spanish: 'es', 'español': 'es' };

@@ -117,12 +117,7 @@ export class History {
     if (!end || !file) return [];
     const text = this.show(end, file)?.toString('utf8');
     if (!text) return [];
-    const out: Milestone[] = [];
-    for (const line of text.split(/\r?\n/)) {
-      const m = /^\s*[-*]\s+\[([ xX])\]\s+(.+?)\s*$/.exec(line);
-      if (m) out.push({ text: m[2]!.slice(0, 120), done: m[1]!.toLowerCase() === 'x' });
-    }
-    return out;
+    return parseRoadmap(text);
   }
 
   private revisionAt(moment: string): string | null {
@@ -176,4 +171,41 @@ export function withoutTrailers(body: string): string {
 
 function clip(text: string): string {
   return text.length <= MAX_BODY ? text : `${text.slice(0, MAX_BODY).trimEnd()}…`;
+}
+
+/** Items per section of a Now / Next roadmap: the first ones are what matters. */
+const STAGE_ITEMS = 6;
+
+/**
+ * The milestones in a roadmap file. A checklist (`- [x] done`, `- [ ] open`) gives every item and
+ * whether it is done. A roadmap written as `## Now` and `## Next` sections gives the lead of each
+ * top-level item there (its bold opening, or its first sentence), without the rest of the
+ * paragraph and without other sections such as tech debt or ideas.
+ */
+export function parseRoadmap(text: string): Milestone[] {
+  const out: Milestone[] = [];
+  for (const line of text.split(/\r?\n/)) {
+    const m = /^\s*[-*]\s+\[([ xX])\]\s+(.+?)\s*$/.exec(line);
+    if (m) out.push({ text: m[2]!.slice(0, 120), done: m[1]!.toLowerCase() === 'x' });
+  }
+  if (out.length) return out;
+  let stage: 'now' | 'next' | null = null;
+  const count = { now: 0, next: 0 };
+  for (const line of text.split(/\r?\n/)) {
+    const h = /^##\s+(.+?)\s*$/.exec(line);
+    if (h) {
+      const name = h[1]!.toLowerCase().replace(/[^a-z ]/g, '').trim();
+      stage = /^(now|current|in progress|doing)\b/.test(name) ? 'now' : /^(next|up next|soon)\b/.test(name) ? 'next' : null;
+      continue;
+    }
+    const item = stage && /^[-*]\s+(.+)$/.exec(line);
+    if (!stage || !item || count[stage] >= STAGE_ITEMS) continue;
+    const bold = /^\*\*(.+?)\*\*/.exec(item[1]!);
+    const lead = (bold ? bold[1]! : item[1]!.split(/(?<=[.!?])\s/)[0]!).replace(/[*_`]/g, '').replace(/[.:]\s*$/, '').trim();
+    if (lead) {
+      out.push({ text: lead.slice(0, 120), done: false, stage });
+      count[stage]++;
+    }
+  }
+  return out;
 }

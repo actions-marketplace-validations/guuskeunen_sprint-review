@@ -30,7 +30,8 @@ export function previousReview(config: Config, until: string): Review | null {
  */
 export function lastTime(previous: Review | null, now: Milestone[]): Review['lastTime'] {
   if (!previous) return undefined;
-  const said = previous.milestones.filter((m) => !m.done).slice(0, PROMISES);
+  // Only a checklist says what is done; a Now / Next roadmap just drops what's finished.
+  const said = previous.milestones.filter((m) => !m.done && !m.stage).slice(0, PROMISES);
   if (!said.length) return undefined;
   const done = new Set(now.filter((m) => m.done).map((m) => m.text.trim().toLowerCase()));
   return { until: previous.until, items: said.map((m) => ({ text: m.text, done: done.has(m.text.trim().toLowerCase()) })) };

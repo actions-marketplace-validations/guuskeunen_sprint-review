@@ -71,3 +71,19 @@ test('the audience sets the default density and has aliases; deck.density still 
   assert.equal(normalize({ audience: 'Our sales team' }, '/tmp').deck.density, 'standard', 'a description of your own keeps the default');
   assert.equal(normalize({ audience: 'executives', deck: { density: 'detailed' } }, '/tmp').deck.density, 'detailed');
 });
+
+test('a Now / Next roadmap shows two columns, only the lead of each item, and no other sections', async () => {
+  const { parseRoadmap } = await import('../../src/git/history.ts');
+  const { renderDeck } = await import('../../src/deck/render.ts');
+  const items = parseRoadmap(`# Roadmap\n\n## Now\n\n### Area\n\n- **Weekly runs on a schedule.** Build it in this order: first...\n  1. *Automate.* details\n- Faster lead finder. With progress.\n\n## Next\n\n- **Tech stack from job posts**: more text\n\n## Tech debt\n\n- **Rename the module**\n`);
+  assert.deepEqual(items, [
+    { text: 'Weekly runs on a schedule', done: false, stage: 'now' },
+    { text: 'Faster lead finder', done: false, stage: 'now' },
+    { text: 'Tech stack from job posts', done: false, stage: 'next' },
+  ]);
+  const html = renderDeck({ ...sample(), milestones: items });
+  assert.match(html, /What we are working on/);
+  assert.match(html, /class="stage now[^"]*"/);
+  assert.doesNotMatch(html, /milestones reached/);
+  assert.equal(parseRoadmap('- [x] Done\n- [ ] Open\n## Now\n- **Ignored**').length, 2, 'a checklist wins');
+});

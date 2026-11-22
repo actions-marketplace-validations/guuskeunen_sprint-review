@@ -42,6 +42,8 @@ export interface Focus {
 export interface Milestone {
   text: string;
   done: boolean;
+  /** From a roadmap written as Now and Next sections instead of a checklist. */
+  stage?: 'now' | 'next';
 }
 
 export interface UsageMetric {
@@ -99,6 +101,8 @@ export interface WrittenReview {
   questions: string[];
   /** What changed per changed screen, by the screen's label. */
   screenCaptions: Record<string, string>;
+  /** Roadmap items a user would notice, by their number in the roadmap, in the audience's words. */
+  roadmap: { item: number; text: string }[];
   checks: Check[];
 }
 

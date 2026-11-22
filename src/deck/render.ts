@@ -174,6 +174,17 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
   </ul>
 </section>`;
       case 'roadmap': {
+        if (p.milestones.some((m) => m.stage)) {
+          // A Now / Next roadmap: two columns, no percentage, since such a roadmap counts nothing done.
+          const column = (stage: 'now' | 'next', label: string, i0: number) => {
+            const items = p.milestones.filter((m) => m.stage === stage);
+            return items.length ? `<div class="stage ${stage} rise"${rise(i0)}><b>${esc(label)}</b><ul>${items.map((m) => `<li>${esc(m.text)}</li>`).join('')}</ul></div>` : '';
+          };
+          return `<section class="slide" data-ref="roadmap">
+  ${head(esc(t.roadmapLabel), t.roadmapPlanTitle)}
+  <div class="stages">${column('now', t.roadmapNow, 2)}${column('next', t.roadmapNext, 3)}</div>
+</section>`;
+        }
         const reached = review.milestones.filter((m) => m.done).length;
         const next = p.milestones.findIndex((m) => !m.done);
         return `<section class="slide" data-ref="roadmap">

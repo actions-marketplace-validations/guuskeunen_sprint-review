@@ -126,3 +126,9 @@ test('a theme slide over the glance-test word budget gets a warning, and density
   const brief = parse({ themes: [theme], under_the_hood: [] }, commits, [], [], normalize({ deck: { density: 'brief' } }, '/tmp'));
   assert.equal(brief.themes[0]!.points.length, 2);
 });
+
+test('a roadmap line must point at a real roadmap item, once', () => {
+  const w = parse({ themes: [], under_the_hood: [], roadmap: [{ item: 1, text: 'Leads arrive every week by themselves' }, { item: 1, text: 'Twice' }, { item: 7, text: 'Invented plan' }] }, commits, [], [], config, 3);
+  assert.deepEqual(w.roadmap, [{ item: 1, text: 'Leads arrive every week by themselves' }]);
+  assert.ok(w.checks.some((c) => c.text === 'Invented plan' && c.kind === 'dropped'));
+});

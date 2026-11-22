@@ -195,6 +195,20 @@ export async function renderPptx(review: Review, options: PptxOptions = {}): Pro
       }
       case 'roadmap': {
         const s = newSlide();
+        if (p.milestones.some((m) => m.stage)) {
+          head(s, t.roadmapLabel, t.roadmapPlanTitle);
+          (['now', 'next'] as const).forEach((stage, i) => {
+            const items = p.milestones.filter((m) => m.stage === stage);
+            if (!items.length) return;
+            const x = X + i * 5.2;
+            s.addText((stage === 'now' ? t.roadmapNow : t.roadmapNext).toUpperCase(), { x, y: BODY_Y, w: 4.8, h: 0.35, fontFace: body, fontSize: SIZE.small, bold: true, color: stage === 'now' ? pal.accent : pal.faint, charSpacing: 3, margin: 0 });
+            s.addText(
+              items.map((m, j) => ({ text: m.text, options: { breakLine: j < items.length - 1, paraSpaceAfter: 14 } })),
+              { x, y: BODY_Y + 0.5, w: 4.8, h: BODY_H - 0.5, fontFace: body, fontSize: SIZE.body, color: pal.ink, valign: 'top', margin: 0 },
+            );
+          });
+          break;
+        }
         const reached = review.milestones.filter((m) => m.done).length;
         head(s, t.roadmapLabel, fill(t.roadmapReached, { n: reached, total: review.milestones.length }));
         const n = p.milestones.length;

@@ -1,7 +1,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
 import type { Config } from '../config.ts';
-import type { ChangedScreen, Review, ReviewScreen, ReviewTheme, UsageMetric, WrittenTheme } from '../types.ts';
+import type { ChangedScreen, Milestone, Review, ReviewScreen, ReviewTheme, UsageMetric, WrittenTheme } from '../types.ts';
 import { History, type Range } from '../git/history.ts';
 import { screens as openScreens, type Screens } from '../screens/screenshots.ts';
 import { write } from '../ai/writer.ts';
@@ -85,17 +85,19 @@ export async function generate(config: Config, options: GenerateOptions): Promis
 
   step(`Writing the slides with ${config.model.name}${config.model.provider === 'anthropic' ? '' : ` via ${config.model.provider}`}`);
   const meter = metered(options.model);
-  const { written, usage } = await write(meter, config, commits, changed.map((c) => c.name), [...available.keys()]);
+  const { end } = history.ends(range);
+  const roadmap = history.milestones(end, config.roadmap);
+  const staged = roadmap.filter((m) => m.stage);
+  const { written, usage } = await write(meter, config, commits, changed.map((c) => c.name), [...available.keys()], staged.map((m) => `${m.stage === 'now' ? 'Now' : 'Next'}: ${m.text}`));
   const cost = costOf(meter.calls, config.model, today());
   const models = [...new Set(meter.calls.map((c) => c.model))];
 
   const reviewScreens = explained(changed, written.screenCaptions, config.limits.changedScreens);
   const themes = withVideos(withScreens(written.themes, reviewScreens, available, shots, config.limits.themeScreens), config, step);
-  const { end } = history.ends(range);
   const until = range.kind === 'dates' ? range.until : (commits[0]?.date ?? today());
   const from = range.kind === 'dates' ? range.from : (commits.at(-1)?.date ?? until);
 
-  const milestones = history.milestones(end, config.roadmap);
+  const milestones = staged.length ? plannedItems(staged, written.roadmap) : roadmap;
   const said = lastTime(previousReview(config, until), milestones);
   const review: Review = {
     version: 1,
@@ -180,6 +182,15 @@ function withScreens(themes: WrittenTheme[], shown: ReviewScreen[], available: M
     }
     return { ...th, screen, screenKey: chosen?.key ?? null };
   });
+}
+
+/**
+ * A Now / Next roadmap on the slide: the items the writer picked, in its words, three per section.
+ * Without an answer, the first three of each section as the team wrote them.
+ */
+function plannedItems(staged: Milestone[], picked: { item: number; text: string }[]): Milestone[] {
+  const chosen = picked.length ? picked.map((p) => ({ ...staged[p.item]!, text: p.text })) : staged;
+  return (['now', 'next'] as const).flatMap((stage) => chosen.filter((m) => m.stage === stage).slice(0, 3));
 }
 
 /** A video is embedded in the deck, so it stays short: a few seconds of screen. */

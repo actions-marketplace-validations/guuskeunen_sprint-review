@@ -32,24 +32,28 @@ export interface WriteResult {
  * touched no product code cannot carry a theme, a text fits a slide and has no exclamation mark or
  * emoji. Ticket numbers and hashes come out. Everything corrected, moved or dropped is logged.
  */
-export async function write(model: ModelClient, config: Config, commits: Commit[], changedScreens: string[], availableScreens: string[]): Promise<WriteResult> {
+export async function write(model: ModelClient, config: Config, commits: Commit[], changedScreens: string[], availableScreens: string[], roadmapItems: string[] = []): Promise<WriteResult> {
   const log = commitLog(commits);
   const screens = changedScreens.length ? `The screenshots of these screens changed during the sprint: ${changedScreens.join(', ')}. ` : '';
   const ask = () =>
     model.ask({
       system: writerSystem(config),
-      tool: writerTool(config, changedScreens, availableScreens),
+      tool: writerTool(config, changedScreens, availableScreens, roadmapItems.length),
       maxTokens: config.model.maxTokens,
-      messages: [untrusted(log, 'the commits of the sprint: hash, date, subject, files and description, newest first', config.model.maxInputChars), `${screens}Now create the content of the presentation.`],
+      messages: [
+        untrusted(log, 'the commits of the sprint: hash, date, subject, files and description, newest first', config.model.maxInputChars),
+        ...(roadmapItems.length ? [untrusted(roadmapItems.map((r, i) => `${i}. ${r}`).join('\n'), "the team's roadmap: what they work on now and next, numbered")] : []),
+        `${screens}Now create the content of the presentation.`,
+      ],
     });
   let draft = await ask();
-  let written = parse(draft.toolInput, commits, changedScreens, availableScreens, config);
+  let written = parse(draft.toolInput, commits, changedScreens, availableScreens, config, roadmapItems.length);
   let retry = { input: 0, output: 0 };
   // The product changed but no theme came through (a malformed answer): ask once more rather than ship an empty deck.
   if (written.themes.length === 0 && commits.some((c) => c.product)) {
     retry = draft.usage;
     draft = await ask();
-    written = parse(draft.toolInput, commits, changedScreens, availableScreens, config);
+    written = parse(draft.toolInput, commits, changedScreens, availableScreens, config, roadmapItems.length);
     if (written.themes.length === 0) written.checks.push({ kind: 'warning', text: 'No themes', reason: 'The model gave no usable themes twice although the product changed. Run it again, or check the commits in this range.' });
   }
   if (written.themes.length === 0 && written.headline === null) {
@@ -184,7 +188,7 @@ async function complaints(model: ModelClient, config: Config, written: WrittenRe
 }
 
 /** The answer of the writer, with only what holds up. Exported for tests. */
-export function parse(input: Record<string, unknown> | null, commits: Commit[], changedScreens: string[], availableScreens: string[], config: Config): WrittenReview {
+export function parse(input: Record<string, unknown> | null, commits: Commit[], changedScreens: string[], availableScreens: string[], config: Config, roadmapItems = 0): WrittenReview {
   const checks: Check[] = [];
   const moved: HoodItem[] = [];
   const replace = config.replace;
@@ -262,7 +266,17 @@ export function parse(input: Record<string, unknown> | null, commits: Commit[], 
     else checks.push({ kind: 'dropped', text: `Before and after: ${v.screen}`, reason: 'No usable sentence about what changed.' });
   }
 
+  // A roadmap line must point at a real item of the roadmap, once.
+  const roadmap: { item: number; text: string }[] = [];
+  for (const v of list(input?.roadmap)) {
+    const item = typeof v.item === 'number' ? v.item : Number(v.item);
+    const text = clean(v.text, EFFECT_WORDS_MAX, replace);
+    if (Number.isInteger(item) && item >= 0 && item < roadmapItems && text && !roadmap.some((r) => r.item === item)) roadmap.push({ item, text });
+    else checks.push({ kind: 'dropped', text: String(v.text ?? ''), reason: 'A roadmap line that points at no item of the roadmap.' });
+  }
+
   return {
+    roadmap,
     headline,
     summaryNotes: optional(input?.summary_notes, NOTES_WORDS_MAX, checks, replace),
     themes,
