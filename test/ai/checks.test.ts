@@ -132,3 +132,9 @@ test('a roadmap line must point at a real roadmap item, once', () => {
   assert.deepEqual(w.roadmap, [{ item: 1, text: 'Leads arrive every week by themselves' }]);
   assert.ok(w.checks.some((c) => c.text === 'Invented plan' && c.kind === 'dropped'));
 });
+
+test('a headline that lists the themes gets a warning', () => {
+  const w = parse({ themes: [], under_the_hood: [], headline: { text: 'Richer profiles, register signals, and phone lookups', commits: ['abc1234'] } }, commits, [], [], config);
+  assert.ok(w.checks.some((c) => c.kind === 'warning' && /lists several things/.test(c.reason)));
+  assert.ok(!parse({ themes: [], under_the_hood: [], headline: { text: 'The front desk sees a whole customer on one page', commits: ['abc1234'] } }, commits, [], [], config).checks.length);
+});

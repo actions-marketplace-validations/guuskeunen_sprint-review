@@ -239,6 +239,8 @@ export function parse(input: Record<string, unknown> | null, commits: Commit[], 
     const p = point({ ...h, text: typeof h.text === 'string' ? h.text : '' }, commits, checks, replace, EFFECT_WORDS_MAX);
     if (p && !p.product) checks.push({ kind: 'dropped', text: p.text, reason: 'The headline is about no change to the product itself.' });
     else if (p) headline = p.text;
+    // One outcome reads at a glance; a list of the themes repeats the slides that follow.
+    if (headline && (headline.match(/[,;]/g) ?? []).length >= 2) checks.push({ kind: 'warning', text: headline, reason: 'The headline lists several things. One outcome reads better: pick the change that matters most.' });
   }
 
   const hood: HoodItem[] = [];
