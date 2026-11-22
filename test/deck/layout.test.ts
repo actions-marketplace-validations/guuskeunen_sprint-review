@@ -102,3 +102,32 @@ test('nothing is cut off in a laptop window or on a phone', async (t) => {
     for (const s of slides) assert.ok(s.maxRight <= w && s.maxBottom <= h, `${s.ref} at ${w}x${h}: content reaches ${Math.round(s.maxRight)}, ${Math.round(s.maxBottom)}`);
   }
 });
+
+test('a strip is scaled to fit its slide, never cropped', async (t) => {
+  const sharp = (await import('sharp')).default;
+  const r = everyLayout();
+  r.themes[0]!.screen = { name: 'Ticket', device: 'desktop', image: `data:image/png;base64,${(await sharp({ create: { width: 1800, height: 750, channels: 3, background: '#eee' } }).png().toBuffer()).toString('base64')}` };
+  r.themes[0]!.layout = 'auto';
+  const browser = await chrome();
+  if (!browser) return t.skip('no Chrome to measure in');
+  try {
+    for (const [w, h] of [[1920, 1080], [1600, 900], [1280, 720]] as const) {
+      const page = await browser.newPage({ viewport: { width: w, height: h }, reducedMotion: 'reduce' });
+      await page.setContent(renderDeck(r, {}));
+      await page.evaluate(() => (location.hash = '#3'));
+      await page.waitForTimeout(50);
+      const box = await page.evaluate(() => {
+        const img = document.querySelector('.slide.active.strip .screen img') as HTMLImageElement;
+        const b = img.getBoundingClientRect();
+        const points = document.querySelector('.slide.active.strip .points')!.getBoundingClientRect();
+        return { ratio: b.width / b.height, bottom: b.bottom, pointsTop: points.top, pointsBottom: points.bottom };
+      });
+      assert.ok(Math.abs(box.ratio - 2.4) < 0.05, `${w}x${h}: shown at ${box.ratio.toFixed(2)}:1, not 2.4:1`);
+      assert.ok(box.bottom <= box.pointsTop, `${w}x${h}: the picture runs into the points (${Math.round(box.bottom)} > ${Math.round(box.pointsTop)})`);
+      assert.ok(box.pointsBottom <= h, `${w}x${h}: the points reach ${Math.round(box.pointsBottom)}`);
+      await page.close();
+    }
+  } finally {
+    await browser.close();
+  }
+});
