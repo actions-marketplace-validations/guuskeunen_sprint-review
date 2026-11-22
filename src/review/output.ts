@@ -33,7 +33,7 @@ export async function writeOutputs(review: Review, config: Config, dir: string, 
   writeFileSync(files.checks, renderChecks(review));
   if (files.pptx) {
     const brand = resolvedBrand(config);
-    writeFileSync(files.pptx, await renderPptx(review, { color: brand.color, logo: brand.logo, fonts: brand.fonts, labels: config.labels, goal: config.goal, theme: config.brand.theme }));
+    writeFileSync(files.pptx, await renderPptx(review, { color: brand.color, logo: brand.logo, fonts: brand.fonts, labels: config.labels, goal: config.goal, theme: config.brand.theme, deck: config.deck }));
   }
   return files;
 }

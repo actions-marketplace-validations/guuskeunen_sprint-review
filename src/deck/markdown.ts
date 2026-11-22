@@ -13,9 +13,7 @@ function md(text: string | null | undefined): string {
 export function renderMarkdown(review: Review, labels: Record<string, string> = {}): string {
   const t = labelsFor(review.language, labels);
   const out: string[] = [`# ${md(review.title)}`, '', `_${md(review.period)}${review.organization ? ` · ${md(review.organization)}` : ''}_`, ''];
-  if (review.summary.length) {
-    out.push(`## ${t.summaryTitle}`, '', ...review.summary.map((p) => `- ${md(p.text)}`), '');
-  }
+  if (review.headline) out.push(`**${md(review.headline)}**`, '');
   for (const th of review.themes) {
     out.push(`## ${md(th.title)}`, '');
     if (th.effect) out.push(md(th.effect), '');
@@ -25,12 +23,13 @@ export function renderMarkdown(review: Review, labels: Record<string, string> = 
     out.push(`## ${t.screensLabel}`, '', ...review.screens.map((s) => `- **${md(s.name)}**${s.caption ? `: ${md(s.caption)}` : ''}`), '');
   }
   if (review.underTheHood.length) {
-    out.push(`## ${t.hoodTitle}`, '', ...review.underTheHood.map((p) => `- ${md(p)}`), '');
+    out.push(`## ${t.hoodTitle}`, '', ...review.underTheHood.map((p) => `- ${md(t[`kind_${p.kind}` as keyof typeof t] ?? p.kind)}: ${md(p.text)}`), '');
   }
   if (review.milestones.length) {
     const reached = review.milestones.filter((m) => m.done).length;
-    out.push(`## ${t.roadmapTitle}`, '', fill(t.roadmapReached, { n: reached, total: review.milestones.length }), '', ...review.milestones.map((m) => `- [${m.done ? 'x' : ' '}] ${md(m.text)}`), '');
+    out.push(`## ${t.roadmapLabel}`, '', fill(t.roadmapReached, { n: reached, total: review.milestones.length }), '', ...review.milestones.map((m) => `- [${m.done ? 'x' : ' '}] ${md(m.text)}`), '');
   }
+  if (review.questions.length) out.push(`## ${t.feedbackTitle}`, '', ...review.questions.map((q) => `- ${md(q)}`), '');
   return out.join('\n');
 }
 

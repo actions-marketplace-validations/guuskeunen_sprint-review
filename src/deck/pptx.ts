@@ -4,7 +4,8 @@ import sharp from 'sharp';
 // Types only: erased from the build, so pptxgenjs stays an optional peer.
 type PptxClass = (typeof import('pptxgenjs'))['default'];
 type Slide = ReturnType<InstanceType<PptxClass>['addSlide']>;
-import { VALUE_KEYS } from './icons.ts';
+import { numbers, planDeck } from './plan.ts';
+import type { DeckConfig } from '../config.ts';
 import { readableOn } from './colors.ts';
 
 export class PptxError extends Error {}
@@ -16,6 +17,7 @@ export interface PptxOptions {
   goal?: string | null;
   theme?: 'dark' | 'light';
   fonts?: { heading?: string | null; body?: string | null };
+  deck?: DeckConfig;
 }
 
 /** Width and height of a PNG or JPEG data URI, so pictures keep their shape. */
@@ -75,136 +77,163 @@ export async function renderPptx(review: Review, options: PptxOptions = {}): Pro
   if (review.organization) pptx.company = review.organization;
   pptx.theme = { headFontFace: heading, bodyFontFace: body };
 
+  // The deck's type scale in points (1 pt is 2 px at 1920 x 1080) and its margins.
+  const SIZE = { display: 60, title: 32, body: 18, small: 12 };
   const W = 13.33;
-  const X = 0.9;
+  const X = 1.07;
+  const TOP = 0.68;
+  const BODY_Y = 2.55;
+  const BODY_H = 7.5 - BODY_Y - 0.8;
+  const CW = W - 2 * X;
   const newSlide = (notes?: string | null) => {
     const s = pptx.addSlide();
     s.background = { color: pal.bg };
     if (notes) s.addNotes(notes);
     return s;
   };
-  const label = (s: Slide, text: string, y = 0.9) =>
-    s.addText(text.toUpperCase(), { x: X, y, w: W - 2 * X, h: 0.35, fontFace: body, fontSize: 11, bold: true, color: pal.accent, charSpacing: 4 });
-  const title = (s: Slide, text: string, y = 1.25, size = 34) => s.addText(text, { x: X, y, w: W - 2 * X, h: 0.9, fontFace: heading, fontSize: size, color: pal.ink });
-  const bullets = (s: Slide, items: string[], x: number, y: number, w: number, size = 18) =>
+  const eyebrow = (s: Slide, text: string, y = TOP) =>
+    s.addText(text.toUpperCase(), { x: X, y, w: CW, h: 0.35, fontFace: body, fontSize: SIZE.small, bold: true, color: pal.accent, charSpacing: 3, margin: 0 });
+  const head = (s: Slide, label: string, title: string) => {
+    eyebrow(s, label);
+    s.addText(title, { x: X, y: TOP + 0.4, w: Math.min(CW, 10.5), h: 1.3, fontFace: heading, fontSize: SIZE.title, bold: true, color: pal.ink, valign: 'top', margin: 0 });
+  };
+  const points = (s: Slide, items: string[], x: number, y: number, w: number, h = BODY_H) =>
     items.length &&
     s.addText(
-      items.map((text) => ({ text, options: { bullet: { code: '2713' }, paraSpaceAfter: 8 } })),
-      { x, y, w, h: Math.min(4.6, 0.55 * items.length + 0.4), fontFace: body, fontSize: size, color: pal.soft, valign: 'top' },
+      items.map((text, i) => ({ text, options: { breakLine: i < items.length - 1, paraSpaceAfter: 14 } })),
+      { x, y, w, h, fontFace: body, fontSize: SIZE.body, color: pal.ink, valign: 'top', margin: 0 },
     );
+  const logoAt = async (s: Slide) => {
+    if (options.logo) s.addImage({ data: options.logo, x: X, y: TOP, ...(await logoBox(options.logo, 2.2, 0.7)) });
+  };
 
-  // Cover
-  {
-    const s = newSlide();
-    if (options.logo) s.addImage({ data: options.logo, x: X, y: 0.6, ...(await logoBox(options.logo, 2.2, 0.7)) });
-    label(s, `${t.sprintReview}${review.organization ? ` ${review.organization}` : ''}`, 2.1);
-    s.addText(review.title, { x: X, y: 2.5, w: W - 2 * X, h: 1.9, fontFace: heading, fontSize: 44, color: pal.ink, valign: 'top', fit: 'shrink' });
-    s.addText(review.period, { x: X, y: 4.5, w: W - 2 * X, h: 0.5, fontFace: body, fontSize: 18, color: pal.soft });
-    if (options.goal) s.addText(`${t.goalLabel.toUpperCase()}   ${options.goal}`, { x: X, y: 5.3, w: 8, h: 0.5, fontFace: body, fontSize: 14, color: pal.ink, fill: { color: pal.panel }, line: { color: pal.line } });
-  }
-
-  // What it brings
-  const values = VALUE_KEYS.map((key) => ({ key, themes: review.themes.filter((th) => th.value === key).map((th) => th.title) })).filter((v) => v.themes.length);
-  if (values.length) {
-    const s = newSlide();
-    label(s, t.valuesLabel);
-    title(s, review.organization ? fill(t.valuesTitle, { org: review.organization }) : t.valuesTitleNoOrg);
-    const w = (W - 2 * X - 0.3 * (values.length - 1)) / values.length;
-    values.forEach((v, i) => {
-      const x = X + i * (w + 0.3);
-      s.addShape('roundRect', { x, y: 2.6, w, h: 3.2, fill: { color: pal.panel }, line: { color: pal.line }, rectRadius: 0.15 });
-      s.addText(t[`value_${v.key}` as keyof Labels], { x: x + 0.25, y: 2.8, w: w - 0.5, h: 0.5, fontFace: heading, fontSize: 20, color: pal.accent });
-      s.addText(v.themes.join('\n'), { x: x + 0.25, y: 3.4, w: w - 0.5, h: 2.2, fontFace: body, fontSize: 14, color: pal.soft, valign: 'top' });
-    });
-  }
-
-  // Usage
-  const tiles = review.usage.filter((u) => u.value > 0);
-  if (tiles.length) {
-    const s = newSlide();
-    label(s, t.usageLabel);
-    title(s, fill(t.usageTitle, { product: review.product }));
-    const w = (W - 2 * X - 0.3 * (tiles.length - 1)) / tiles.length;
-    tiles.forEach((u, i) => {
-      const x = X + i * (w + 0.3);
-      s.addShape('roundRect', { x, y: 2.6, w, h: 2.4, fill: { color: pal.panel }, line: { color: pal.line }, rectRadius: 0.15 });
-      s.addText(nf.format(u.value), { x: x + 0.25, y: 2.8, w: w - 0.5, h: 1, fontFace: heading, fontSize: 44, color: pal.accent });
-      s.addText(u.label, { x: x + 0.25, y: 3.8, w: w - 0.5, h: 0.5, fontFace: body, fontSize: 16, color: pal.ink });
-      if (u.previous) s.addText(`${t.previous}: ${nf.format(u.previous)}`, { x: x + 0.25, y: 4.3, w: w - 0.5, h: 0.4, fontFace: body, fontSize: 12, color: pal.faint });
-    });
-  }
-
-  // In short
-  if (review.summary.length) {
-    const s = newSlide(review.summaryNotes);
-    label(s, t.summaryLabel);
-    title(s, t.summaryTitle);
-    const n = review.summary.length;
-    const w = (W - 2 * X - 0.3 * (n - 1)) / n;
-    review.summary.forEach((p, i) => {
-      const x = X + i * (w + 0.3);
-      s.addShape('roundRect', { x, y: 2.6, w, h: 2.6, fill: { color: pal.panel }, line: { color: pal.line }, rectRadius: 0.15 });
-      s.addText(p.text, { x: x + 0.3, y: 2.8, w: w - 0.6, h: 2.2, fontFace: body, fontSize: 18, color: pal.ink, valign: 'top' });
-    });
-  }
-
-  // Themes
-  review.themes.forEach((th, i) => {
-    const s = newSlide(th.notes);
-    const pic = th.screen;
-    const textW = pic ? (pic.device === 'phone' ? 8 : 5.3) : W - 2 * X;
-    label(s, fill(t.themeCount, { n: i + 1, total: review.themes.length }), 1.2);
-    s.addText(th.title, { x: X, y: 1.6, w: textW, h: 0.9, fontFace: heading, fontSize: 34, color: pal.ink });
-    if (th.effect) s.addText(th.effect, { x: X, y: 2.6, w: textW, h: 1.1, fontFace: body, fontSize: 20, color: pal.ink, valign: 'top' });
-    bullets(s, th.points, X, 3.8, textW, 16);
-    if (pic) {
-      const x = X + textW + 0.4;
-      const w = W - x - X;
-      s.addImage(place(pic.image, { x, y: 1, w, h: 5.6 }, pic.device === 'phone' ? 'fit' : 'cover'));
+  for (const p of planDeck(review, options.deck)) {
+    switch (p.kind) {
+      case 'cover': {
+        const s = newSlide();
+        await logoAt(s);
+        eyebrow(s, `${t.sprintReview}${review.organization ? ` ${review.organization}` : ''}`, 2.2);
+        s.addText(review.title, { x: X, y: 2.6, w: CW, h: 2.0, fontFace: heading, fontSize: SIZE.display, bold: true, color: pal.ink, valign: 'top', margin: 0 });
+        s.addText(review.period, { x: X, y: 4.75, w: CW, h: 0.5, fontFace: body, fontSize: SIZE.body, color: pal.soft, margin: 0 });
+        if (options.goal) s.addText(`${t.goalLabel.toUpperCase()}   ${options.goal}`, { x: X, y: 5.5, w: 8, h: 0.5, fontFace: body, fontSize: SIZE.small, color: pal.ink, fill: { color: pal.panel }, line: { color: pal.line } });
+        break;
+      }
+      case 'headline': {
+        const s = newSlide(review.summaryNotes);
+        eyebrow(s, t.summaryTitle, 1.4);
+        s.addText(review.headline ?? '', { x: X, y: 1.85, w: 10.5, h: 3.2, fontFace: heading, fontSize: SIZE.display, bold: true, color: pal.ink, valign: 'top', margin: 0 });
+        s.addText(review.themes.map((th) => th.title).join('     '), { x: X, y: 5.5, w: CW, h: 0.5, fontFace: body, fontSize: SIZE.small, color: pal.soft, margin: 0 });
+        break;
+      }
+      case 'theme': {
+        const th = review.themes[p.index]!;
+        const s = newSlide(th.notes);
+        const chip = th.value ? `   ·   ${t[`value_${th.value}` as keyof Labels] ?? th.value}` : '';
+        head(s, `${th.title}${chip}`, th.effect ?? th.title);
+        const pic = th.screen;
+        if (!pic || p.layout === 'icon') points(s, th.points, X, BODY_Y, Math.min(CW, 9));
+        else if (p.layout === 'full') {
+          s.addImage(place(pic.image, { x: X, y: BODY_Y, w: CW, h: BODY_H - 0.9 }, 'cover'));
+          const n = th.points.length;
+          const w = (CW - 0.3 * (n - 1)) / Math.max(1, n);
+          th.points.forEach((text, i) => s.addText(text, { x: X + i * (w + 0.3), y: 7.5 - 0.8 - 0.75, w, h: 0.75, fontFace: body, fontSize: SIZE.small, color: pal.soft, valign: 'top', margin: 0 }));
+        } else {
+          const textW = p.layout === 'phone' ? 6.6 : 4.5;
+          const picW = CW - textW - 0.5;
+          const [tx, px] = p.flip ? [X + picW + 0.5, X] : [X, X + textW + 0.5];
+          points(s, th.points, tx, BODY_Y, textW);
+          s.addImage(place(pic.image, { x: px, y: BODY_Y, w: picW, h: BODY_H }, p.layout === 'phone' ? 'fit' : 'cover'));
+        }
+        break;
+      }
+      case 'cards': {
+        const themes = p.indexes.map((i) => review.themes[i]!);
+        const s = newSlide(themes.map((th) => [th.title, ...th.points].join(': ')).join('\n'));
+        head(s, t.moreLabel, t.moreTitle);
+        const perRow = Math.min(3, themes.length);
+        const rows = Math.ceil(themes.length / perRow);
+        const w = (CW - 0.3 * (perRow - 1)) / perRow;
+        const h = (BODY_H - 0.3 * (rows - 1)) / rows;
+        themes.forEach((th, i) => {
+          const x = X + (i % perRow) * (w + 0.3);
+          const y = BODY_Y + Math.floor(i / perRow) * (h + 0.3);
+          s.addShape('roundRect', { x, y, w, h, fill: { color: pal.panel }, line: { color: pal.line }, rectRadius: 0.12 });
+          s.addText(th.title, { x: x + 0.3, y: y + 0.3, w: w - 0.6, h: 0.5, fontFace: heading, fontSize: SIZE.body, bold: true, color: pal.ink, margin: 0 });
+          if (th.effect) s.addText(th.effect, { x: x + 0.3, y: y + 0.85, w: w - 0.6, h: h - 1.1, fontFace: body, fontSize: SIZE.small, color: pal.soft, valign: 'top', margin: 0 });
+        });
+        break;
+      }
+      case 'screen': {
+        const sc = review.screens[p.index]!;
+        const s = newSlide();
+        head(s, sc.name, sc.caption ?? sc.name);
+        const w = (CW - 0.4) / 2;
+        for (const [i, side] of (['before', 'after'] as const).entries()) {
+          const x = X + i * (w + 0.4);
+          s.addText((side === 'before' ? t.before : t.after).toUpperCase(), { x, y: BODY_Y, w, h: 0.3, fontFace: body, fontSize: SIZE.small, bold: true, color: side === 'after' ? pal.accent : pal.faint, charSpacing: 3, margin: 0 });
+          s.addImage(place(sc[side], { x, y: BODY_Y + 0.45, w, h: BODY_H - 0.45 }, sc.device === 'phone' ? 'fit' : 'cover'));
+        }
+        break;
+      }
+      case 'hood': {
+        const s = newSlide();
+        head(s, t.hoodLabel, t.hoodTitle);
+        const rowH = Math.min(0.85, BODY_H / review.underTheHood.length);
+        review.underTheHood.forEach((x, i) => {
+          const y = BODY_Y + i * rowH;
+          s.addText((t[`kind_${x.kind}` as keyof Labels] ?? x.kind).toUpperCase(), { x: X, y, w: 1.9, h: rowH, fontFace: body, fontSize: SIZE.small, bold: true, color: pal.faint, charSpacing: 2, valign: 'top', margin: 0 });
+          s.addText(x.text, { x: X + 2.0, y, w: Math.min(CW - 2.0, 8.5), h: rowH, fontFace: body, fontSize: SIZE.body, color: pal.ink, valign: 'top', margin: 0 });
+        });
+        break;
+      }
+      case 'roadmap': {
+        const s = newSlide();
+        const reached = review.milestones.filter((m) => m.done).length;
+        head(s, t.roadmapLabel, fill(t.roadmapReached, { n: reached, total: review.milestones.length }));
+        const n = p.milestones.length;
+        const w = CW / n;
+        const next = p.milestones.findIndex((m) => !m.done);
+        const lineY = BODY_Y + 0.4;
+        s.addShape('line', { x: X, y: lineY, w: CW, h: 0, line: { color: pal.line, width: 1.5 } });
+        p.milestones.forEach((m, i) => {
+          const x = X + i * w;
+          const color = m.done ? pal.accent : i === next ? pal.accent : pal.line;
+          s.addShape('ellipse', { x, y: lineY - 0.11, w: 0.22, h: 0.22, fill: { color: m.done ? color : pal.bg }, line: { color, width: 2 } });
+          if (i === next) s.addText(t.roadmapNext.toUpperCase(), { x, y: lineY + 0.3, w: w - 0.2, h: 0.3, fontFace: body, fontSize: SIZE.small, bold: true, color: pal.accent, charSpacing: 2, margin: 0 });
+          s.addText(m.text, { x, y: lineY + (i === next ? 0.65 : 0.3), w: w - 0.2, h: 1.8, fontFace: body, fontSize: SIZE.small, color: m.done || i === next ? pal.ink : pal.faint, valign: 'top', margin: 0 });
+        });
+        break;
+      }
+      case 'usage': {
+        const s = newSlide();
+        head(s, t.usageLabel, fill(t.usageTitle, { product: review.product }));
+        const tiles = numbers(review);
+        const w = (CW - 0.4 * (tiles.length - 1)) / tiles.length;
+        tiles.forEach((u, i) => {
+          const x = X + i * (w + 0.4);
+          s.addText(nf.format(u.value), { x, y: BODY_Y, w, h: 1.1, fontFace: heading, fontSize: SIZE.display, bold: true, color: pal.accent, margin: 0 });
+          s.addText(u.label, { x, y: BODY_Y + 1.2, w, h: 0.6, fontFace: body, fontSize: SIZE.body, color: pal.ink, valign: 'top', margin: 0 });
+          if (u.previous) s.addText(`${t.previous}: ${nf.format(u.previous)}`, { x, y: BODY_Y + 1.85, w, h: 0.4, fontFace: body, fontSize: SIZE.small, color: pal.faint, margin: 0 });
+        });
+        break;
+      }
+      case 'closing': {
+        const s = newSlide();
+        await logoAt(s);
+        if (review.questions.length) {
+          eyebrow(s, t.questions, 1.9);
+          s.addText(t.feedbackTitle, { x: X, y: 2.3, w: CW, h: 1, fontFace: heading, fontSize: SIZE.title, bold: true, color: pal.ink, valign: 'top', margin: 0 });
+          s.addText(
+            review.questions.map((q, i) => ({ text: q, options: { bullet: { type: 'number' as const }, breakLine: i < review.questions.length - 1, paraSpaceAfter: 14 } })),
+            { x: X, y: 3.5, w: 9.5, h: 3, fontFace: body, fontSize: SIZE.body, color: pal.ink, valign: 'top', margin: 0 },
+          );
+        } else {
+          s.addText(t.questions, { x: X, y: 2.8, w: CW, h: 1.2, fontFace: heading, fontSize: SIZE.display, bold: true, color: pal.ink, margin: 0 });
+          s.addText(review.headline ?? review.title, { x: X, y: 4.1, w: CW, h: 0.6, fontFace: body, fontSize: SIZE.body, color: pal.soft, margin: 0 });
+        }
+        break;
+      }
     }
-  });
-
-  // Before and after
-  for (const sc of review.screens) {
-    const s = newSlide();
-    label(s, t.screensLabel);
-    title(s, sc.name);
-    if (sc.caption) s.addText(sc.caption, { x: X, y: 2.1, w: W - 2 * X, h: 0.6, fontFace: body, fontSize: 18, color: pal.soft });
-    const w = (W - 2 * X - 0.4) / 2;
-    const h = 4.0;
-    for (const [i, side] of (['before', 'after'] as const).entries()) {
-      const x = X + i * (w + 0.4);
-      s.addText((side === 'before' ? t.before : t.after).toUpperCase(), { x, y: 2.8, w, h: 0.3, fontFace: body, fontSize: 11, bold: true, color: side === 'after' ? pal.accent : pal.faint, charSpacing: 3 });
-      s.addImage(place(sc[side], { x, y: 3.15, w, h }, sc.device === 'phone' ? 'fit' : 'cover'));
-    }
-  }
-
-  // Milestones
-  if (review.milestones.length) {
-    const s = newSlide();
-    const reached = review.milestones.filter((m) => m.done).length;
-    label(s, t.roadmapLabel);
-    title(s, t.roadmapTitle);
-    s.addText(fill(t.roadmapReached, { n: reached, total: review.milestones.length }), { x: X, y: 2.1, w: 6, h: 0.4, fontFace: body, fontSize: 16, color: pal.soft });
-    s.addText(
-      review.milestones.map((m) => ({ text: `${m.done ? '●' : '○'}  ${m.text}`, options: { color: m.done ? pal.ink : pal.faint, paraSpaceAfter: 6, breakLine: true } })),
-      { x: X, y: 2.7, w: W - 2 * X, h: 4, fontFace: body, fontSize: 18, valign: 'top' },
-    );
-  }
-
-  // Under the hood
-  if (review.underTheHood.length) {
-    const s = newSlide();
-    label(s, t.hoodLabel);
-    title(s, t.hoodTitle);
-    bullets(s, review.underTheHood, X, 2.4, W - 2 * X);
-  }
-
-  // Questions
-  {
-    const s = newSlide();
-    s.addText(t.questions, { x: X, y: 2.8, w: W - 2 * X, h: 1.2, fontFace: heading, fontSize: 54, color: pal.ink });
-    s.addText(review.title, { x: X, y: 4, w: W - 2 * X, h: 0.5, fontFace: body, fontSize: 18, color: pal.soft });
   }
 
   const out = (await pptx.write({ outputType: 'nodebuffer' })) as Buffer | Uint8Array;

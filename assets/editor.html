@@ -88,7 +88,7 @@
 <script>
 (function () {
   var BOOT = __BOOT__;
-  var TOKEN = BOOT.token, ICONS = BOOT.icons, VALUES = BOOT.values, LIMITS = BOOT.limits;
+  var TOKEN = BOOT.token, ICONS = BOOT.icons, VALUES = BOOT.values, LIMITS = BOOT.limits, KINDS = BOOT.kinds, LAYOUTS = BOOT.layouts;
   var review = null, dirty = false, slide = 1, total = 0, timer = null;
   var form = document.getElementById('form'), statusEl = document.getElementById('status'), deck = document.getElementById('deck');
   document.getElementById('file').textContent = BOOT.file;
@@ -146,38 +146,21 @@
   }
   function group(title, kids) { return el('section', { class: 'group' }, [el('h2', { text: title })].concat(kids)); }
 
-  // Slide numbers follow the deck: cover, values, usage, summary, themes, screens, milestones, hood, questions.
-  function slideOf(kind, i) {
-    var n = 1;
-    var hasValues = review.themes.some(function (t) { return t.value; });
-    if (kind === 'cover') return 1;
-    if (hasValues) n++;
-    if (review.usage.some(function (u) { return u.value > 0; })) n++;
-    if (kind === 'summary') return review.summary.length ? n + 1 : n;
-    if (review.summary.length) n++;
-    if (kind === 'theme') return n + 1 + i;
-    n += review.themes.length;
-    if (kind === 'screen') return n + 1 + i;
-    return n;
-  }
+  // Every slide carries a data-ref (cover, headline, theme-2, screen-0, hood...): the deck finds it, so the order lives in one place.
+  function slideOf(kind, i) { return i === undefined ? kind : kind + '-' + i; }
   function goto(n) { slide = n; deck.contentWindow && deck.contentWindow.postMessage({ type: 'sprint-review:go', to: n }, '*'); }
 
   function draw() {
     form.innerHTML = '';
     var r = review;
-    form.appendChild(group('Cover', [el('div', { class: 'card' }, [field('Title', r, 'title', { cls: 'title', onfocus: function () { goto(1); } }), field('Period', r, 'period', { onfocus: function () { goto(1); } })])]));
+    form.appendChild(group('Cover', [el('div', { class: 'card' }, [field('Title', r, 'title', { cls: 'title', onfocus: function () { goto('cover'); } }), field('Period', r, 'period', { onfocus: function () { goto('cover'); } })])]));
 
-    var sumCards = r.summary.map(function (p, i) {
-      return el('div', { class: 'card' }, [
-        el('div', { class: 'card-head' }, [el('span', { class: 'n', text: String(i + 1) }), el('span', { class: 'grow' }), el('button', { class: 'ghost', text: 'Remove', onclick: function () { r.summary.splice(i, 1); draw(); changed(); } })]),
-        field('Point', p, 'text', { limit: LIMITS.point, onfocus: function () { goto(slideOf('summary')); } }),
-        select('Icon', p, 'icon', ICONS, false),
-      ]);
-    });
-    form.appendChild(group('In short', sumCards.concat([
-      el('div', { class: 'card' }, [field('How to tell it (speaker notes)', r, 'summaryNotes', { multi: true, nullable: true, limit: LIMITS.notes })]),
-      el('button', { class: 'add', text: '+ Add a point', onclick: function () { r.summary.push({ text: '', icon: 'sparkles' }); draw(); changed(); } }),
-    ])));
+    form.appendChild(group('This sprint', [
+      el('div', { class: 'card' }, [
+        field('Headline: the sprint in one sentence', r, 'headline', { multi: true, nullable: true, limit: LIMITS.effect, onfocus: function () { goto(slideOf('headline')); } }),
+        field('How to tell it (speaker notes)', r, 'summaryNotes', { multi: true, nullable: true, limit: LIMITS.notes, onfocus: function () { goto(slideOf('headline')); } }),
+      ]),
+    ]));
 
     var themeCards = r.themes.map(function (t, i) {
       var focus = function () { goto(slideOf('theme', i)); };
@@ -189,9 +172,9 @@
           el('button', { class: 'ghost', text: 'Remove', onclick: function () { if (confirm('Remove "' + t.title + '"?')) { r.themes.splice(i, 1); draw(); changed(); } } }),
         ]),
         field('Title', t, 'title', { cls: 'title', limit: LIMITS.title, onfocus: focus }),
-        field('What it means for the audience', t, 'effect', { multi: true, nullable: true, limit: LIMITS.effect, onfocus: focus }),
+        field('Slide title: what a user can do or notices now', t, 'effect', { multi: true, nullable: true, limit: LIMITS.effect, onfocus: focus }),
         list('Points', t.points, LIMITS.point, focus),
-        el('div', { class: 'row' }, [select('Value', t, 'value', VALUES, true, focus), select('Icon', t, 'icon', ICONS, false, focus)]),
+        el('div', { class: 'row' }, [select('Value', t, 'value', VALUES, true, focus), select('Icon', t, 'icon', ICONS, false, focus), select('Layout', t, 'layout', LAYOUTS, false, function () { focus(); })]),
         field('How to tell it (speaker notes)', t, 'notes', { multi: true, nullable: true, limit: LIMITS.notes, onfocus: focus }),
       ];
       if (t.screen) kids.push(el('div', { class: 'shot' }, [el('img', { src: t.screen.image, alt: '' }), el('span', { text: t.screen.name + ' (' + t.screen.device + ')' }), el('button', { class: 'ghost', text: 'Remove picture', onclick: function () { t.screen = null; draw(); changed(); } })]));
@@ -202,11 +185,19 @@
     if (r.screens.length) form.appendChild(group('Before and after', r.screens.map(function (s, i) {
       return el('div', { class: 'card' }, [
         el('div', { class: 'card-head' }, [el('span', { class: 'n', text: String(i + 1) }), el('span', { class: 'grow', text: s.name + ' · ' + s.device }), el('button', { class: 'ghost', text: 'Remove', onclick: function () { r.screens.splice(i, 1); draw(); changed(); } })]),
-        field('What changed', s, 'caption', { nullable: true, limit: LIMITS.effect, onfocus: function () { goto(slideOf('screen', i)); } }),
+        field('Slide title: what changed', s, 'caption', { nullable: true, limit: LIMITS.effect, onfocus: function () { goto(slideOf('screen', i)); } }),
       ]);
     })));
 
-    form.appendChild(group('Under the hood', [el('div', { class: 'card' }, [list('Points', r.underTheHood, LIMITS.point)])]));
+    var hoodFocus = function () { goto(slideOf('hood')); };
+    form.appendChild(group('Under the hood', r.underTheHood.map(function (h, i) {
+      return el('div', { class: 'card' }, [
+        field('Line', h, 'text', { limit: LIMITS.point, onfocus: hoodFocus }),
+        el('div', { class: 'row' }, [select('Kind', h, 'kind', KINDS, false, hoodFocus), el('button', { class: 'ghost', text: 'Remove', onclick: function () { r.underTheHood.splice(i, 1); draw(); changed(); } })]),
+      ]);
+    }).concat([el('button', { class: 'add', text: '+ Add a line', onclick: function () { r.underTheHood.push({ text: '', kind: 'maintenance' }); draw(); changed(); } })])));
+
+    form.appendChild(group('Questions for the audience', [el('div', { class: 'card' }, [list('Asked on the last slide', r.questions, LIMITS.effect, function () { goto(slideOf('closing')); })])]));
 
     if (r.usage.length) form.appendChild(group('In use', r.usage.map(function (u, i) {
       var num = function (key) { var inp = el('input', { type: 'number' }); inp.value = u[key] == null ? '' : u[key]; inp.addEventListener('input', function () { if (inp.value === '') delete u[key]; else u[key] = Number(inp.value); changed(); }); return el('div', {}, [el('label', { text: key === 'value' ? 'This sprint' : 'Last sprint' }), inp]); };

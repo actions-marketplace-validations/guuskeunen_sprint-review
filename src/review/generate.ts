@@ -103,10 +103,11 @@ export async function generate(config: Config, options: GenerateOptions): Promis
     language: config.language,
     organization: config.organization,
     product: config.product.name,
-    summary: written.summary,
+    headline: written.headline,
     summaryNotes: written.summaryNotes,
     themes,
     underTheHood: written.underTheHood,
+    questions: written.questions,
     screens: reviewScreens,
     milestones: history.milestones(end, config.roadmap),
     usage: readUsage(config),
@@ -122,7 +123,7 @@ export function render(review: Review, config: Config): { html: string; markdown
   review = validReview(review);
   const brand = resolvedBrand(config);
   return {
-    html: renderDeck(review, { color: brand.color, logo: brand.logo, labels: config.labels, goal: config.goal, theme: config.brand.theme, fonts: brand.fonts }),
+    html: renderDeck(review, { color: brand.color, logo: brand.logo, labels: config.labels, goal: config.goal, theme: config.brand.theme, fonts: brand.fonts, deck: config.deck }),
     markdown: renderMarkdown(review, config.labels),
   };
 }

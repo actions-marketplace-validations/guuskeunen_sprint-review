@@ -71,9 +71,9 @@ test('the live view shows each edit and the slide being edited, before anything 
 test('validReview drops empty lines and refuses a broken review', () => {
   const r = sample();
   r.themes[0]!.points.push('  ');
-  r.underTheHood.push('');
+  r.underTheHood.push({ text: '', kind: 'speed' });
   const v = validReview(r);
   assert.ok(v.themes[0]!.points.every((p) => p.trim()));
-  assert.ok(v.underTheHood.every((p) => p.trim()));
+  assert.ok(v.underTheHood.every((p) => p.text.trim()));
   assert.throws(() => validReview({ ...r, themes: [{ title: 1 }] }), /theme/);
 });

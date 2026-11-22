@@ -85,11 +85,11 @@ const covers = (text: string, e: Expected) => e.any.some((w) => new RegExp(`(^|[
 /** Score a finished review against what the case expects. */
 export function score(c: BenchCase, review: Review): Score {
   const front = [
-    ...review.summary.map((p) => p.text),
+    review.headline ?? '',
     ...review.themes.flatMap((t) => [t.title, t.effect ?? '', ...t.points]),
     ...review.screens.map((s) => s.caption ?? ''),
   ].join('\n');
-  const hoodText = review.underTheHood.join('\n');
+  const hoodText = review.underTheHood.map((h) => h.text).join('\n');
   const everything = [front, hoodText, review.summaryNotes ?? '', ...review.themes.map((t) => t.notes ?? '')].join('\n');
 
   const found = c.expect.themes.filter((e) => covers(front, e)).map((e) => e.name);
@@ -100,7 +100,7 @@ export function score(c: BenchCase, review: Review): Score {
   const hoodMissed = c.expect.hood.filter((e) => !inHood(e)).map((e) => e.name);
   const forbidden = c.expect.never.filter((p) => everything.toLowerCase().includes(p.toLowerCase()));
   const count = (k: string) => review.checks.filter((x) => x.kind === k).length;
-  const points = [...review.summary.map((p) => p.text), ...review.themes.flatMap((t) => t.points)];
+  const points = review.themes.flatMap((t) => t.points);
   const wordsPerPoint = points.length ? points.reduce((n, p) => n + p.split(/\s+/).filter(Boolean).length, 0) / points.length : 0;
 
   const coverage = c.expect.themes.length ? found.length / c.expect.themes.length : 1;
@@ -185,10 +185,11 @@ export class EchoModel implements ModelClient {
       model: 'echo',
       usage,
       toolInput: {
-        summary: front.slice(0, 3).map((e) => ({ text: clean(e.subject), commits: [e.hash], icon: 'sparkles' })),
+        headline: front[0] ? { text: clean(front[0].subject), commits: [front[0].hash] } : null,
+        questions: [],
         summary_notes: null,
         themes: front.map((e) => ({ title: clean(e.subject).split(/\s+/).slice(0, 3).join(' '), icon: 'other', screen: 'none', value: null, effect: clean(e.subject), points: [{ text: clean(e.subject), commits: [e.hash] }], notes: null })),
-        under_the_hood: back.map((e) => ({ text: clean(e.subject), commits: [e.hash] })),
+        under_the_hood: back.map((e) => ({ text: clean(e.subject), commits: [e.hash], kind: 'maintenance' })),
       },
     };
   }

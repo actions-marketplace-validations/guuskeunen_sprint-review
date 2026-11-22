@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { slackMessage, postToSlack } from '../../src/surfaces/slack.ts';
 import { sample } from '../helpers.ts';
 
-test('the Slack message has the summary, the themes and the link, escaped', async () => {
+test('the Slack message has the headline, the themes and the link, escaped', async () => {
   const review = sample();
-  review.summary[0]!.text = 'Tom & Jerry <script>';
+  review.headline = 'Tom & Jerry <script>';
   const msg = slackMessage(review, 'https://example.com/deck.html') as { blocks: any[] };
   const text = JSON.stringify(msg);
   assert.match(text, /Tom &amp; Jerry &lt;script&gt;/);

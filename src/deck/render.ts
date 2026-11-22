@@ -3,7 +3,10 @@ import { fileURLToPath } from 'node:url';
 import type { Review } from '../types.ts';
 import { fill, labelsFor, localeOf, type Labels } from './i18n.ts';
 import { readableOn } from './colors.ts';
-import { hoodIcon, themeIcon, valueIcon, VALUE_KEYS } from './icons.ts';
+import { themeIcon, valueIcon } from './icons.ts';
+import { numbers, planDeck } from './plan.ts';
+import type { DeckConfig } from '../config.ts';
+type PlannedSlide = ReturnType<typeof planDeck>[number];
 
 const CSS = readFileSync(fileURLToPath(new URL('../../assets/deck.css', import.meta.url)), 'utf8');
 const DARK_CSS = readFileSync(fileURLToPath(new URL('../../assets/deck-dark.css', import.meta.url)), 'utf8');
@@ -19,6 +22,8 @@ export interface RenderOptions {
   theme?: 'dark' | 'light';
   /** Font families as CSS would take them. Fonts must be installed where the deck is shown. */
   fonts?: { heading?: string | null; body?: string | null };
+  /** Which slides show and how dense they are; the config's deck section. */
+  deck?: DeckConfig;
 }
 
 /** A font name from a config or a .pptx, quoted, with the theme's own fonts behind it. Anything odd is dropped. */
@@ -47,99 +52,79 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
   const color = options.color && /^#[0-9a-fA-F]{6}$/.test(options.color) ? options.color : null;
   const logo = options.logo && /^data:image\/(png|jpeg|svg\+xml|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(options.logo) ? options.logo : null;
   const goal = options.goal ?? null;
-  const slides: string[] = [];
   const rise = (i: number) => (i ? ` style="--i: ${i}"` : '');
+  const nf = new Intl.NumberFormat(localeOf(review.language));
+  const head = (eyebrow: string, title: string, extra = '') => `<header class="head">
+    <p class="eyebrow rise">${eyebrow}${extra}</p>
+    <h2 class="rise"${rise(1)}>${esc(title)}</h2>
+  </header>`;
+  const points = (items: string[], from: number) => `<ul class="points">${items.map((p, j) => `\n      <li class="rise"${rise(j + from)}>${esc(p)}</li>`).join('')}
+    </ul>`;
+  const logoImg = logo ? `<img class="brand-logo plate" src="${logo}" alt="${esc(org)}">` : '';
 
-  slides.push(`<section class="slide cover active">
+  const slide = (p: PlannedSlide): string => {
+    switch (p.kind) {
+      case 'cover':
+        return `<section class="slide cover" data-ref="cover">
   <div class="rings" aria-hidden="true"></div>
-  ${logo ? `<img class="brand-logo plate" src="${logo}" alt="${esc(org)}">` : ''}
-  <p class="label rise">${esc(t.sprintReview)}${org ? ` ${esc(org)}` : ''}</p>
+  ${logoImg}
+  <p class="eyebrow rise">${esc(t.sprintReview)}${org ? ` ${esc(org)}` : ''}</p>
   <h1 class="rise"${rise(1)}>${esc(review.title)}</h1>
   <p class="rise"${rise(2)}>${esc(review.period)}</p>
   ${goal ? `<p class="goal rise"${rise(3)}><b>${esc(t.goalLabel)}</b><span>${esc(goal)}</span></p>` : ''}
-</section>`);
-
-  const values = VALUE_KEYS.map((key) => ({ key, themes: review.themes.filter((th) => th.value === key).map((th) => th.title) })).filter((v) => v.themes.length);
-  if (values.length) {
-    slides.push(`<section class="slide">
-  <p class="label rise">${esc(t.valuesLabel)}</p>
-  <h2 class="rise"${rise(1)}>${esc(org ? fill(t.valuesTitle, { org }) : t.valuesTitleNoOrg)}</h2>
-  <div class="values">${values
-    .map(
-      (v, i) => `
-    <div class="value rise"${rise(i + 2)}>
-      ${valueIcon(v.key)}
-      <h3>${esc(t[`value_${v.key}` as keyof Labels])}</h3>
-      <ul>${v.themes.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
-    </div>`,
-    )
-    .join('')}
-  </div>
-</section>`);
-  }
-
-  const tiles = review.usage.filter((u) => u.value > 0);
-  if (tiles.length) {
-    const nf = new Intl.NumberFormat(localeOf(review.language));
-    slides.push(`<section class="slide">
-  <p class="label rise">${esc(t.usageLabel)}</p>
-  <h2 class="rise"${rise(1)}>${esc(fill(t.usageTitle, { product: review.product }))}</h2>
-  <div class="tiles">${tiles
-    .map(
-      (u, i) => `
-    <div class="tile-number rise"${rise(i + 2)}>
-      <b data-count="${u.value}">${nf.format(u.value)}</b>
-      <p>${esc(u.label)}</p>
-      ${u.previous !== undefined && u.previous > 0 ? `<small class="${u.value > u.previous ? 'up' : ''}">${esc(t.previous)}: ${nf.format(u.previous)}</small>` : ''}
-    </div>`,
-    )
-    .join('')}
-  </div>
-</section>`);
-  }
-
-  if (review.summary.length) {
-    slides.push(`<section class="slide">
-  <p class="label rise">${esc(t.summaryLabel)}</p>
-  <h2 class="rise"${rise(1)}>${esc(t.summaryTitle)}</h2>
-  <div class="cards">${review.summary
-    .map(
-      (p, i) => `
-    <div class="card rise"${rise(i + 2)}>
-      <span class="card-icon">${themeIcon(p.icon)}</span>
-      <p>${esc(p.text)}</p>
-    </div>`,
-    )
-    .join('')}
-  </div>
+</section>`;
+      case 'headline':
+        return `<section class="slide statement" data-ref="headline">
+  <p class="eyebrow rise">${esc(t.summaryTitle)}</p>
+  <h1 class="rise"${rise(1)}>${esc(review.headline ?? '')}</h1>
+  <ul class="theme-map">${review.themes.map((th, i) => `\n    <li class="rise"${rise(i + 2)}>${themeIcon(th.icon)}<span>${esc(th.title)}</span></li>`).join('')}
+  </ul>
   ${review.summaryNotes ? `<aside class="notes">${esc(review.summaryNotes)}</aside>` : ''}
-</section>`);
-  }
-
-  review.themes.forEach((th, i) => {
-    const onPhone = th.screen?.device === 'phone';
-    slides.push(`<section class="slide">
-  <div class="theme ${th.screen ? 'with-screen' : ''} ${onPhone ? 'on-phone' : ''}">
-    ${th.screen ? '' : `<div class="tile rise">${themeIcon(th.icon)}</div>`}
-    <div class="theme-text">
-      <p class="label rise"${rise(1)}>${esc(fill(t.themeCount, { n: i + 1, total: review.themes.length }))}</p>
-      <h2 class="rise"${rise(2)}>${esc(th.title)}</h2>
-      ${th.value ? `<span class="pill rise"${rise(2)}>${valueIcon(th.value)}${esc(t[`value_${th.value}` as keyof Labels] ?? th.value)}</span>` : ''}
-      ${th.effect ? `<p class="effect rise"${rise(3)}>${esc(th.effect)}</p>` : ''}
-      <ul class="points">${th.points.map((p, j) => `\n        <li class="rise"${rise(j + 4)}>${esc(p)}</li>`).join('')}
-      </ul>
-    </div>
-    ${th.screen ? `<figure class="screen ${onPhone ? 'phone ' : ''}rise"${rise(3)}><img src="${picture(th.screen.image)}" alt="${esc(onPhone ? fill(t.onPhone, { name: th.screen.name }) : th.screen.name)}"></figure>` : ''}
+</section>`;
+      case 'theme': {
+        const th = review.themes[p.index]!;
+        const chip = th.value ? ` <span class="chip">${valueIcon(th.value)}${esc(t[`value_${th.value}` as keyof Labels] ?? th.value)}</span>` : '';
+        const shot = th.screen
+          ? `<figure class="screen ${p.layout === 'phone' ? 'phone ' : ''}rise"${rise(3)}><img src="${picture(th.screen.image)}" alt="${esc(p.layout === 'phone' ? fill(t.onPhone, { name: th.screen.name }) : th.screen.name)}"></figure>`
+          : '';
+        const body =
+          p.layout === 'icon'
+            ? `<div class="tile rise"${rise(2)}>${themeIcon(th.icon)}</div>\n    ${points(th.points, 3)}`
+            : p.layout === 'full'
+              ? `${shot}\n    ${points(th.points, 4)}`
+              : `${points(th.points, 2)}\n    ${shot}`;
+        return `<section class="slide theme layout-${p.layout}${p.flip ? ' flip' : ''}" data-ref="theme-${p.index}">
+  ${head(esc(th.title), th.effect ?? th.title, chip)}
+  <div class="body">
+    ${body}
   </div>
   ${th.notes ? `<aside class="notes">${esc(th.notes)}</aside>` : ''}
-</section>`);
-  });
-
-  for (const s of review.screens) {
-    slides.push(`<section class="slide">
-  <p class="label rise">${esc(t.screensLabel)}</p>
-  <h2 class="rise"${rise(1)}>${esc(s.name)}</h2>
-  ${s.caption ? `<p class="effect rise"${rise(2)}>${esc(s.caption)}</p>` : ''}
+</section>`;
+      }
+      case 'cards': {
+        const themes = p.indexes.map((i) => review.themes[i]!);
+        // The points of a theme on a card go to the notes: the card has room for its message only.
+        const notes = themes.map((th) => [th.title, ...th.points].join(': ')).join('\n');
+        return `<section class="slide" data-ref="cards">
+  ${head(esc(t.moreLabel), t.moreTitle)}
+  <div class="cards${themes.length === 2 ? ' two' : ''}">${themes
+    .map(
+      (th, i) => `
+    <div class="card rise"${rise(i + 2)} data-ref="theme-${p.indexes[i]}">
+      <span class="card-icon">${themeIcon(th.icon)}</span>
+      <h3>${esc(th.title)}</h3>
+      ${th.effect ? `<p>${esc(th.effect)}</p>` : ''}
+    </div>`,
+    )
+    .join('')}
+  </div>
+  <aside class="notes">${esc(notes)}</aside>
+</section>`;
+      }
+      case 'screen': {
+        const s = review.screens[p.index]!;
+        return `<section class="slide" data-ref="screen-${p.index}">
+  ${head(esc(s.name), s.caption ?? s.name)}
   <div class="compare ${s.device === 'phone' ? 'phone' : ''}">
     <figure class="rise"${rise(2)}>
       <figcaption>${esc(t.before)}</figcaption>
@@ -150,42 +135,62 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
       <img src="${picture(s.after)}" alt="${esc(fill(t.afterAlt, { name: s.name }))}">
     </figure>
   </div>
-</section>`);
-  }
-
-  if (review.milestones.length) {
-    const reached = review.milestones.filter((m) => m.done).length;
-    slides.push(`<section class="slide">
-  <p class="label rise">${esc(t.roadmapLabel)}</p>
-  <h2 class="rise"${rise(1)}>${esc(t.roadmapTitle)}</h2>
-  <p class="rise"${rise(2)}>${esc(fill(t.roadmapReached, { n: reached, total: review.milestones.length }))}</p>
-  <div class="meter rise"${rise(2)}><i style="width: ${Math.round((reached / review.milestones.length) * 100)}%"></i></div>
-  <ul class="milestones">${review.milestones.map((m, i) => `\n    <li class="rise ${m.done ? 'done' : ''}"${rise(Math.min(i + 3, 12))}>${esc(m.text)}</li>`).join('')}
+</section>`;
+      }
+      case 'hood':
+        return `<section class="slide hood" data-ref="hood">
+  ${head(esc(t.hoodLabel), t.hoodTitle)}
+  <ul class="hood-list">${review.underTheHood.map((x, i) => `\n    <li class="rise"${rise(i + 2)}><span class="tag">${esc(t[`kind_${x.kind}` as keyof Labels] ?? x.kind)}</span><span>${esc(x.text)}</span></li>`).join('')}
   </ul>
-</section>`);
-  }
-
-  if (review.underTheHood.length) {
-    slides.push(`<section class="slide hood">
-  <div class="theme">
-    <div class="tile rise">${hoodIcon()}</div>
-    <div class="theme-text">
-      <p class="label rise"${rise(1)}>${esc(t.hoodLabel)}</p>
-      <h2 class="rise"${rise(2)}>${esc(t.hoodTitle)}</h2>
-      <ul class="points">${review.underTheHood.map((p, i) => `\n        <li class="rise"${rise(i + 3)}>${esc(p)}</li>`).join('')}
-      </ul>
-    </div>
+</section>`;
+      case 'roadmap': {
+        const reached = review.milestones.filter((m) => m.done).length;
+        const next = p.milestones.findIndex((m) => !m.done);
+        return `<section class="slide" data-ref="roadmap">
+  ${head(esc(t.roadmapLabel), fill(t.roadmapReached, { n: reached, total: review.milestones.length }))}
+  <ol class="timeline" style="--n: ${p.milestones.length}">${p.milestones.map((m, i) => `\n    <li class="rise ${m.done ? 'done' : i === next ? 'next' : ''}"${rise(i + 2)}>${i === next ? `<b>${esc(t.roadmapNext)}</b>` : ''}<span>${esc(m.text)}</span></li>`).join('')}
+  </ol>
+</section>`;
+      }
+      case 'usage': {
+        const tiles = numbers(review);
+        return `<section class="slide" data-ref="usage">
+  ${head(esc(t.usageLabel), fill(t.usageTitle, { product: review.product }))}
+  <div class="tiles${tiles.length === 1 ? ' one' : ''}">${tiles
+    .map(
+      (u, i) => `
+    <div class="tile-number rise"${rise(i + 2)}>
+      <b data-count="${u.value}">${nf.format(u.value)}</b>
+      <p>${esc(u.label)}</p>
+      ${u.previous !== undefined && u.previous > 0 ? `<small class="${u.value > u.previous ? 'up' : ''}">${esc(t.previous)}: ${nf.format(u.previous)}</small>` : ''}
+    </div>`,
+    )
+    .join('')}
   </div>
-</section>`);
-  }
-
-  slides.push(`<section class="slide cover">
+</section>`;
+      }
+      case 'closing':
+        return review.questions.length
+          ? `<section class="slide cover closing" data-ref="closing">
   <div class="rings" aria-hidden="true"></div>
+  ${logoImg}
+  <p class="eyebrow rise">${esc(t.questions)}</p>
+  <h2 class="rise"${rise(1)}>${esc(t.feedbackTitle)}</h2>
+  <ol class="questions">${review.questions.map((q, i) => `\n    <li class="rise"${rise(i + 2)}>${esc(q)}</li>`).join('')}
+  </ol>
+</section>`
+          : `<section class="slide cover closing" data-ref="closing">
+  <div class="rings" aria-hidden="true"></div>
+  ${logoImg}
   <h1 class="rise">${esc(t.questions)}</h1>
-  <p class="rise"${rise(1)}>${esc(review.title)}</p>
-</section>`);
+  <p class="rise"${rise(1)}>${esc(review.headline ?? review.title)}</p>
+</section>`;
+    }
+  };
+  const slides = planDeck(review, options.deck).map(slide);
+  slides[0] = slides[0]!.replace('class="slide cover"', 'class="slide cover active"');
 
-  const hasNotes = !!review.summaryNotes || review.themes.some((th) => th.notes);
+  const hasNotes = slides.some((x) => x.includes('<aside class="notes">'));
   const theme = options.theme === 'dark' ? 'dark' : 'light';
   // The brand color as text and icons must read on the theme's background; readableOn shifts it only when it doesn't.
   const accent = color ? readableOn(color, theme === 'dark' ? '#0a0a0d' : '#ffffff') : null;
@@ -290,13 +295,18 @@ function script(t: Labels, lang: string): string {
     // Embedded (the editor's preview, a landing page): tell the page around it where we are.
     if (window.parent !== window) window.parent.postMessage({ type: 'sprint-review:slide', n: current + 1, total: slides.length }, '*');
   }
-  // ...and let it move the deck: { type: 'sprint-review:go', to: 3 | 'next' | 'prev' }.
+  // ...and let it move the deck: { type: 'sprint-review:go', to: 3 | 'next' | 'prev' | 'theme-2' }.
   window.addEventListener('message', function (e) {
     var d = e.data;
     if (window.parent === window || e.source !== window.parent || !d || d.type !== 'sprint-review:go') return;
     if (d.to === 'next') show(current + 1);
     else if (d.to === 'prev') show(current - 1);
     else if (typeof d.to === 'number') show(d.to - 1);
+    else if (typeof d.to === 'string') {
+      // A part of the review, such as theme-2: the slide that shows it (a card counts).
+      var at = slides.findIndex(function (s) { return s.getAttribute('data-ref') === d.to || !!s.querySelector('[data-ref="' + d.to.replace(/[^\\w-]/g, '') + '"]'); });
+      if (at !== -1) show(at);
+    }
   });
   // Edit: only on the deck opened from your own disk, never in a published deck or a preview.
   // A file can't start the editor, so the button opens it when it runs and else shows how to start it.
@@ -418,7 +428,7 @@ function script(t: Labels, lang: string): string {
   });
 
   // The icons draw themselves: every shape gets a length of 1.
-  Array.prototype.forEach.call(document.querySelectorAll('.tile .icon, .card-icon .icon, .value .icon'), function (icon) {
+  Array.prototype.forEach.call(document.querySelectorAll('.tile .icon, .card-icon .icon'), function (icon) {
     Array.prototype.forEach.call(icon.querySelectorAll('path, circle, rect, line, polyline, polygon, ellipse'), function (shape) {
       shape.setAttribute('pathLength', '1');
     });

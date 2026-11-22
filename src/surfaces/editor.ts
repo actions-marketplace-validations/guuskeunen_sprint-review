@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Config } from '../config.ts';
-import type { Review } from '../types.ts';
+import { HOOD_KINDS, THEME_LAYOUTS, type Review, type ThemeLayout } from '../types.ts';
 import { render } from '../review/generate.ts';
 import { validReview } from '../review/review.ts';
 
@@ -33,6 +33,9 @@ export interface EditorServer {
  * The live view (/live) is the deck on its own, for a second screen or a shared window: every
  * edit and the slide being edited reach it as they happen, before anything is saved.
  */
+/** The layouts as the editor offers them. */
+const LAYOUT_NAMES: Record<ThemeLayout, string> = { auto: 'Automatic', split: 'Text beside the picture', full: 'Large picture', icon: 'Icon, no picture', card: 'A card on the shared slide' };
+
 export async function startEditor(file: string, config: Config, port = 4321): Promise<EditorServer> {
   const token = randomBytes(18).toString('base64url');
   const read = () => JSON.parse(readFileSync(file, 'utf8')) as Review;
@@ -44,6 +47,8 @@ export async function startEditor(file: string, config: Config, port = 4321): Pr
     icons: Object.entries(ICONS).map(([k, v]) => [k, v.label]),
     values: VALUE_KEYS.map((k) => [k, t[`value_${k}` as keyof typeof t]]),
     limits: { point: POINT_WORDS_MAX, effect: EFFECT_WORDS_MAX, notes: NOTES_WORDS_MAX, title: TITLE_WORDS_MAX },
+    kinds: HOOD_KINDS.map((k) => [k, t[`kind_${k}` as keyof typeof t]]),
+    layouts: THEME_LAYOUTS.map((k) => [k, LAYOUT_NAMES[k]]),
   };
   const page = PAGE.replace('__BOOT__', JSON.stringify(boot).replace(/</g, '\\u003c'));
   const livePage = LIVE.replace('__TOKEN__', JSON.stringify(token).replace(/</g, '\\u003c'));

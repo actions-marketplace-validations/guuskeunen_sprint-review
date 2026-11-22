@@ -25,11 +25,11 @@ test('the deck uses the readable accent in both themes', () => {
 
 test('German, French and Spanish decks have their own labels, and any other language falls back to English', async () => {
   const { labelsFor } = await import('../../src/deck/i18n.ts');
-  assert.equal(labelsFor('German').hoodTitle, 'Unter der Haube');
+  assert.equal(labelsFor('German').hoodTitle, 'Außerdem geliefert');
   assert.equal(labelsFor('fr-BE').questions, 'Questions');
   assert.equal(labelsFor('Spanish').summaryTitle, 'Este sprint');
-  assert.equal(labelsFor('Swedish').hoodTitle, 'Under the hood');
+  assert.equal(labelsFor('Swedish').hoodTitle, 'Also shipped');
   const html = renderDeck({ ...sample(), language: 'German' }, {});
-  assert.match(html, /Unter der Haube/);
-  assert.doesNotMatch(html, /Under the hood/);
+  assert.match(html, /Außerdem geliefert/);
+  assert.doesNotMatch(html, /Also shipped/);
 });
