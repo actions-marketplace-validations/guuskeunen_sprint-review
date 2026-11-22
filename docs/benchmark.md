@@ -58,6 +58,8 @@ The sample sprints check the words. Real repositories check everything else: siz
 | Supabase | 355 | 114 | all | 146 s | 67,659 | $0.22 | 9 |
 | Excalidraw | 16 | 15 | all | 77 s | 25,704 | $0.12 | 11 |
 
+The Excalidraw deck on the site was made again afterwards, with Gemini 3.6 Flash ($0.02, 21 s, 13,856 tokens, 3 checks) and a screenshot: `screenshots.source: capture` photographed excalidraw.com with a drawing loaded through `storageState` (Excalidraw keeps its drawing and settings, such as `minimapEnabled`, in local storage), and the writer put it on the minimap slide.
+
 What the first round found, and what changed:
 
 - **Shallow clones were refused**, even ones that held the whole sprint. A shallow clone is now fine when it reaches back to before the sprint starts.
