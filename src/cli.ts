@@ -189,7 +189,7 @@ async function run(flags: Flags): Promise<number> {
 
 function dryRun(config: Config, range: Range): number {
   const history = new History(config.repo);
-  history.assertUsable();
+  history.assertUsable(range);
   const commits = history.commits(range, config.productPaths, config.ignore, config.limits.commits, config.nonProductTypes);
   const prompt = writerSystem(config);
   const log = commitLog(commits);

@@ -57,7 +57,7 @@ export async function generate(config: Config, options: GenerateOptions): Promis
   const step = options.onStep ?? (() => {});
   const range = options.range ?? sprintRange(config.sprint.days);
   const history = new History(config.repo);
-  history.assertUsable();
+  history.assertUsable(range);
 
   step('Reading the git history');
   let commits = history.commits(range, config.productPaths, config.ignore, config.limits.commits, config.nonProductTypes);
