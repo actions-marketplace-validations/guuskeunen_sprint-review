@@ -8,6 +8,7 @@ export type PlannedSlide =
   | { kind: 'cover' }
   | { kind: 'headline' }
   | { kind: 'lastTime' }
+  | { kind: 'answered' }
   | { kind: 'theme'; index: number; layout: ThemeSlideLayout; flip: boolean }
   | { kind: 'cards'; indexes: number[] }
   | { kind: 'screen'; index: number }
@@ -35,6 +36,8 @@ export function planDeck(review: Review, deck: DeckConfig = defaultDeck()): Plan
   if (on.headline && review.headline) plan.push({ kind: 'headline' });
   // What we said last time comes first: the audience checks promises before hearing new ones.
   if (on.lastTime && review.lastTime?.items.length) plan.push({ kind: 'lastTime' });
+  // You asked, we did: the strongest proof the work mattered, before the themes.
+  if (on.answered && review.answered?.length) plan.push({ kind: 'answered' });
   const usage = on.usage && numbers(review).length ? [{ kind: 'usage' } as const] : [];
   if (deck.order === 'numbers-first') plan.push(...usage);
 

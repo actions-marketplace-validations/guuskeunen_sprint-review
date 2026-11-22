@@ -61,8 +61,8 @@ Pictures that are in both folders and differ are compared exactly as above. Pict
 No visual tests? Give sprint-review the pages and it photographs them with Playwright. Each run keeps the pictures in a folder per day; the next review compares the last pictures from before the sprint with the newest ones.
 
 ```bash
-npm install --save-dev playwright
-npx playwright install chromium
+npm install --save-dev playwright-core   # uses the Chrome you have installed
+# or: npm install --save-dev playwright && npx playwright install chromium
 ```
 
 ```yaml
@@ -72,6 +72,9 @@ screenshots:
   pages:
     customer-page: /customers/1042      # screen key: path or full URL
     planner: /planner?branch=north
+    planner-progress:                   # one element: a card, a panel, a chart
+      url: /planner?branch=north
+      selector: "section:has(h2:text-is('Progress'))"
   devices: [desktop, phone]             # default: desktop
   mask: [".email", "[data-private]"]    # painted over before the picture is taken
   storageState: .auth/staging.json      # optional: a logged-in session
@@ -89,6 +92,7 @@ npx @guuskeunen/sprint-review capture
 
 Run `capture` at the end of every sprint, right before `generate` (in CI: as a step before it). Keep the storage folder between runs: commit it, or cache it in CI. The first run has nothing to compare with, so its pictures only show on theme slides.
 
+- **Components make the best slides.** A selector crops the picture to one card or panel, which reads far better on a slide than a whole page (any Playwright selector works: CSS, `text=`, `:has()`, `xpath=`). A selector that finds nothing is skipped and named in the output.
 - **Point it at staging with demo data**, never production. `mask` is a safety net, not a plan.
 - **A login?** Save one with `npx playwright codegen --save-storage=.auth/staging.json https://staging.example.com`, and keep that file out of git.
 - **No Playwright browser download?** Set `SPRINT_REVIEW_CHROME` to a Chrome or Chromium binary.

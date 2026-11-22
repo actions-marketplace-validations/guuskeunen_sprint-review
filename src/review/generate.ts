@@ -15,6 +15,7 @@ import { brandFromPptx, type Brand } from '../brand/brand.ts';
 import { isWebsite, withWebsiteBrand } from '../brand/website.ts';
 import { costOf, metered, type Cost } from '../ai/costs.ts';
 import { lastTime, previousReview } from './previous.ts';
+import { fontFaces } from '../brand/fonts.ts';
 
 export class NothingToReview extends Error {}
 
@@ -88,7 +89,8 @@ export async function generate(config: Config, options: GenerateOptions): Promis
   const { end } = history.ends(range);
   const roadmap = history.milestones(end, config.roadmap);
   const staged = roadmap.filter((m) => m.stage);
-  const { written, usage } = await write(meter, config, commits, changed.map((c) => c.name), [...available.keys()], staged.map((m) => `${m.stage === 'now' ? 'Now' : 'Next'}: ${m.text}`));
+  const requests = history.requests(end, config.feedback);
+  const { written, usage } = await write(meter, config, commits, changed.map((c) => c.name), [...available.keys()], staged.map((m) => `${m.stage === 'now' ? 'Now' : 'Next'}: ${m.text}`), requests);
   const cost = costOf(meter.calls, config.model, today());
   const models = [...new Set(meter.calls.map((c) => c.model))];
 
@@ -118,6 +120,7 @@ export async function generate(config: Config, options: GenerateOptions): Promis
     usage: readUsage(config),
     checks: written.checks,
     ...(said ? { lastTime: said } : {}),
+    ...(written.answered.length ? { answered: written.answered.map((a) => ({ ask: requests[a.item]!, did: a.text })) } : {}),
   };
   step('Building the deck');
   return { review, ...render(review, config), usage, cost, models };
@@ -129,7 +132,7 @@ export function render(review: Review, config: Config): { html: string; markdown
   review = validReview(review);
   const brand = resolvedBrand(config);
   return {
-    html: renderDeck(review, { color: brand.color, logo: brand.logo, labels: config.labels, goal: config.goal, theme: config.brand.theme, fonts: brand.fonts, deck: config.deck }),
+    html: renderDeck(review, { color: brand.color, logo: brand.logo, labels: config.labels, goal: config.goal, theme: config.brand.theme, fonts: brand.fonts, deck: config.deck, fontFaces: fontFaces(config.brand.fontFiles, config.root, (m) => console.error(m)) }),
     markdown: renderMarkdown(review, config.labels),
   };
 }

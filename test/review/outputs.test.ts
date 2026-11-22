@@ -45,8 +45,10 @@ test('a square logo stays square on the PowerPoint cover', async () => {
   const square = await sharp({ create: { width: 64, height: 64, channels: 4, background: '#123456' } }).png().toBuffer();
   const buf = await renderPptx(sample(), { logo: `data:image/png;base64,${square.toString('base64')}` });
   const cover = readZip(buf).get('ppt/slides/slide1.xml')!().toString('utf8');
-  const ext = /<p:pic>[\s\S]*?<a:ext cx="(\d+)" cy="(\d+)"/.exec(cover)!;
-  assert.equal(ext[1], ext[2]);
+  // The cover also carries the product screenshot; the logo is the small picture.
+  const pics = [...cover.matchAll(/<p:pic>[\s\S]*?<a:ext cx="(\d+)" cy="(\d+)"/g)].map((m) => [Number(m[1]), Number(m[2])] as const);
+  const logo = pics.reduce((a, b) => (b[0] < a[0] ? b : a));
+  assert.equal(logo[0], logo[1]);
 });
 
 test('render --pptx rebuilds the PowerPoint too', () => {

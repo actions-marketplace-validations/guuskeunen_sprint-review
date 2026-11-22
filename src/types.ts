@@ -103,6 +103,8 @@ export interface WrittenReview {
   screenCaptions: Record<string, string>;
   /** Roadmap items a user would notice, by their number in the roadmap, in the audience's words. */
   roadmap: { item: number; text: string }[];
+  /** Requests from FEEDBACK.md this sprint answered, by number, with what was done. */
+  answered: { item: number; text: string }[];
   checks: Check[];
 }
 
@@ -151,6 +153,8 @@ export interface Review {
   underTheHood: HoodItem[];
   /** Asked on the closing slide instead of a bare "Questions". */
   questions: string[];
+  /** "You asked, we did": requests from the team's feedback file and what this sprint did about them. */
+  answered?: { ask: string; did: string }[];
   /** What the previous review said was next, and whether it is done now. */
   lastTime?: { until: string; items: Milestone[] };
   screens: ReviewScreen[];

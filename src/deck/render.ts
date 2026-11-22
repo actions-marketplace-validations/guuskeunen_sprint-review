@@ -8,6 +8,7 @@ import { imageSize } from './images.ts';
 import { change, trendPoints } from './numbers.ts';
 import { numbers, planDeck } from './plan.ts';
 import type { DeckConfig } from '../config.ts';
+import { fontFaceCss, type FontFace } from '../brand/fonts.ts';
 type PlannedSlide = ReturnType<typeof planDeck>[number];
 
 const CSS = readFileSync(fileURLToPath(new URL('../../assets/deck.css', import.meta.url)), 'utf8');
@@ -26,6 +27,8 @@ export interface RenderOptions {
   fonts?: { heading?: string | null; body?: string | null };
   /** Which slides show and how dense they are; the config's deck section. */
   deck?: DeckConfig;
+  /** Font files inside the deck, so the brand fonts show on any laptop. */
+  fontFaces?: FontFace[];
 }
 
 /** A font name from a config or a .pptx, quoted, with the theme's own fonts behind it. Anything odd is dropped. */
@@ -52,7 +55,21 @@ function shot(uri: string, alt: string, s: Review['screens'][number], frame: boo
   if (!size) return img;
   const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
   const f = frame && s.focus ? `<i class="focus" style="left: ${pct(s.focus.x)}; top: ${pct(s.focus.y)}; width: ${pct(s.focus.w)}; height: ${pct(s.focus.h)}"></i>` : '';
-  return `<span class="shot" style="--r: ${Math.round((size.w / size.h) * 1000) / 1000}">${img}${f}</span>`;
+  // Zooming in (one press of →) scales the picture around the change's center, enough to fill most of the box.
+  const zs = zoomScale(s);
+  // Scaled around the change's center, then moved toward the middle, but never so far that an edge of the box shows empty.
+  const shift = (c: number, k: number) => Math.min(c * (k - 1), Math.max((1 - c) * (1 - k), 0.5 - c));
+  const zoom =
+    frame && s.focus && zs
+      ? ` --zx: ${pct(s.focus.x + s.focus.w / 2)}; --zy: ${pct(s.focus.y + s.focus.h / 2)}; --zs: ${zs}; --tx: ${pct(shift(s.focus.x + s.focus.w / 2, zs))}; --ty: ${pct(shift(s.focus.y + s.focus.h / 2, zs))};`
+      : '';
+  return `<span class="shot" style="--r: ${Math.round((size.w / size.h) * 1000) / 1000};${zoom}">${img}${f}</span>`;
+}
+/** How far to zoom into the change: enough for it to fill most of the picture, at most 2.5 times. Null when it would hardly grow. */
+function zoomScale(s: Review['screens'][number]): number | null {
+  if (!s.focus || s.device === 'phone') return null;
+  const scale = Math.min(2.5, 0.85 / Math.max(s.focus.w, s.focus.h));
+  return scale >= 1.4 ? Math.round(scale * 100) / 100 : null;
 }
 const picture = (uri: unknown) => (typeof uri === 'string' && IMAGE_DATA_URI.test(uri) ? uri : '');
 
@@ -80,15 +97,19 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
 
   const slide = (p: PlannedSlide): string => {
     switch (p.kind) {
-      case 'cover':
-        return `<section class="slide cover" data-ref="cover">
-  <div class="rings" aria-hidden="true"></div>
+      case 'cover': {
+        // The product on the cover: the sprint's first desktop screenshot, large, bleeding off the edge.
+        const hero = review.themes.find((th) => th.screen?.device === 'desktop')?.screen ?? review.screens.find((x) => x.device === 'desktop');
+        const heroImage = hero ? ('image' in hero ? hero.image : hero.after) : null;
+        return `<section class="slide cover${heroImage ? ' with-product' : ''}" data-ref="cover">
+  ${heroImage ? `<img class="product rise" style="--i: 2" src="${picture(heroImage)}" alt="">` : '<div class="rings" aria-hidden="true"></div>'}
   ${logoImg}
   <p class="eyebrow rise">${esc(t.sprintReview)}${org ? ` ${esc(org)}` : ''}</p>
   <h1 class="rise"${rise(1)}>${esc(review.title)}</h1>
   <p class="rise"${rise(2)}>${esc(review.period)}</p>
   ${goal ? `<p class="goal rise"${rise(3)}><b>${esc(t.goalLabel)}</b><span>${esc(goal)}</span></p>` : ''}
 </section>`;
+      }
       case 'headline':
         return `<section class="slide statement" data-ref="headline">
   <p class="eyebrow rise">${esc(t.summaryTitle)}</p>
@@ -96,6 +117,12 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
   <ul class="theme-map">${review.themes.map((th, i) => `\n    <li class="rise"${rise(i + 2)}>${themeIcon(th.icon)}<span>${esc(th.title)}</span></li>`).join('')}
   </ul>
   ${review.summaryNotes ? `<aside class="notes">${esc(review.summaryNotes)}</aside>` : ''}
+</section>`;
+      case 'answered':
+        return `<section class="slide" data-ref="answered">
+  ${head(esc(t.answeredLabel), t.answeredTitle)}
+  <ul class="answered">${review.answered!.map((a, i) => `\n    <li class="rise"${rise(i + 2)}><q>${esc(a.ask)}</q><span>${esc(a.did)}</span></li>`).join('')}
+  </ul>
 </section>`;
       case 'lastTime': {
         const said = review.lastTime!;
@@ -153,7 +180,8 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
       }
       case 'screen': {
         const s = review.screens[p.index]!;
-        return `<section class="slide" data-ref="screen-${p.index}">
+        const steps = zoomScale(s) ? ' data-steps="1"' : '';
+        return `<section class="slide" data-ref="screen-${p.index}"${steps}>
   ${head(esc(s.name), s.caption ?? s.name)}
   <div class="compare ${s.device === 'phone' ? 'phone' : ''}">
     <figure class="rise"${rise(2)}>
@@ -238,7 +266,7 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
     }
   };
   const slides = planDeck(review, options.deck).map(slide);
-  slides[0] = slides[0]!.replace('class="slide cover"', 'class="slide cover active"');
+  slides[0] = slides[0]!.replace(/class="slide cover/, 'class="slide active cover');
 
   const hasNotes = slides.some((x) => x.includes('<aside class="notes">'));
   const theme = options.theme === 'dark' ? 'dark' : 'light';
@@ -264,6 +292,7 @@ export function renderDeck(review: Review, options: RenderOptions = {}): string 
 <meta property="og:description" content="${esc(review.period)}">
 <script>document.documentElement.classList.add('js')</script>
 <style>
+${fontFaceCss(options.fontFaces ?? [])}
 ${CSS}
 ${theme === 'dark' ? DARK_CSS : ''}
   ${brandCss}
@@ -329,8 +358,21 @@ function script(t: Labels, lang: string): string {
     });
   }
 
+  // A slide with steps (a zoom into the change) takes them before moving on.
+  var step = 0;
+  function forward() {
+    var steps = parseInt(slides[current].getAttribute('data-steps') || '0', 10);
+    if (step < steps) { step++; slides[current].classList.add('zoomed'); return; }
+    show(current + 1);
+  }
+  function back() {
+    if (step > 0) { step--; slides[current].classList.remove('zoomed'); return; }
+    show(current - 1);
+  }
   function show(n) {
     n = Math.max(0, Math.min(slides.length - 1, n));
+    slides[current].classList.remove('zoomed');
+    step = 0;
     slides[current].classList.remove('active');
     current = n;
     slides[current].classList.add('active');
@@ -351,8 +393,8 @@ function script(t: Labels, lang: string): string {
   window.addEventListener('message', function (e) {
     var d = e.data;
     if (window.parent === window || e.source !== window.parent || !d || d.type !== 'sprint-review:go') return;
-    if (d.to === 'next') show(current + 1);
-    else if (d.to === 'prev') show(current - 1);
+    if (d.to === 'next') forward();
+    else if (d.to === 'prev') back();
     else if (typeof d.to === 'number') show(d.to - 1);
     else if (typeof d.to === 'string') {
       // A part of the review, such as theme-2: the slide that shows it (a card counts).
@@ -388,8 +430,8 @@ function script(t: Labels, lang: string): string {
 
   document.addEventListener('keydown', function (e) {
     if (e.target && e.target.closest && e.target.closest('.edit-button, .edit-panel')) return;
-    if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].indexOf(e.key) !== -1) { e.preventDefault(); show(current + 1); }
-    else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].indexOf(e.key) !== -1) { e.preventDefault(); show(current - 1); }
+    if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].indexOf(e.key) !== -1) { e.preventDefault(); forward(); }
+    else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].indexOf(e.key) !== -1) { e.preventDefault(); back(); }
     else if (e.key === 'Home') show(0);
     else if (e.key === 'End') show(slides.length - 1);
     else if (e.key === 'n' || e.key === 'N') document.body.classList.toggle('show-notes');
@@ -463,19 +505,19 @@ function script(t: Labels, lang: string): string {
   window.addEventListener('message', function (e) {
     if (!presenter || e.source !== presenter || !e.data) return;
     if (e.data.type === 'ready') { if (startedAt === null) startedAt = Date.now(); tellPresenter(); }
-    else if (e.data.type === 'go') show(current + (e.data.to === 'prev' ? -1 : 1));
+    else if (e.data.type === 'go') { if (e.data.to === 'prev') back(); else forward(); }
   });
   function onEdit(e) { return e.target && e.target.closest && e.target.closest('.edit-button, .edit-panel'); }
   document.addEventListener('click', function (e) {
     if (onEdit(e)) return;
-    show(e.clientX < window.innerWidth / 3 ? current - 1 : current + 1);
+    if (e.clientX < window.innerWidth / 3) back(); else forward();
   });
   var touchX = null;
   document.addEventListener('touchstart', function (e) { touchX = e.touches[0].clientX; }, { passive: true });
   document.addEventListener('touchend', function (e) {
     if (touchX === null) return;
     var dx = e.changedTouches[0].clientX - touchX;
-    if (Math.abs(dx) > 40) show(dx < 0 ? current + 1 : current - 1);
+    if (Math.abs(dx) > 40) { if (dx < 0) forward(); else back(); }
     touchX = null;
   });
 

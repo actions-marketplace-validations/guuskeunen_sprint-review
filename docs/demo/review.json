@@ -209,6 +209,11 @@
       "reason": "Too long, or has an exclamation mark or emoji."
     },
     {
+      "kind": "warning",
+      "text": "Look and feel",
+      "reason": "This theme name joins two topics. One topic per slide reads better: split it, or name what they share."
+    },
+    {
       "kind": "dropped",
       "text": "Invented",
       "reason": "Names no change from this sprint."

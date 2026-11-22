@@ -14,6 +14,7 @@ export function renderMarkdown(review: Review, labels: Record<string, string> = 
   const t = labelsFor(review.language, labels);
   const out: string[] = [`# ${md(review.title)}`, '', `_${md(review.period)}${review.organization ? ` · ${md(review.organization)}` : ''}_`, ''];
   if (review.headline) out.push(`**${md(review.headline)}**`, '');
+  if (review.answered?.length) out.push(`## ${t.answeredLabel}`, '', ...review.answered.map((a) => `- "${md(a.ask)}": ${md(a.did)}`), '');
   if (review.lastTime?.items.length) out.push(`## ${t.lastTimeLabel}`, '', ...review.lastTime.items.map((m) => `- [${m.done ? 'x' : ' '}] ${md(m.text)}`), '');
   for (const th of review.themes) {
     out.push(`## ${md(th.title)}`, '');

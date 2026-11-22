@@ -503,7 +503,8 @@ How many days a review covers when you don't pass `--since` or `--from`. Both en
 | `logo` | Path to a PNG, JPG, SVG, WebP or GIF, or a `data:image/...` URI. Shown on the cover, on a white plate. |
 | `from` | A website (`https://...`) or the path to a `.pptx` or `.potx`. From a website: its brand color (a `--brand` or `--primary` color in its stylesheet, or its `theme-color`; grays are skipped), its heading and body fonts (`--font-heading`/`--font-display`, `--font-sans`/`--font-body`) and its logo (a logo image or SVG on the page, else its largest icon). From a presentation: its theme's first accent color, fonts and the logo on its slide master. Either way it fills in only what you didn't set here, and only the look is taken, not the layout. `sprint-review doctor` shows what it found. |
 | `theme` | `light` (default) or `dark`: near-black with warm ivory text and a champagne accent. |
-| `fonts.heading`, `fonts.body` | Font families for headings and text. Fonts aren't embedded, so pick ones installed where the deck is shown; the theme's own fonts are the fallback. |
+| `fonts.heading`, `fonts.body` | Font families for headings and text. The theme's own fonts are the fallback. |
+| `fontFiles` | Font files to put inside the deck, by family, so it looks the same on any laptop: `{ Inter: [fonts/inter-400.woff2, fonts/inter-700.woff2] }`. The weight comes from the file name (400, 700). Open fonts are on npm as `@fontsource/<name>`. Keep to a few weights: 2 MB at most. Without them, the fonts must be installed where the deck is shown. |
 
 ```yaml
 brand:
@@ -586,6 +587,9 @@ A Markdown file in the repository, read as it was at the end of the sprint. Defa
 roadmap: docs/development/ROADMAP.md
 ```
 
+### `feedback`
+A Markdown file in the repository with requests from users and stakeholders, one per line (`- Can we see the direct phone number?`). Default `FEEDBACK.md`; `false` to skip it. The AI matches the requests this sprint's commits answered, three at most, and says what was done; each must point at a real request and be backed by a product commit, or it is dropped. They show on a *You asked* slide before the themes.
+
 ### `usage`
 A JSON file with usage numbers you produce (from your analytics, database or a script):
 
@@ -622,7 +626,7 @@ What goes on the slides and in which order. See [How the deck is designed](desig
 |---|---|---|
 | `density` | by [audience](#audience) | `brief`: two points per theme and two theme slides. `standard`: three and three. `detailed`: four and four. Themes past that share a slide of cards. A slide with more words than the audience reads at a glance (30, 40 or 50) gets a warning in `checks.md`. |
 | `order` | `story` | `story` puts the numbers near the end. `numbers-first` puts them right after the headline, and is the default for `audience: executives`. |
-| `sections` | all on | Turn optional slides off: `headline`, `lastTime` (what the last review said was next), `screens` (before and after), `hood` (also shipped), `roadmap`, `usage`, `questions`. Executives get `hood: false` by default. |
+| `sections` | all on | Turn optional slides off: `headline`, `lastTime`, `answered` (you asked, we did) (what the last review said was next), `screens` (before and after), `hood` (also shipped), `roadmap`, `usage`, `questions`. Executives get `hood: false` by default. |
 
 ```yaml
 deck:
@@ -742,8 +746,8 @@ Pictures that are in both folders and differ are compared exactly as above. Pict
 No visual tests? Give sprint-review the pages and it photographs them with Playwright. Each run keeps the pictures in a folder per day; the next review compares the last pictures from before the sprint with the newest ones.
 
 ```bash
-npm install --save-dev playwright
-npx playwright install chromium
+npm install --save-dev playwright-core   # uses the Chrome you have installed
+# or: npm install --save-dev playwright && npx playwright install chromium
 ```
 
 ```yaml
@@ -753,6 +757,9 @@ screenshots:
   pages:
     customer-page: /customers/1042      # screen key: path or full URL
     planner: /planner?branch=north
+    planner-progress:                   # one element: a card, a panel, a chart
+      url: /planner?branch=north
+      selector: "section:has(h2:text-is('Progress'))"
   devices: [desktop, phone]             # default: desktop
   mask: [".email", "[data-private]"]    # painted over before the picture is taken
   storageState: .auth/staging.json      # optional: a logged-in session
@@ -770,6 +777,7 @@ npx @guuskeunen/sprint-review capture
 
 Run `capture` at the end of every sprint, right before `generate` (in CI: as a step before it). Keep the storage folder between runs: commit it, or cache it in CI. The first run has nothing to compare with, so its pictures only show on theme slides.
 
+- **Components make the best slides.** A selector crops the picture to one card or panel, which reads far better on a slide than a whole page (any Playwright selector works: CSS, `text=`, `:has()`, `xpath=`). A selector that finds nothing is skipped and named in the output.
 - **Point it at staging with demo data**, never production. `mask` is a safety net, not a plan.
 - **A login?** Save one with `npx playwright codegen --save-storage=.auth/staging.json https://staging.example.com`, and keep that file out of git.
 - **No Playwright browser download?** Set `SPRINT_REVIEW_CHROME` to a Chrome or Chromium binary.
@@ -1214,16 +1222,17 @@ The deck follows rules from presentation research: Apple's keynotes and Human In
 
 ## The story
 
-1. **Cover**: title, period, the sprint goal when `goal` is set.
+1. **Cover**: title, period, the sprint goal when `goal` is set, and the sprint's strongest screenshot running off the right edge.
 2. **The sprint headline**: one sentence with the outcome that matters most, and a row with the theme names. A sprint goal is set before the sprint and can't be read from git, so the headline describes what was done.
 3. **Last sprint**: what the previous review showed as next on the roadmap, and whether it is done now. Only when there is a previous review in the output folder and a roadmap; the audience checks promises before hearing new ones (GitLab publishes its kickoff and retrospective as a pair for the same reason).
-4. **Theme slides**: the biggest themes, one slide each. `deck.density` sets how many: 2, 3 or 4.
-5. **More changes**: the remaining themes as cards, one message each. Their points go into the speaker notes.
-6. **Before and after**: one slide per changed screen.
-7. **Also shipped**: work behind the scenes, with a label per line (security, reliability, speed, maintenance).
-8. **Roadmap**: how many milestones are reached, as a line through the last ones reached and the next ones.
-9. **Numbers**: one big number per idea, at most four.
-10. **Questions**: two or three specific questions for the audience, in place of a bare "Questions?" slide.
+4. **You asked**: requests from `FEEDBACK.md` that this sprint answered, each with what was done, backed by a commit.
+5. **Theme slides**: the biggest themes, one slide each. `deck.density` sets how many: 2, 3 or 4.
+6. **More changes**: the remaining themes as cards, one message each. Their points go into the speaker notes.
+7. **Before and after**: one slide per changed screen, the change framed. When it is small, one press of → zooms into it (Tversky et al.: animation helps most for moving from overview to detail) and the next moves on.
+8. **Also shipped**: work behind the scenes, with a label per line (security, reliability, speed, maintenance).
+9. **Roadmap**: how many milestones are reached, as a line through the last ones reached and the next ones.
+10. **Numbers**: one big number per idea, at most four.
+11. **Questions**: two or three specific questions for the audience, in place of a bare "Questions?" slide.
 
 The audience sets the defaults: executives get a brief deck with the numbers right after the headline and no slide about work behind the scenes, the team gets a detailed deck, everyone else a standard one. `deck.density`, `deck.order` and `deck.sections` change that.
 

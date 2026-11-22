@@ -13,6 +13,7 @@ export function validReview(v: unknown): Review {
   if (typeof r.title !== 'string' || typeof r.period !== 'string') throw new Error('The review needs a title and a period.');
   if (r.headline !== null && typeof r.headline !== 'string') throw new Error('The headline must be text.');
   if (r.lastTime !== undefined && !(typeof r.lastTime?.until === 'string' && Array.isArray(r.lastTime.items) && r.lastTime.items.every((m) => typeof m?.text === 'string' && typeof m.done === 'boolean'))) throw new Error('lastTime needs until and a list of items with text and done.');
+  if (r.answered !== undefined && !(Array.isArray(r.answered) && r.answered.every((a) => typeof a?.ask === 'string' && typeof a.did === 'string'))) throw new Error('answered must be a list of { ask, did }.');
   if (!strings(r.questions)) throw new Error('Questions must be a list of lines.');
   if (!Array.isArray(r.themes) || !r.themes.every((t) => typeof t?.title === 'string' && strings(t.points))) throw new Error('Every theme needs a title and a list of points.');
   if (!Array.isArray(r.underTheHood) || !r.underTheHood.every((x) => typeof x?.text === 'string' && (HOOD_KINDS as readonly string[]).includes(x.kind))) throw new Error(`Every line under the hood needs text and a kind (${HOOD_KINDS.join(', ')}).`);

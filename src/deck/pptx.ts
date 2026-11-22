@@ -100,9 +100,11 @@ export async function renderPptx(review: Review, options: PptxOptions = {}): Pro
     switch (p.kind) {
       case 'cover': {
         const s = newSlide();
+        const hero = review.themes.find((th) => th.screen?.device === 'desktop')?.screen?.image ?? review.screens.find((x) => x.device === 'desktop')?.after;
+        if (hero) s.addImage(place(hero, { x: 7.0, y: 1.2, w: 6.33, h: 5.0 }, 'cover'));
         await logoAt(s);
         eyebrow(s, `${t.sprintReview}${review.organization ? ` ${review.organization}` : ''}`, 2.2);
-        s.addText(review.title, { x: X, y: 2.6, w: CW, h: 2.0, fontFace: heading, fontSize: SIZE.display, bold: true, color: pal.ink, valign: 'top', margin: 0 });
+        s.addText(review.title, { x: X, y: 2.6, w: hero ? 5.6 : CW, h: 2.6, fontFace: heading, fontSize: hero ? SIZE.title + 12 : SIZE.display, bold: true, color: pal.ink, valign: 'top', margin: 0 });
         s.addText(review.period, { x: X, y: 4.75, w: CW, h: 0.5, fontFace: body, fontSize: SIZE.body, color: pal.soft, margin: 0 });
         if (options.goal) s.addText(`${t.goalLabel.toUpperCase()}   ${options.goal}`, { x: X, y: 5.5, w: 8, h: 0.5, fontFace: body, fontSize: SIZE.small, color: pal.ink, fill: { color: pal.panel }, line: { color: pal.line } });
         break;
@@ -112,6 +114,16 @@ export async function renderPptx(review: Review, options: PptxOptions = {}): Pro
         eyebrow(s, t.summaryTitle, 1.4);
         s.addText(review.headline ?? '', { x: X, y: 1.85, w: 10.5, h: 3.2, fontFace: heading, fontSize: SIZE.display, bold: true, color: pal.ink, valign: 'top', margin: 0 });
         s.addText(review.themes.map((th) => th.title).join('     '), { x: X, y: 5.5, w: CW, h: 0.5, fontFace: body, fontSize: SIZE.small, color: pal.soft, margin: 0 });
+        break;
+      }
+      case 'answered': {
+        const s = newSlide();
+        head(s, t.answeredLabel, t.answeredTitle);
+        review.answered!.forEach((a, i) => {
+          const y = BODY_Y + i * 1.3;
+          s.addText(`“${a.ask}”`, { x: X, y, w: 10, h: 0.45, fontFace: body, fontSize: SIZE.small, color: pal.faint, margin: 0 });
+          s.addText(a.did, { x: X, y: y + 0.45, w: 10, h: 0.7, fontFace: body, fontSize: SIZE.body, color: pal.ink, valign: 'top', margin: 0 });
+        });
         break;
       }
       case 'lastTime': {

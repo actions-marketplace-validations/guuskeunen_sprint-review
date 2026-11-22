@@ -34,7 +34,7 @@ export const DENSITY = {
 export type Density = keyof typeof DENSITY;
 
 /** The slides that can be left out. The cover and the theme slides always show. */
-export const SECTIONS = ['headline', 'lastTime', 'screens', 'hood', 'roadmap', 'usage', 'questions'] as const;
+export const SECTIONS = ['headline', 'lastTime', 'answered', 'screens', 'hood', 'roadmap', 'usage', 'questions'] as const;
 export type Section = (typeof SECTIONS)[number];
 
 export interface DeckConfig {
@@ -74,6 +74,8 @@ export interface Config {
     /** light (default) or dark. */
     theme: 'dark' | 'light';
     fonts: { heading: string | null; body: string | null };
+    /** Font files to put inside the deck, by family: { Inter: [path/to/inter-400.woff2] }. */
+    fontFiles: Record<string, string[]>;
   };
   sprint: { days: number };
   /** Folders that hold product code. A commit outside them can only go under the hood. Empty: every commit counts. */
@@ -95,6 +97,8 @@ export interface Config {
   areas: Record<string, Area>;
   screenshots: ScreenshotConfig;
   roadmap: string | null;
+  /** A file in the repository with requests from users and stakeholders, one per line ("- ..."). */
+  feedback: string | null;
   usage: string | null;
   limits: { themes: number; themeScreens: number; changedScreens: number; commits: number };
   model: ModelConfig;
@@ -137,8 +141,11 @@ interface ScreenCommon {
 }
 
 export interface CaptureConfig {
-  /** The pages to photograph, by screen key. Relative URLs are resolved against baseUrl. */
-  pages: Record<string, string>;
+  /**
+   * What to photograph, by screen key: a page, or one element on it (a card, a panel) when a
+   * selector is given. Relative URLs are resolved against baseUrl.
+   */
+  pages: Record<string, { url: string; selector: string | null }>;
   baseUrl: string | null;
   devices: ('desktop' | 'phone')[];
   /** CSS selectors to black out before the picture is taken: a safety net for real data. */
@@ -224,6 +231,7 @@ export function normalize(raw: unknown, root: string): Config {
         heading: str(obj(brand.fonts ?? {}, 'brand.fonts').heading, 'brand.fonts.heading'),
         body: str(obj(brand.fonts ?? {}, 'brand.fonts').body, 'brand.fonts.body'),
       },
+      fontFiles: Object.fromEntries(Object.entries(obj(brand.fontFiles ?? {}, 'brand.fontFiles')).map(([family, v]) => [family, strList(typeof v === 'string' ? [v] : v, `brand.fontFiles.${family}`)])),
     },
     sprint: { days: int(sprint.days, 'sprint.days', 14, 1, 120) },
     productPaths: strList(r.productPaths, 'productPaths'),
@@ -237,6 +245,7 @@ export function normalize(raw: unknown, root: string): Config {
     areas,
     screenshots: screenshots(r.screenshots),
     roadmap: r.roadmap === false ? null : (str(r.roadmap, 'roadmap') ?? 'ROADMAP.md'),
+    feedback: r.feedback === false ? null : (str(r.feedback, 'feedback') ?? 'FEEDBACK.md'),
     usage: str(r.usage, 'usage'),
     limits: {
       themes: int(limits.themes, 'limits.themes', 6, 1, 12),
@@ -299,7 +308,16 @@ function screenshots(value: unknown): ScreenshotConfig {
     return { source: 'folder', before, after, names, ignore, videos };
   }
   if (source === 'capture') {
-    const pages = strMap(s.pages, 'screenshots.pages');
+    const pages: CaptureConfig['pages'] = {};
+    for (const [key, v] of Object.entries(obj(s.pages ?? {}, 'screenshots.pages'))) {
+      if (typeof v === 'string') pages[key] = { url: v, selector: null };
+      else {
+        const page = obj(v, `screenshots.pages.${key}`);
+        const url = str(page.url, `screenshots.pages.${key}.url`);
+        if (!url) throw new ConfigError(`screenshots.pages.${key} needs a url.`);
+        pages[key] = { url, selector: str(page.selector, `screenshots.pages.${key}.selector`) };
+      }
+    }
     if (!Object.keys(pages).length) throw new ConfigError('screenshots.pages is required when screenshots.source is capture: a screen key per URL.');
     const devices = s.devices === undefined ? (['desktop'] as ('desktop' | 'phone')[]) : strList(s.devices, 'screenshots.devices');
     for (const d of devices) if (d !== 'desktop' && d !== 'phone') throw new ConfigError('screenshots.devices can hold desktop and phone.');
