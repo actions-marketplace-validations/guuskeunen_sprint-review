@@ -1,3 +1,4 @@
+import { loadPlaywright } from '../screens/capture.ts';
 import { sprintRange } from '../review/generate.ts';
 import { existsSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
@@ -26,12 +27,9 @@ export async function doctorChecks(config: Config, cwd = process.cwd(), env = pr
   const s = config.screenshots;
   if (s.source === 'folder') add(existsSync(resolve(config.root, s.before)) && existsSync(resolve(config.root, s.after)), 'Screenshot folders exist', 'Check screenshots.before and screenshots.after.');
   if (s.source === 'capture') {
-    let playwright = false;
-    try {
-      await import('playwright' as string);
-      playwright = true;
-    } catch {}
-    add(playwright, 'Playwright is installed for screenshots', 'npm install --save-dev playwright && npx playwright install chromium');
+    // The same check capture makes: playwright-core with the installed Chrome counts too.
+    const found = await loadPlaywright();
+    add(found !== null, `Playwright is installed for screenshots${found?.core ? ' (playwright-core, with your Chrome)' : ''}`, 'npm install --save-dev playwright-core (uses your installed Chrome), or playwright && npx playwright install chromium');
   }
   if (config.output.pptx) {
     let pptx = false;

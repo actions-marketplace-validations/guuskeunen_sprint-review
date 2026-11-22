@@ -134,7 +134,8 @@ async function logIn(page: Page, login: NonNullable<CaptureConfig['login']>, bas
 
 type Chromium = { launch(options: Record<string, unknown>): Promise<Browser> };
 
-async function loadPlaywright(): Promise<{ chromium: Chromium; core: boolean } | null> {
+/** Playwright with its own browser, or playwright-core with the installed Chrome; null when neither is there. */
+export async function loadPlaywright(): Promise<{ chromium: Chromium; core: boolean } | null> {
   for (const name of ['playwright', 'playwright-core']) {
     try {
       return { chromium: ((await import(name)) as { chromium: Chromium }).chromium, core: name === 'playwright-core' };
