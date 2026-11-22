@@ -65,6 +65,23 @@ Most AI summary tools hand your history to a model and hope for the best. sprint
 
 The deck tells the sprint as a story: a cover with your logo and color, the sprint in one sentence, one slide per big theme whose title says what users can do now (with a screenshot when one fits), the smaller themes as cards, before and after slides, what else shipped, the roadmap, usage numbers, and questions for your audience. It follows presentation research: four text sizes, nothing under 24 px, one message per slide. See [how the deck is designed](docs/design.md).
 
+## Real decks from real repositories
+
+<p align="center">
+  <img src="docs/assets/examples.png" alt="Theme slides from sprint reviews of VS Code, Next.js, Supabase and Excalidraw" width="860">
+</p>
+
+The same two weeks (November 9 to 22, 2026) of four well-known open-source projects, written by Claude Sonnet and not edited by hand:
+
+| Project | Commits | Deck | Cost |
+|---|---|---|---|
+| VS Code | 1,298 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/vscode/) | $0.21 |
+| Next.js | 252 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/nextjs/) | $0.28 |
+| Supabase | 355 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/supabase/) | $0.22 |
+| Excalidraw | 16 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/excalidraw/) | $0.12 |
+
+Made from each project's public git history and pull requests, as examples; not affiliated with or endorsed by these projects. How they were made and what they found: [the benchmark](docs/benchmark.md#real-repositories).
+
 ## Quick start
 
 ```bash

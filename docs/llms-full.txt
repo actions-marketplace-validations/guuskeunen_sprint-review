@@ -84,6 +84,19 @@ Most AI summary tools hand your history to a model and hope for the best. sprint
 
 The deck tells the sprint as a story: a cover with your logo and color, the sprint in one sentence, one slide per big theme whose title says what users can do now (with a screenshot when one fits), the smaller themes as cards, before and after slides, what else shipped, the roadmap, usage numbers, and questions for your audience. It follows presentation research: four text sizes, nothing under 24 px, one message per slide. See [how the deck is designed](docs/design.md).
 
+## Real decks from real repositories
+
+The same two weeks (November 9 to 22, 2026) of four well-known open-source projects, written by Claude Sonnet and not edited by hand:
+
+| Project | Commits | Deck | Cost |
+|---|---|---|---|
+| VS Code | 1,298 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/vscode/) | $0.21 |
+| Next.js | 252 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/nextjs/) | $0.28 |
+| Supabase | 355 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/supabase/) | $0.22 |
+| Excalidraw | 16 | [open the deck](https://guuskeunen.github.io/sprint-review/examples/excalidraw/) | $0.12 |
+
+Made from each project's public git history and pull requests, as examples; not affiliated with or endorsed by these projects. How they were made and what they found: [the benchmark](docs/benchmark.md#real-repositories).
+
 ## Quick start
 
 ```bash
@@ -645,7 +658,7 @@ A theme's layout (beside its screenshot, a large screenshot, the icon, or a card
 | `themes` | `6` | The most themes. The first ones get a slide each (see [`deck.density`](#deck)), the rest share a slide of cards. |
 | `themeScreens` | `4` | The most theme slides with a screenshot. |
 | `changedScreens` | `4` | The most before and after slides. |
-| `commits` | `1000` | The most commits read. Very long sprints are also cut to what the AI can read; `checks.md` names the commits it skipped. |
+| `commits` | `3000` | The most commits read, newest first; past it, `checks.md` says the sprint's first days are missing. What the AI reads is fitted to `model.maxInputChars`: a line for every product commit first, then details as far as they fit; `checks.md` counts what was left out. |
 
 ### `model`
 
@@ -1681,6 +1694,36 @@ npm run bench -- --echo                                # no model: checks the ha
 A report is printed and saved in `bench/results/`, named by date and model. Commit the ones worth keeping: they're the history of the tool's quality, and they fill the [model table](models.md#tested-models).
 
 A full run is three cases, two or three calls each. With Claude that's a few dimes.
+
+## Real repositories
+
+The sample sprints check the words. Real repositories check everything else: size, noise, pull requests, a product the writer has never seen. We ran sprint-review on the same two weeks (November 9 to 22, 2026) of four open-source projects, with Claude Sonnet 5.5, a short product description and `productPaths` in the config, and nothing edited afterwards. The decks are [in the README](../README.md#real-decks-from-real-repositories).
+
+| Project | Commits | Pull requests | Read | Time | Tokens | Cost | Checks |
+|---|---|---|---|---|---|---|---|
+| VS Code | 1,298 | not counted | all product commits; 52 docs and chores left out | 109 s | 68,000 | $0.21 | 14 |
+| Next.js | 252 | 80 | all but 1 without product code | 167 s | 72,838 | $0.28 | 23 |
+| Supabase | 355 | 114 | all | 146 s | 67,659 | $0.22 | 9 |
+| Excalidraw | 16 | 15 | all | 77 s | 25,704 | $0.12 | 11 |
+
+What the first round found, and what changed:
+
+- **Shallow clones were refused**, even ones that held the whole sprint. A shallow clone is now fine when it reaches back to before the sprint starts.
+- **Big sprints were read from the end.** The commit log was cut at the input limit, newest first, so on VS Code the writer saw only the last days. Each commit past the cut was also its own warning: 916 checks on VS Code, 164 on Next.js, 247 on Supabase. Now every product commit gets a line first, then details as far as they fit, and what's left out is one warning. On VS Code this changed the headline: the biggest change of the sprint (a new launcher for agent sessions) landed early and had been missed.
+- **`limits.commits` quietly dropped the oldest commits** (1,000 by default). The default is now 3,000, and a sprint past it gets a warning.
+- **Two cards sat on half the slide**, and a title joined two messages with a semicolon. Two cards now use the full width, and such a title gets a warning.
+
+To run one yourself:
+
+```bash
+git clone --shallow-since=2026-11-01 https://github.com/excalidraw/excalidraw && cd excalidraw
+cat > sprint-review.config.yml <<'YML'
+product: { name: Excalidraw, description: "A virtual whiteboard for hand-drawn-like diagrams." }
+productPaths: [packages/, excalidraw-app/]
+model: { name: claude-sonnet-5-5 }
+YML
+GITHUB_TOKEN=$(gh auth token) npx @guuskeunen/sprint-review --until 2026-11-22
+```
 
 ## Adding a case
 
